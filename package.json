@@ -50,6 +50,6 @@
     "vue": "^3.4.0"
   },
   "dependencies": {
-    "@fontsource-variable/vazirmatn": "^5.2.8"
+    "@fontsource-variable/noto-sans-arabic": "^5.2.10"
   }
 }

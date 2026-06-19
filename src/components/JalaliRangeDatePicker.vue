@@ -112,7 +112,7 @@ function confirm() {
 </script>
 
 <template>
-  <div ref="root" class="relative inline-block w-full max-w-sm [font-family:Vazirmatn,Tahoma,sans-serif]" dir="rtl" @keydown.esc="close">
+  <div ref="root" class="relative inline-block w-full max-w-sm [font-family:Noto_Sans_Arabic_Variable,Tahoma,sans-serif]" dir="rtl" @keydown.esc="close">
     <div class="relative">
       <input
         type="text"

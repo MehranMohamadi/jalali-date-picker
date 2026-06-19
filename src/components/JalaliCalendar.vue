@@ -94,7 +94,7 @@ function onDayKeydown(event: KeyboardEvent, iso: string) {
 </script>
 
 <template>
-  <div dir="rtl" role="application" aria-label="تقویم جلالی" :class="['w-72 rounded-xl border border-slate-200 bg-white p-3 text-slate-700 shadow-lg [font-family:Vazirmatn,Tahoma,sans-serif]', calendarClass]">
+  <div dir="rtl" role="application" aria-label="تقویم جلالی" :class="['w-72 rounded-xl border border-slate-200 bg-white p-3 text-slate-700 shadow-lg [font-family:Noto_Sans_Arabic_Variable,Tahoma,sans-serif]', calendarClass]">
     <div class="mb-3 flex items-center justify-between">
       <button type="button" class="rounded-lg p-2 text-teal-700 outline-none hover:bg-teal-50 focus:ring-2 focus:ring-teal-500" aria-label="ماه قبل" @click="moveMonth(-1)">‹</button>
       <div class="font-semibold text-slate-800" aria-live="polite">

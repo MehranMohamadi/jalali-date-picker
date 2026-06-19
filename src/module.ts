@@ -14,7 +14,7 @@ export default defineNuxtModule<ModuleOptions>({
   defaults: { prefix: '', loadFont: true },
   setup(options, nuxt) {
     const resolver = createResolver(import.meta.url)
-    if (options.loadFont) nuxt.options.css.push('@fontsource-variable/vazirmatn/index.css')
+    if (options.loadFont) nuxt.options.css.push('@fontsource-variable/noto-sans-arabic/index.css')
     const components = ['JalaliCalendar', 'JalaliDatePicker', 'JalaliRangeDatePicker']
     for (const name of components) {
       addComponent({ name: `${options.prefix ?? ''}${name}`, filePath: resolver.resolve(`./components/${name}.vue`) })

@@ -24,7 +24,7 @@ export default defineNuxtConfig({
 })
 ```
 
-The Vazirmatn variable font is loaded automatically. Set `loadFont: false` in the module options to use your application's own Persian font.
+The Noto Sans Arabic variable font is loaded automatically. Set `loadFont: false` in the module options to use your application's own Persian font.
 
 ## Tailwind setup
 

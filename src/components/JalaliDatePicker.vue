@@ -73,7 +73,7 @@ async function show() {
 </script>
 
 <template>
-  <div ref="root" class="relative inline-block w-full max-w-xs [font-family:Vazirmatn,Tahoma,sans-serif]" dir="rtl" @keydown.esc="open = false">
+  <div ref="root" class="relative inline-block w-full max-w-xs [font-family:Noto_Sans_Arabic_Variable,Tahoma,sans-serif]" dir="rtl" @keydown.esc="open = false">
     <div class="relative">
       <input
         ref="input"
