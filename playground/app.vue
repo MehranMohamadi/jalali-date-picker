@@ -560,7 +560,7 @@ watch(
         <strong>بودجه‌یار</strong>
         <small>{{ activeSection }}</small>
       </div>
-      <button class="mobile-add" type="button" aria-label="ثبت هزینه" @click="openModal('expense')">＋</button>
+      <!-- <button class="mobile-add" type="button" aria-label="ثبت هزینه" @click="openModal('expense')">＋</button> -->
     </header>
 
     <div v-if="isMobileMenuOpen" class="mobile-menu-backdrop" @click="isMobileMenuOpen = false" />
@@ -1999,7 +1999,7 @@ th {
   }
 
   .fab {
-    right: 50%;
+    right: 90%;
     bottom: max(14px, env(safe-area-inset-bottom));
     width: 64px;
     height: 64px;
