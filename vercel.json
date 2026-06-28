@@ -1,6 +1,6 @@
 {
-  "buildCommand": "npm run build:app",
-  "outputDirectory": "playground/.output/public",
+  "buildCommand": "npm run build:vercel",
+  "outputDirectory": "public",
   "installCommand": "npm install",
   "framework": null,
   "cleanUrls": true,
