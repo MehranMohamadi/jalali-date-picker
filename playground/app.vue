@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import '@fontsource-variable/vazirmatn'
-import { toJalali } from '../src/utils/jalali'
+import { getJalaliMonthLength, toJalali } from '../src/utils/jalali'
 
 type TransactionType = 'income' | 'expense'
 
@@ -87,6 +87,8 @@ const navItems = ['داشبورد', 'درآمدها', 'هزینه‌ها', 'بو
 const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند']
 const currentJalaliDate = getCurrentJalaliDate()
 const todayKey = formatJalaliInputDate(currentJalaliDate)
+const currentMonthPrefix = `${currentJalaliDate.year}/${String(currentJalaliDate.month).padStart(2, '0')}/`
+const currentMonthLength = getJalaliMonthLength(currentJalaliDate.year, currentJalaliDate.month)
 const currentMonthStartKey = formatJalaliInputDate({ ...currentJalaliDate, day: 1 })
 const currentMonthYear = `${months[currentJalaliDate.month - 1]} ${toPersianNumber(currentJalaliDate.year)}`
 const years = [currentJalaliDate.year - 1, currentJalaliDate.year, currentJalaliDate.year + 1].map(toPersianNumber)
@@ -175,14 +177,43 @@ const filteredTransactions = computed(() => {
 })
 
 const dailyTrend = computed(() => {
-  const days = [1, 5, 10, 15, 20, 25, 28]
-  let spent = 0
+  const days = getTrendDays()
+  const monthlyExpenses = expenseTransactions.value.filter((item) => normalizeJalaliDate(item.date).startsWith(currentMonthPrefix))
+  const monthlyIncomes = incomeTransactions.value.filter((item) => normalizeJalaliDate(item.date).startsWith(currentMonthPrefix))
+
   return days.map((day) => {
-    spent = expenseTransactions.value
-      .filter((item) => Number(item.date.split('/')[2]) <= day)
+    const spent = monthlyExpenses
+      .filter((item) => getJalaliInputDay(item.date) <= day)
       .reduce((sum, item) => sum + item.amount, 0)
-    return { label: toPersianNumber(day), expense: spent, balance: totalIncome.value - spent }
+    const income = monthlyIncomes
+      .filter((item) => getJalaliInputDay(item.date) <= day)
+      .reduce((sum, item) => sum + item.amount, 0)
+
+    return { label: toPersianNumber(day), expense: spent, balance: Math.max(0, income - spent) }
   })
+})
+
+const trendChart = computed(() => {
+  const width = 700
+  const top = 24
+  const bottom = 200
+  const points = dailyTrend.value
+  const maxValue = Math.max(...points.flatMap((point) => [point.expense, point.balance]), 1)
+  const xStep = points.length > 1 ? width / (points.length - 1) : width
+  const yFor = (value: number) => bottom - (Math.max(0, value) / maxValue) * (bottom - top)
+  const chartPoints = points.map((point, index) => ({
+    ...point,
+    x: Math.round(index * xStep),
+    expenseY: Math.round(yFor(point.expense)),
+    balanceY: Math.round(yFor(point.balance)),
+  }))
+  const expensePath = toLinePath(chartPoints.map((point) => ({ x: point.x, y: point.expenseY })))
+  const balancePath = toLinePath(chartPoints.map((point) => ({ x: point.x, y: point.balanceY })))
+  const firstPoint = chartPoints[0]
+  const lastPoint = chartPoints[chartPoints.length - 1]
+  const expenseAreaPath = firstPoint && lastPoint ? `${expensePath} L ${lastPoint.x} ${bottom} L ${firstPoint.x} ${bottom} Z` : ''
+
+  return { expensePath, balancePath, expenseAreaPath, points: chartPoints }
 })
 
 const summaryLines = computed(() => [
@@ -215,6 +246,28 @@ function getCategory(key?: CategoryKey) {
   return categories.value.find((category) => category.key === key) ?? categories.value.find((category) => category.key === 'other') ?? defaultCategories[defaultCategories.length - 1]
 }
 
+function normalizeDigits(value: string | number) {
+  return String(value)
+    .replace(/[۰-۹]/g, (digit) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)))
+    .replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)))
+}
+
+function normalizeJalaliDate(value: string) {
+  return normalizeDigits(value.trim()).replace(/-/g, '/')
+}
+
+function getJalaliInputDay(value: string) {
+  return Number(normalizeJalaliDate(value).split('/')[2] ?? 0)
+}
+
+function getTrendDays() {
+  return [...new Set([1, 5, 10, 15, 20, 25, currentMonthLength].filter((day) => day <= currentMonthLength))].sort((a, b) => a - b)
+}
+
+function toLinePath(points: Array<{ x: number; y: number }>) {
+  return points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ')
+}
+
 function getCurrentJalaliDate() {
   return toJalali(new Date())
 }
@@ -232,10 +285,7 @@ function toPersianNumber(value: number | string) {
 }
 
 function parseMoneyInput(value: number | string) {
-  const normalized = String(value)
-    .replace(/[۰-۹]/g, (digit) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)))
-    .replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)))
-    .replace(/[^\d]/g, '')
+  const normalized = normalizeDigits(value).replace(/[^\d]/g, '')
 
   return Number(normalized || 0)
 }
@@ -655,12 +705,13 @@ watch(
                   <stop offset="100%" stop-color="#7c3aed" stop-opacity=".04" />
                 </linearGradient>
               </defs>
-              <path d="M0 190 C90 165 120 155 190 142 S320 110 400 96 S560 70 700 48 L700 240 L0 240 Z" fill="url(#areaGradient)" />
-              <path d="M0 190 C90 165 120 155 190 142 S320 110 400 96 S560 70 700 48" fill="none" stroke="#22d3ee" stroke-width="5" stroke-linecap="round" />
-              <path d="M0 52 C90 62 150 88 220 98 S360 122 445 145 S560 172 700 188" fill="none" stroke="#a78bfa" stroke-width="5" stroke-linecap="round" />
-              <g v-for="(point, index) in dailyTrend" :key="point.label">
-                <circle :cx="index * 116" :cy="190 - index * 23" r="6" fill="#22d3ee" />
-                <text :x="index * 116" y="230" text-anchor="middle">{{ point.label }}</text>
+              <path :d="trendChart.expenseAreaPath" fill="url(#areaGradient)" />
+              <path :d="trendChart.expensePath" fill="none" stroke="#22d3ee" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+              <path :d="trendChart.balancePath" fill="none" stroke="#a78bfa" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+              <g v-for="point in trendChart.points" :key="point.label">
+                <circle :cx="point.x" :cy="point.expenseY" r="6" fill="#22d3ee" />
+                <circle :cx="point.x" :cy="point.balanceY" r="5" fill="#a78bfa" />
+                <text :x="point.x" y="230" text-anchor="middle">{{ point.label }}</text>
               </g>
             </svg>
           </div>
