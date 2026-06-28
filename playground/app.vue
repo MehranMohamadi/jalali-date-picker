@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import '@fontsource-variable/vazirmatn'
+import { toJalali } from '../src/utils/jalali'
 
 type TransactionType = 'income' | 'expense'
 
@@ -82,9 +83,16 @@ const isMobileMenuOpen = ref(false)
 const STORAGE_KEY = 'budgetyar-transactions-v1'
 const CATEGORIES_STORAGE_KEY = 'budgetyar-categories-v1'
 const BUDGETS_STORAGE_KEY = 'budgetyar-budgets-v1'
+const navItems = ['داشبورد', 'درآمدها', 'هزینه‌ها', 'بودجه‌ها', 'گزارش‌ها', 'آمار', 'تنظیمات']
+const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند']
+const currentJalaliDate = getCurrentJalaliDate()
+const todayKey = formatJalaliInputDate(currentJalaliDate)
+const currentMonthStartKey = formatJalaliInputDate({ ...currentJalaliDate, day: 1 })
+const currentMonthYear = `${months[currentJalaliDate.month - 1]} ${toPersianNumber(currentJalaliDate.year)}`
+const years = [currentJalaliDate.year - 1, currentJalaliDate.year, currentJalaliDate.year + 1].map(toPersianNumber)
 const query = ref('')
-const selectedMonth = ref('خرداد')
-const selectedYear = ref('۱۴۰۵')
+const selectedMonth = ref(months[currentJalaliDate.month - 1])
+const selectedYear = ref(toPersianNumber(currentJalaliDate.year))
 const selectedCategory = ref('همه')
 const selectedType = ref('همه')
 const dateRange = reactive({ start: '', end: '' })
@@ -96,7 +104,7 @@ const editingId = ref<number | null>(null)
 const form = reactive({
   amount: 0,
   title: '',
-  date: '1405/03/28',
+  date: todayKey,
   category: 'food' as CategoryKey,
   description: '',
 })
@@ -108,11 +116,7 @@ const categoryForm = reactive({
 })
 const installPrompt = ref<InstallPromptEvent | null>(null)
 const isStandalone = ref(false)
-
-const navItems = ['داشبورد', 'درآمدها', 'هزینه‌ها', 'بودجه‌ها', 'گزارش‌ها', 'آمار', 'تنظیمات']
-const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور']
-const years = ['۱۴۰۴', '۱۴۰۵', '۱۴۰۶']
-const today = '۱۴۰۵/۰۳/۲۸'
+const today = formatDisplayJalaliDate(currentJalaliDate)
 
 const expenseTransactions = computed(() => transactions.value.filter((item) => item.type === 'expense'))
 const incomeTransactions = computed(() => transactions.value.filter((item) => item.type === 'income'))
@@ -139,7 +143,7 @@ const highestExpense = computed<Transaction>(() => [...expenseTransactions.value
   type: 'expense',
   title: 'بدون هزینه',
   amount: 0,
-  date: '1405/03/01',
+  date: currentMonthStartKey,
   category: 'other',
 })
 const lowestExpense = computed<Transaction>(() => [...expenseTransactions.value].sort((a, b) => a.amount - b.amount)[0] ?? {
@@ -147,11 +151,11 @@ const lowestExpense = computed<Transaction>(() => [...expenseTransactions.value]
   type: 'expense',
   title: 'بدون هزینه',
   amount: 0,
-  date: '1405/03/01',
+  date: currentMonthStartKey,
   category: 'other',
 })
-const todayExpense = computed(() => expenseTransactions.value.filter((item) => item.date === '1405/03/28').reduce((sum, item) => sum + item.amount, 0))
-const todayIncome = computed(() => incomeTransactions.value.filter((item) => item.date === '1405/03/28').reduce((sum, item) => sum + item.amount, 0))
+const todayExpense = computed(() => expenseTransactions.value.filter((item) => item.date === todayKey).reduce((sum, item) => sum + item.amount, 0))
+const todayIncome = computed(() => incomeTransactions.value.filter((item) => item.date === todayKey).reduce((sum, item) => sum + item.amount, 0))
 const averageDailyExpense = computed(() => Math.round(totalExpense.value / 28))
 
 const filteredTransactions = computed(() => {
@@ -211,8 +215,41 @@ function getCategory(key?: CategoryKey) {
   return categories.value.find((category) => category.key === key) ?? categories.value.find((category) => category.key === 'other') ?? defaultCategories[defaultCategories.length - 1]
 }
 
+function getCurrentJalaliDate() {
+  return toJalali(new Date())
+}
+
+function formatJalaliInputDate(date: ReturnType<typeof toJalali>) {
+  return `${date.year}/${String(date.month).padStart(2, '0')}/${String(date.day).padStart(2, '0')}`
+}
+
+function formatDisplayJalaliDate(date: ReturnType<typeof toJalali>) {
+  return formatJalaliInputDate(date).replace(/\d/g, (digit) => '۰۱۲۳۴۵۶۷۸۹'[Number(digit)])
+}
+
 function toPersianNumber(value: number | string) {
   return new Intl.NumberFormat('fa-IR', { useGrouping: false }).format(Number(String(value).replace(/\D/g, '') || value))
+}
+
+function parseMoneyInput(value: number | string) {
+  const normalized = String(value)
+    .replace(/[۰-۹]/g, (digit) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)))
+    .replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)))
+    .replace(/[^\d]/g, '')
+
+  return Number(normalized || 0)
+}
+
+function formatMoneyInput(value: number | string) {
+  const amount = parseMoneyInput(value)
+  return amount ? new Intl.NumberFormat('fa-IR').format(amount) : ''
+}
+
+function updateMoneyInput(target: { amount?: number; budget?: number }, key: 'amount' | 'budget', event: Event) {
+  const input = event.target as HTMLInputElement
+  const amount = parseMoneyInput(input.value)
+  target[key] = amount
+  input.value = formatMoneyInput(amount)
 }
 
 function formatMoney(value: number) {
@@ -220,7 +257,12 @@ function formatMoney(value: number) {
 }
 
 function formatCompact(value: number) {
-  return `${new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 1 }).format(value / 1000000)} میلیون تومان`
+  const absValue = Math.abs(value)
+  const formatter = new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 1 })
+
+  if (absValue >= 1000000) return `${formatter.format(value / 1000000)} میلیون تومان`
+  if (absValue >= 1000) return `${formatter.format(value / 1000)} هزار تومان`
+  return formatMoney(value)
 }
 
 function progressPercent(spent: number, budget: number) {
@@ -240,7 +282,7 @@ function selectSection(item: string) {
 function openModal(type: TransactionType) {
   formType.value = type
   editingId.value = null
-  Object.assign(form, { amount: 0, title: '', date: '1405/03/28', category: categories.value[0]?.key ?? 'other', description: '' })
+  Object.assign(form, { amount: 0, title: '', date: todayKey, category: categories.value[0]?.key ?? 'other', description: '' })
   isModalOpen.value = true
 }
 
@@ -287,8 +329,9 @@ function removeTransaction(id: number) {
 
 function updateBudget(category: CategoryKey, event: Event) {
   const input = event.target as HTMLInputElement
-  const amount = Math.max(0, Number(input.value))
+  const amount = Math.max(0, parseMoneyInput(input.value))
   budgets.value = budgets.value.map((goal) => (goal.category === category ? { ...goal, budget: amount } : goal))
+  input.value = formatMoneyInput(amount)
   pushToast('بودجه به‌روزرسانی شد ✨')
 }
 
@@ -499,7 +542,7 @@ watch(
     <section class="content">
       <header v-if="activeSection === 'داشبورد'" class="hero glass-panel" data-section="داشبورد">
         <div>
-          <p class="eyebrow">خرداد ۱۴۰۵</p>
+          <p class="eyebrow">{{ currentMonthYear }}</p>
           <h1>سلام مهران 👋</h1>
           <p>نمایی زنده از درآمد، هزینه، بودجه و مسیر پس‌انداز ماهانه شما.</p>
         </div>
@@ -513,7 +556,7 @@ watch(
 
       <section v-else class="page-header glass-panel">
         <div>
-          <p class="eyebrow">خرداد ۱۴۰۵</p>
+          <p class="eyebrow">{{ currentMonthYear }}</p>
           <h1>{{ activeSection }}</h1>
           <p>مدیریت متمرکز {{ activeSection }} در یک نمای جدا و خلوت.</p>
         </div>
@@ -676,7 +719,12 @@ watch(
           </label>
           <label>
             <span>بودجه</span>
-            <input v-model.number="categoryForm.budget" type="number" min="0" />
+            <input
+              :value="formatMoneyInput(categoryForm.budget)"
+              type="text"
+              inputmode="numeric"
+              @input="updateMoneyInput(categoryForm, 'budget', $event)"
+            />
           </label>
           <button class="primary-button" type="submit">افزودن دسته</button>
         </form>
@@ -690,7 +738,7 @@ watch(
             <span>بودجه: {{ formatMoney(item.budget) }}</span>
             <label class="budget-edit">
               <span>ویرایش بودجه</span>
-              <input :value="item.budget" type="number" min="0" @change="updateBudget(item.key, $event)" />
+              <input :value="formatMoneyInput(item.budget)" type="text" inputmode="numeric" @change="updateBudget(item.key, $event)" />
             </label>
             <div class="progress" :class="{ danger: item.spent > item.budget }">
               <i :style="{ width: `${progressPercent(item.spent, item.budget)}%` }" />
@@ -817,7 +865,7 @@ watch(
             <button type="button" :class="{ active: formType === 'expense' }" @click="formType = 'expense'">ثبت هزینه</button>
             <button type="button" :class="{ active: formType === 'income' }" @click="formType = 'income'">ثبت درآمد</button>
           </div>
-          <label>مبلغ <input v-model.number="form.amount" type="number" min="0" required /></label>
+          <label>مبلغ <input :value="formatMoneyInput(form.amount)" type="text" inputmode="numeric" required @input="updateMoneyInput(form, 'amount', $event)" /></label>
           <label>عنوان <input v-model="form.title" type="text" required /></label>
           <label v-if="formType === 'expense'">دسته بندی
             <select v-model="form.category">
