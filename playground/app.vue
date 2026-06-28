@@ -907,10 +907,9 @@ watch(
         <form class="modal glass-panel" @submit.prevent="saveTransaction">
           <div class="section-title">
             <div>
-              <h2>{{ editingId ? 'ویرایش تراکنش' : 'ثبت تراکنش' }}</h2>
-              <p>{{ formType === 'expense' ? 'ثبت هزینه' : 'ثبت درآمد' }}</p>
+              <!-- <h2>{{ editingId ? 'ویرایش تراکنش' : 'ثبت تراکنش' }}</h2> -->
             </div>
-            <button class="close" type="button" @click="isModalOpen = false">×</button>
+            <!-- <button class="close" type="button" @click="isModalOpen = false">×</button> -->
           </div>
           <div class="segmented">
             <button type="button" :class="{ active: formType === 'expense' }" @click="formType = 'expense'">ثبت هزینه</button>
