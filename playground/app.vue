@@ -540,7 +540,8 @@ watch(
     </aside>
 
     <section class="content">
-      <header v-if="activeSection === 'داشبورد'" class="hero glass-panel" data-section="داشبورد">
+<!--       
+      <header class="hero glass-panel" data-section="داشبورد">
         <div>
           <p class="eyebrow">{{ currentMonthYear }}</p>
           <h1>سلام مهران 👋</h1>
@@ -552,13 +553,12 @@ watch(
           <button class="soft-button" type="button" @click="openModal('income')">ثبت درآمد</button>
           <button class="primary-button" type="button" @click="openModal('expense')">ثبت هزینه</button>
         </div>
-      </header>
-
-      <section v-else class="page-header glass-panel">
+      </header> -->
+<!-- 
+      <section class="page-header glass-panel">
         <div>
           <p class="eyebrow">{{ currentMonthYear }}</p>
           <h1>{{ activeSection }}</h1>
-          <p>مدیریت متمرکز {{ activeSection }} در یک نمای جدا و خلوت.</p>
         </div>
         <div class="hero-actions">
           <button v-if="activeSection === 'درآمدها'" class="primary-button" type="button" @click="openModal('income')">ثبت درآمد</button>
@@ -566,7 +566,7 @@ watch(
           <button v-if="activeSection === 'گزارش‌ها'" class="soft-button" type="button" @click="exportReport('PDF')">خروجی PDF</button>
           <button v-if="activeSection === 'تنظیمات' && !isStandalone" class="soft-button" type="button" @click="installApp">نصب اپ</button>
         </div>
-      </section>
+      </section> -->
 
       <section v-if="activeSection === 'داشبورد'" class="widgets-grid">
         <article v-for="widget in widgets" :key="widget.label" class="mini-card glass-panel">
