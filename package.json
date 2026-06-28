@@ -23,7 +23,9 @@
   },
   "scripts": {
     "build": "unbuild",
+    "build:app": "nuxi generate playground",
     "dev": "nuxi dev playground",
+    "preview:app": "nuxi preview playground/.output",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -50,6 +52,7 @@
     "vue": "^3.4.0"
   },
   "dependencies": {
-    "@fontsource-variable/noto-sans-arabic": "^5.2.10"
+    "@fontsource-variable/noto-sans-arabic": "^5.2.10",
+    "@fontsource-variable/vazirmatn": "^5.2.8"
   }
 }
