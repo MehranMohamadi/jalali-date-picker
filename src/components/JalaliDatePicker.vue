@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useOutsideClick } from '../composables/useOutsideClick'
 import { todayDateOnly } from '../utils/dateOnly'
 import type { DigitMode } from '../utils/digits'
@@ -39,9 +39,14 @@ const root = ref<HTMLElement | null>(null)
 const input = ref<HTMLInputElement | null>(null)
 const open = ref(false)
 const draft = ref('')
+const isTouchDevice = ref(false)
 const display = computed(() => props.modelValue ? formatJalaliDate(props.modelValue, { digitMode: props.digitMode }) : '')
 watch(display, value => { draft.value = value }, { immediate: true })
 useOutsideClick(root, () => { open.value = false; draft.value = display.value })
+
+onMounted(() => {
+  isTouchDevice.value = window.matchMedia('(pointer: coarse)').matches
+})
 
 const selectable = (iso: string) => !props.disabledDates.includes(iso)
   && (!props.minDate || compareDates(iso, props.minDate) >= 0)
@@ -69,6 +74,7 @@ async function show() {
   if (props.disabled) return
   open.value = true
   await nextTick()
+  if (isTouchDevice.value) input.value?.blur()
 }
 </script>
 
@@ -79,8 +85,9 @@ async function show() {
         ref="input"
         v-model="draft"
         type="text"
-        inputmode="numeric"
+        :inputmode="isTouchDevice ? 'none' : 'numeric'"
         autocomplete="off"
+        :readonly="isTouchDevice"
         :disabled="disabled"
         :placeholder="placeholder"
         :aria-expanded="open"

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useOutsideClick } from '../composables/useOutsideClick'
 import { todayDateOnly } from '../utils/dateOnly'
 import type { DigitMode } from '../utils/digits'
@@ -37,11 +37,13 @@ const emit = defineEmits<{
   select: [value: JalaliDateRange]
 }>()
 const root = ref<HTMLElement | null>(null)
+const input = ref<HTMLInputElement | null>(null)
 const open = ref(false)
 const draftStart = ref<string | null>(null)
 const draftEnd = ref<string | null>(null)
 const hoverDate = ref<string | null>(null)
 const displayDate = ref<string | null>(props.modelValue.start ?? props.modelValue.end)
+const isTouchDevice = ref(false)
 
 const display = computed(() => {
   const { start, end } = props.modelValue
@@ -54,6 +56,10 @@ watch(() => props.modelValue, value => {
   if (!open.value) resetDraft()
 }, { deep: true })
 useOutsideClick(root, close)
+
+onMounted(() => {
+  isTouchDevice.value = window.matchMedia('(pointer: coarse)').matches
+})
 
 const selectable = (iso: string) => !props.disabledDates.includes(iso)
   && (!props.minDate || compareDates(iso, props.minDate) >= 0)
@@ -89,10 +95,12 @@ function chooseToday() {
   draftEnd.value = today
   displayDate.value = today
 }
-function show() {
+async function show() {
   if (props.disabled) return
   resetDraft()
   open.value = true
+  await nextTick()
+  if (isTouchDevice.value) input.value?.blur()
 }
 function resetDraft() {
   draftStart.value = props.modelValue.start
@@ -115,8 +123,10 @@ function confirm() {
   <div ref="root" class="jalali-range-picker relative inline-block w-full max-w-sm [font-family:Noto_Sans_Arabic_Variable,Tahoma,sans-serif]" dir="rtl" @keydown.esc="close">
     <div class="jalali-range-picker__field relative">
       <input
+        ref="input"
         type="text"
         readonly
+        :inputmode="isTouchDevice ? 'none' : 'numeric'"
         :value="display"
         :disabled="disabled"
         :placeholder="placeholder"
