@@ -14,6 +14,7 @@ Chart.register(...registerables)
 type TransactionType = 'income' | 'expense'
 
 type CategoryKey = string
+type ExportFormat = 'PDF' | 'Excel' | 'CSV' | 'JSON'
 
 interface Category {
   key: CategoryKey
@@ -45,6 +46,11 @@ interface ToastMessage {
 interface InstallPromptEvent extends Event {
   prompt: () => Promise<void>
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>
+}
+
+interface FileShareNavigator extends Navigator {
+  canShare?: (data: { files?: File[] }) => boolean
+  share?: (data: { files?: File[]; title?: string; text?: string }) => Promise<void>
 }
 
 const defaultCategories: Category[] = [
@@ -670,8 +676,163 @@ function deleteCategory(key: CategoryKey) {
   pushToast('دسته‌بندی حذف شد 🗑️')
 }
 
-function exportReport(format: string) {
-  pushToast(`خروجی ${format} آماده شد ✅`)
+function getExportDateStamp() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function escapeCsvCell(value: string | number | undefined) {
+  const text = String(value ?? '')
+  return `"${text.replace(/"/g, '""')}"`
+}
+
+function getSortedTransactions() {
+  return [...transactions.value].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id)
+}
+
+function getTransactionCategoryLabel(item: Transaction) {
+  return item.type === 'income' ? 'درآمد' : getCategory(item.category ?? 'other').label
+}
+
+function buildCsvReport() {
+  const headers = ['نوع', 'عنوان', 'دسته', 'تاریخ', 'مبلغ', 'توضیحات']
+  const rows = getSortedTransactions().map((item) => [
+    item.type === 'income' ? 'درآمد' : 'هزینه',
+    item.title,
+    getTransactionCategoryLabel(item),
+    item.date,
+    item.amount,
+    item.description ?? '',
+  ])
+
+  return `\uFEFF${[headers, ...rows].map((row) => row.map(escapeCsvCell).join(',')).join('\n')}`
+}
+
+function buildExcelReport() {
+  const rows = getSortedTransactions().map((item) => `
+    <tr>
+      <td>${item.type === 'income' ? 'درآمد' : 'هزینه'}</td>
+      <td>${item.title}</td>
+      <td>${getTransactionCategoryLabel(item)}</td>
+      <td>${item.date}</td>
+      <td>${item.amount}</td>
+      <td>${item.description ?? ''}</td>
+    </tr>
+  `).join('')
+
+  return `<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Tahoma, sans-serif; direction: rtl; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #d7dde8; padding: 8px; text-align: right; }
+    th { background: #eef4ff; }
+  </style>
+</head>
+<body>
+  <h1>گزارش بودجه‌یار</h1>
+  <p>درآمد ماه: ${formatMoney(totalIncome.value)}</p>
+  <p>هزینه ماه: ${formatMoney(totalExpense.value)}</p>
+  <p>مانده: ${formatMoney(balance.value)}</p>
+  <table>
+    <thead>
+      <tr><th>نوع</th><th>عنوان</th><th>دسته</th><th>تاریخ</th><th>مبلغ</th><th>توضیحات</th></tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+</body>
+</html>`
+}
+
+function buildBackupJson() {
+  return JSON.stringify({
+    app: 'budgetyar',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    transactions: transactions.value,
+    categories: categories.value,
+    budgets: budgets.value,
+    summary: {
+      totalIncome: totalIncome.value,
+      totalExpense: totalExpense.value,
+      balance: balance.value,
+      totalBudget: totalBudget.value,
+    },
+  }, null, 2)
+}
+
+function createExportFile(format: ExportFormat) {
+  const stamp = getExportDateStamp()
+
+  if (format === 'CSV') {
+    return {
+      blob: new Blob([buildCsvReport()], { type: 'text/csv;charset=utf-8' }),
+      filename: `budgetyar-report-${stamp}.csv`,
+      message: 'فایل CSV آماده ذخیره شد ✅',
+    }
+  }
+
+  if (format === 'Excel') {
+    return {
+      blob: new Blob([buildExcelReport()], { type: 'application/vnd.ms-excel;charset=utf-8' }),
+      filename: `budgetyar-report-${stamp}.xls`,
+      message: 'فایل Excel آماده ذخیره شد ✅',
+    }
+  }
+
+  if (format === 'PDF') {
+    return {
+      blob: new Blob([buildExcelReport()], { type: 'text/html;charset=utf-8' }),
+      filename: `budgetyar-printable-report-${stamp}.html`,
+      message: 'نسخه قابل چاپ ذخیره شد؛ برای PDF از گزینه Print استفاده کنید ✅',
+    }
+  }
+
+  return {
+    blob: new Blob([buildBackupJson()], { type: 'application/json;charset=utf-8' }),
+    filename: `budgetyar-backup-${stamp}.json`,
+    message: 'بکاپ بودجه‌یار آماده ذخیره شد ✅',
+  }
+}
+
+async function saveBlobToDevice(blob: Blob, filename: string, successMessage: string) {
+  const file = new File([blob], filename, { type: blob.type || 'application/octet-stream' })
+  const shareNavigator = navigator as FileShareNavigator
+
+  if (shareNavigator.canShare?.({ files: [file] }) && shareNavigator.share) {
+    try {
+      await shareNavigator.share({
+        files: [file],
+        title: filename,
+        text: 'خروجی بودجه‌یار',
+      })
+      pushToast(successMessage)
+      return
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        pushToast('ذخیره فایل لغو شد')
+        return
+      }
+    }
+  }
+
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.rel = 'noopener'
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+  pushToast(successMessage)
+}
+
+async function exportReport(format: ExportFormat) {
+  const exportFile = createExportFile(format)
+  await saveBlobToDevice(exportFile.blob, exportFile.filename, exportFile.message)
 }
 
 async function installApp() {
@@ -1198,7 +1359,7 @@ watch(activeSection, (section) => {
           <p>نمایی زنده از درآمد، هزینه، بودجه و مسیر پس‌انداز ماهانه شما.</p>
         </div>
         <div class="hero-actions">
-          <button class="soft-button" type="button" @click="exportReport('PDF')">خروجی PDF</button>
+          <button class="soft-button" type="button" @click="exportReport('PDF')">نسخه چاپی</button>
           <button v-if="!isStandalone" class="soft-button" type="button" @click="installApp">نصب اپ</button>
           <button class="soft-button" type="button" @click="openModal('income')">ثبت درآمد</button>
           <button class="primary-button" type="button" @click="openModal('expense')">ثبت هزینه</button>
@@ -1213,7 +1374,7 @@ watch(activeSection, (section) => {
         <div class="hero-actions">
           <button v-if="activeSection === 'درآمدها'" class="primary-button" type="button" @click="openModal('income')">ثبت درآمد</button>
           <button v-if="activeSection === 'هزینه‌ها'" class="primary-button" type="button" @click="openModal('expense')">ثبت هزینه</button>
-          <button v-if="activeSection === 'گزارش‌ها'" class="soft-button" type="button" @click="exportReport('PDF')">خروجی PDF</button>
+          <button v-if="activeSection === 'گزارش‌ها'" class="soft-button" type="button" @click="exportReport('PDF')">نسخه چاپی</button>
           <button v-if="activeSection === 'تنظیمات' && !isStandalone" class="soft-button" type="button" @click="installApp">نصب اپ</button>
         </div>
       </section> -->
@@ -1492,7 +1653,7 @@ watch(activeSection, (section) => {
             <p>گزارش ماهانه، سالانه، دسته‌بندی، پس‌انداز و نسخه قابل چاپ</p>
           </div>
           <div class="export-actions">
-            <button type="button" @click="exportReport('PDF')">PDF</button>
+            <button type="button" @click="exportReport('PDF')">چاپی</button>
             <button type="button" @click="exportReport('Excel')">Excel</button>
             <button type="button" @click="exportReport('CSV')">CSV</button>
           </div>
@@ -1516,6 +1677,7 @@ watch(activeSection, (section) => {
           <label>ارز <select><option>تومان</option><option>ریال</option></select></label>
           <label>پوسته <select><option>فقط تاریک</option></select></label>
           <label>زبان <select><option>فارسی</option></select></label>
+          <button class="primary-button pwa-install" type="button" @click="exportReport('JSON')">ذخیره بکاپ در فایل‌ها</button>
           <button v-if="!isStandalone" class="primary-button pwa-install" type="button" @click="installApp">نصب نسخه PWA</button>
         </div>
       </section>
