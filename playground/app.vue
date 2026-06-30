@@ -108,7 +108,7 @@ const navItems = ['داشبورد', 'درآمدها', 'هزینه‌ها', 'بو
 const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند']
 const currentJalaliDate = getCurrentJalaliDate()
 const todayKey = formatJalaliInputDate(currentJalaliDate)
-const currentMonthPrefix = `${currentJalaliDate.year}/${String(currentJalaliDate.month).padStart(2, '0')}/`
+const currentMonthPrefix = getJalaliMonthPrefix(currentJalaliDate)
 const currentMonthLength = getJalaliMonthLength(currentJalaliDate.year, currentJalaliDate.month)
 const currentMonthStartKey = formatJalaliInputDate({ ...currentJalaliDate, day: 1 })
 const currentMonthYear = `${months[currentJalaliDate.month - 1]} ${toPersianNumber(currentJalaliDate.year)}`
@@ -216,13 +216,14 @@ const lowestExpense = computed<Transaction>(() => [...expenseTransactions.value]
   date: currentMonthStartKey,
   category: 'other',
 })
-const todayExpense = computed(() => expenseTransactions.value.filter((item) => item.date === todayKey).reduce((sum, item) => sum + item.amount, 0))
-const todayIncome = computed(() => incomeTransactions.value.filter((item) => item.date === todayKey).reduce((sum, item) => sum + item.amount, 0))
+const todayExpense = computed(() => expenseTransactions.value.filter((item) => normalizeJalaliDate(item.date) === todayKey).reduce((sum, item) => sum + item.amount, 0))
+const todayIncome = computed(() => incomeTransactions.value.filter((item) => normalizeJalaliDate(item.date) === todayKey).reduce((sum, item) => sum + item.amount, 0))
 const averageDailyExpense = computed(() => Math.round(totalExpense.value / Math.max(currentJalaliDate.day, 1)))
 
 const filteredTransactions = computed(() => {
   const normalizedQuery = query.value.trim()
   return transactions.value.filter((item) => {
+    const itemDate = normalizeJalaliDate(item.date)
     const category = item.category ? getCategory(item.category).label : 'درآمد'
     const matchesQuery = !normalizedQuery || `${item.title} ${category} ${item.description ?? ''}`.includes(normalizedQuery)
     const matchesCategory = selectedCategory.value === 'همه' || category === selectedCategory.value
@@ -230,8 +231,8 @@ const filteredTransactions = computed(() => {
       selectedType.value === 'همه' ||
       (selectedType.value === 'درآمد' && item.type === 'income') ||
       (selectedType.value === 'هزینه' && item.type === 'expense')
-    const matchesStart = !dateRange.start || item.date >= dateRange.start
-    const matchesEnd = !dateRange.end || item.date <= dateRange.end
+    const matchesStart = !dateRange.start || itemDate >= normalizeJalaliDate(dateRange.start)
+    const matchesEnd = !dateRange.end || itemDate <= normalizeJalaliDate(dateRange.end)
     return matchesQuery && matchesCategory && matchesType && matchesStart && matchesEnd
   })
 })
@@ -485,7 +486,13 @@ function normalizeDigits(value: string | number) {
 }
 
 function normalizeJalaliDate(value: string) {
-  return normalizeDigits(value.trim()).replace(/-/g, '/')
+  const parts = normalizeDigits(value.trim()).replace(/-/g, '/').split('/')
+  if (parts.length !== 3) return normalizeDigits(value.trim()).replace(/-/g, '/')
+
+  const [year, month, day] = parts.map((part) => part.trim())
+  if (!year || !month || !day) return normalizeDigits(value.trim()).replace(/-/g, '/')
+
+  return `${year}/${month.padStart(2, '0')}/${day.padStart(2, '0')}`
 }
 
 function getJalaliInputDay(value: string) {
@@ -501,6 +508,10 @@ function getPreviousMonthPrefix(date: ReturnType<typeof toJalali>) {
   const year = date.month === 1 ? date.year - 1 : date.year
 
   return `${year}/${String(month).padStart(2, '0')}/`
+}
+
+function getJalaliMonthPrefix(date: ReturnType<typeof toJalali>) {
+  return `${date.year}/${String(date.month).padStart(2, '0')}/`
 }
 
 function getCurrentJalaliDate() {
@@ -670,7 +681,7 @@ function saveTransaction() {
     type: formType.value,
     title: form.title,
     amount: Number(form.amount),
-    date: form.date,
+    date: normalizeJalaliDate(form.date),
     category: formType.value === 'expense' ? form.category : undefined,
     description: form.description,
   }
