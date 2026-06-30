@@ -1,6 +1,15 @@
 <script setup lang="ts">
 import '@fontsource-variable/vazirmatn'
-import { getJalaliMonthLength, toJalali } from '../src/utils/jalali'
+import {
+  Chart,
+  type ChartData,
+  type ChartOptions,
+  type TooltipItem,
+  registerables,
+} from 'chart.js'
+import { getJalaliMonthLength, parseJalaliInput, toGregorian, toJalali } from '../src/utils/jalali'
+
+Chart.register(...registerables)
 
 type TransactionType = 'income' | 'expense'
 
@@ -98,10 +107,34 @@ const selectedYear = ref(toPersianNumber(currentJalaliDate.year))
 const selectedCategory = ref('همه')
 const selectedType = ref('همه')
 const dateRange = reactive({ start: '', end: '' })
+const pickerDateRange = computed({
+  get: () => ({
+    start: jalaliInputToIso(dateRange.start),
+    end: jalaliInputToIso(dateRange.end),
+  }),
+  set: (value: { start: string | null; end: string | null }) => {
+    dateRange.start = value.start ? isoToJalaliInput(value.start) : ''
+    dateRange.end = value.end ? isoToJalaliInput(value.end) : ''
+  },
+})
 const isModalOpen = ref(false)
 const formType = ref<TransactionType>('expense')
 const toasts = ref<ToastMessage[]>([])
 const editingId = ref<number | null>(null)
+const expenseShareCanvas = ref<HTMLCanvasElement | null>(null)
+const categoryBarCanvas = ref<HTMLCanvasElement | null>(null)
+const trendLineCanvas = ref<HTMLCanvasElement | null>(null)
+const statsExpenseMixCanvas = ref<HTMLCanvasElement | null>(null)
+const statsBudgetUsageCanvas = ref<HTMLCanvasElement | null>(null)
+const statsDailyExpenseCanvas = ref<HTMLCanvasElement | null>(null)
+const statsCashFlowCanvas = ref<HTMLCanvasElement | null>(null)
+const expenseShareChart = shallowRef<Chart<'doughnut'> | null>(null)
+const categoryBarChart = shallowRef<Chart<'bar'> | null>(null)
+const trendLineChart = shallowRef<Chart<'line'> | null>(null)
+const statsExpenseMixChart = shallowRef<Chart<'polarArea'> | null>(null)
+const statsBudgetUsageChart = shallowRef<Chart<'bar'> | null>(null)
+const statsDailyExpenseChart = shallowRef<Chart<'line'> | null>(null)
+const statsCashFlowChart = shallowRef<Chart<'bar'> | null>(null)
 
 const form = reactive({
   amount: 0,
@@ -109,6 +142,12 @@ const form = reactive({
   date: todayKey,
   category: 'food' as CategoryKey,
   description: '',
+})
+const formDatePickerValue = computed({
+  get: () => jalaliInputToIso(form.date),
+  set: (value: string | null) => {
+    form.date = value ? isoToJalaliInput(value) : ''
+  },
 })
 
 const categoryForm = reactive({
@@ -120,12 +159,18 @@ const installPrompt = ref<InstallPromptEvent | null>(null)
 const isStandalone = ref(false)
 const today = formatDisplayJalaliDate(currentJalaliDate)
 
-const expenseTransactions = computed(() => transactions.value.filter((item) => item.type === 'expense'))
-const incomeTransactions = computed(() => transactions.value.filter((item) => item.type === 'income'))
+const previousMonthPrefix = getPreviousMonthPrefix(currentJalaliDate)
+const currentMonthTransactions = computed(() => transactions.value.filter((item) => normalizeJalaliDate(item.date).startsWith(currentMonthPrefix)))
+const previousMonthTransactions = computed(() => transactions.value.filter((item) => normalizeJalaliDate(item.date).startsWith(previousMonthPrefix)))
+const expenseTransactions = computed(() => currentMonthTransactions.value.filter((item) => item.type === 'expense'))
+const incomeTransactions = computed(() => currentMonthTransactions.value.filter((item) => item.type === 'income'))
+const previousExpense = computed(() => previousMonthTransactions.value.filter((item) => item.type === 'expense').reduce((sum, item) => sum + item.amount, 0))
+const previousIncome = computed(() => previousMonthTransactions.value.filter((item) => item.type === 'income').reduce((sum, item) => sum + item.amount, 0))
 const totalIncome = computed(() => incomeTransactions.value.reduce((sum, item) => sum + item.amount, 0))
 const totalExpense = computed(() => expenseTransactions.value.reduce((sum, item) => sum + item.amount, 0))
+const totalBudget = computed(() => budgets.value.reduce((sum, item) => sum + item.budget, 0))
 const balance = computed(() => totalIncome.value - totalExpense.value)
-const budgetUsage = computed(() => Math.round((totalExpense.value / Math.max(totalIncome.value, 1)) * 100))
+const budgetUsage = computed(() => Math.round((totalExpense.value / Math.max(totalBudget.value, 1)) * 100))
 const savingsPercent = computed(() => Math.max(0, Math.round((balance.value / Math.max(totalIncome.value, 1)) * 100)))
 
 const categoryTotals = computed(() =>
@@ -138,7 +183,9 @@ const categoryTotals = computed(() =>
   })),
 )
 
-const maxCategory = computed(() => [...categoryTotals.value].sort((a, b) => b.spent - a.spent)[0])
+const sortedCategoryTotals = computed(() => [...categoryTotals.value].sort((a, b) => b.spent - a.spent))
+const visibleCategoryTotals = computed(() => sortedCategoryTotals.value.filter((item) => item.spent > 0).slice(0, 10))
+const maxCategory = computed(() => sortedCategoryTotals.value.find((item) => item.spent > 0))
 const safeMaxCategory = computed(() => maxCategory.value ?? getCategory('other'))
 const highestExpense = computed<Transaction>(() => [...expenseTransactions.value].sort((a, b) => b.amount - a.amount)[0] ?? {
   id: 0,
@@ -158,7 +205,7 @@ const lowestExpense = computed<Transaction>(() => [...expenseTransactions.value]
 })
 const todayExpense = computed(() => expenseTransactions.value.filter((item) => item.date === todayKey).reduce((sum, item) => sum + item.amount, 0))
 const todayIncome = computed(() => incomeTransactions.value.filter((item) => item.date === todayKey).reduce((sum, item) => sum + item.amount, 0))
-const averageDailyExpense = computed(() => Math.round(totalExpense.value / 28))
+const averageDailyExpense = computed(() => Math.round(totalExpense.value / Math.max(currentJalaliDate.day, 1)))
 
 const filteredTransactions = computed(() => {
   const normalizedQuery = query.value.trim()
@@ -193,46 +240,207 @@ const dailyTrend = computed(() => {
   })
 })
 
-const trendChart = computed(() => {
-  const width = 700
-  const top = 24
-  const bottom = 200
-  const points = dailyTrend.value
-  const maxValue = Math.max(...points.flatMap((point) => [point.expense, point.balance]), 1)
-  const xStep = points.length > 1 ? width / (points.length - 1) : width
-  const yFor = (value: number) => bottom - (Math.max(0, value) / maxValue) * (bottom - top)
-  const chartPoints = points.map((point, index) => ({
-    ...point,
-    x: Math.round(index * xStep),
-    expenseY: Math.round(yFor(point.expense)),
-    balanceY: Math.round(yFor(point.balance)),
-  }))
-  const expensePath = toLinePath(chartPoints.map((point) => ({ x: point.x, y: point.expenseY })))
-  const balancePath = toLinePath(chartPoints.map((point) => ({ x: point.x, y: point.balanceY })))
-  const firstPoint = chartPoints[0]
-  const lastPoint = chartPoints[chartPoints.length - 1]
-  const expenseAreaPath = firstPoint && lastPoint ? `${expensePath} L ${lastPoint.x} ${bottom} L ${firstPoint.x} ${bottom} Z` : ''
+const hasExpenseData = computed(() => totalExpense.value > 0)
+const chartFontFamily = "'Vazirmatn Variable', Vazirmatn, Tahoma, sans-serif"
+const chartTextColor = '#cbd5e1'
+const chartMutedColor = '#94a3b8'
+const chartGridColor = 'rgba(255, 255, 255, .08)'
 
-  return { expensePath, balancePath, expenseAreaPath, points: chartPoints }
+const expenseShareChartData = computed<ChartData<'doughnut'>>(() => {
+  const items = visibleCategoryTotals.value
+
+  return {
+    labels: hasExpenseData.value ? items.map((item) => `${item.icon} ${item.label}`) : ['بدون داده'],
+    datasets: [
+      {
+        data: hasExpenseData.value ? items.map((item) => item.spent) : [1],
+        backgroundColor: hasExpenseData.value ? items.map((item) => item.color) : ['rgba(255, 255, 255, .12)'],
+        borderColor: 'rgba(15, 23, 42, .78)',
+        borderWidth: 2,
+        hoverOffset: 8,
+      },
+    ],
+  }
+})
+
+const categoryBarChartData = computed<ChartData<'bar'>>(() => {
+  const items = sortedCategoryTotals.value.slice(0, 10)
+
+  return {
+    labels: items.map((item) => `${item.icon} ${item.label}`),
+    datasets: [
+      {
+        label: 'هزینه',
+        data: items.map((item) => item.spent),
+        backgroundColor: items.map((item) => item.color),
+        borderRadius: 10,
+        borderSkipped: false,
+      },
+    ],
+  }
+})
+
+const trendLineChartData = computed<ChartData<'line'>>(() => ({
+  labels: dailyTrend.value.map((point) => point.label),
+  datasets: [
+    {
+      label: 'هزینه تجمعی',
+      data: dailyTrend.value.map((point) => point.expense),
+      borderColor: '#22d3ee',
+      backgroundColor: 'rgba(34, 211, 238, .16)',
+      pointBackgroundColor: '#22d3ee',
+      pointBorderColor: '#0f172a',
+      pointHoverRadius: 6,
+      pointRadius: 4,
+      fill: true,
+      tension: .36,
+    },
+    {
+      label: 'باقی‌مانده',
+      data: dailyTrend.value.map((point) => point.balance),
+      borderColor: '#a78bfa',
+      backgroundColor: 'rgba(167, 139, 250, .1)',
+      pointBackgroundColor: '#a78bfa',
+      pointBorderColor: '#0f172a',
+      pointHoverRadius: 6,
+      pointRadius: 4,
+      fill: false,
+      tension: .36,
+    },
+  ],
+}))
+
+const dailyExpensePoints = computed(() => {
+  const monthlyExpenses = expenseTransactions.value.filter((item) => normalizeJalaliDate(item.date).startsWith(currentMonthPrefix))
+
+  return Array.from({ length: currentMonthLength }, (_, index) => {
+    const day = index + 1
+    const expense = monthlyExpenses
+      .filter((item) => getJalaliInputDay(item.date) === day)
+      .reduce((sum, item) => sum + item.amount, 0)
+
+    return { label: toPersianNumber(day), expense }
+  })
+})
+
+const budgetAnalysisItems = computed(() =>
+  [...categoryTotals.value]
+    .sort((a, b) => progressPercent(b.spent, b.budget) - progressPercent(a.spent, a.budget))
+    .slice(0, 10),
+)
+
+const statsExpenseMixChartData = computed<ChartData<'polarArea'>>(() => {
+  const items = visibleCategoryTotals.value
+
+  return {
+    labels: hasExpenseData.value ? items.map((item) => `${item.icon} ${item.label}`) : ['بدون داده'],
+    datasets: [
+      {
+        data: hasExpenseData.value ? items.map((item) => item.spent) : [1],
+        backgroundColor: hasExpenseData.value ? items.map((item) => `${item.color}cc`) : ['rgba(255, 255, 255, .12)'],
+        borderColor: hasExpenseData.value ? items.map((item) => item.color) : ['rgba(255, 255, 255, .18)'],
+        borderWidth: 1,
+      },
+    ],
+  }
+})
+
+const statsBudgetUsageChartData = computed<ChartData<'bar'>>(() => ({
+  labels: budgetAnalysisItems.value.map((item) => `${item.icon} ${item.label}`),
+  datasets: [
+    {
+      label: 'مصرف شده',
+      data: budgetAnalysisItems.value.map((item) => Math.min(item.spent, item.budget || item.spent)),
+      backgroundColor: '#22d3ee',
+      borderRadius: 8,
+      borderSkipped: false,
+      stack: 'budget',
+    },
+    {
+      label: 'مانده بودجه',
+      data: budgetAnalysisItems.value.map((item) => Math.max(item.budget - item.spent, 0)),
+      backgroundColor: 'rgba(148, 163, 184, .26)',
+      borderRadius: 8,
+      borderSkipped: false,
+      stack: 'budget',
+    },
+    {
+      label: 'بیش از بودجه',
+      data: budgetAnalysisItems.value.map((item) => Math.max(item.spent - item.budget, 0)),
+      backgroundColor: '#fb7185',
+      borderRadius: 8,
+      borderSkipped: false,
+      stack: 'over',
+    },
+  ],
+}))
+
+const statsDailyExpenseChartData = computed<ChartData<'line'>>(() => ({
+  labels: dailyExpensePoints.value.map((point) => point.label),
+  datasets: [
+    {
+      label: 'خرج روزانه',
+      data: dailyExpensePoints.value.map((point) => point.expense),
+      borderColor: '#22d3ee',
+      backgroundColor: 'rgba(34, 211, 238, .18)',
+      pointBackgroundColor: '#22d3ee',
+      pointBorderColor: '#0f172a',
+      pointRadius: 3,
+      pointHoverRadius: 6,
+      fill: true,
+      tension: .32,
+    },
+    {
+      label: 'میانگین روزانه',
+      data: dailyExpensePoints.value.map(() => averageDailyExpense.value),
+      borderColor: '#facc15',
+      borderDash: [7, 6],
+      pointRadius: 0,
+      fill: false,
+      tension: 0,
+    },
+  ],
+}))
+
+const statsCashFlowChartData = computed<ChartData<'bar'>>(() => ({
+  labels: ['درآمد', 'هزینه', 'پس‌انداز'],
+  datasets: [
+    {
+      label: currentMonthYear,
+      data: [totalIncome.value, totalExpense.value, Math.max(balance.value, 0)],
+      backgroundColor: ['#34d399', '#fb7185', '#60a5fa'],
+      borderRadius: 12,
+      borderSkipped: false,
+    },
+  ],
+}))
+
+const incomeChangePercent = computed(() => getChangePercent(totalIncome.value, previousIncome.value))
+const expenseChangePercent = computed(() => getChangePercent(totalExpense.value, previousExpense.value))
+const projectedSavings = computed(() => {
+  const elapsedDays = Math.max(currentJalaliDate.day, 1)
+  const projectedExpense = Math.round((totalExpense.value / elapsedDays) * currentMonthLength)
+
+  return Math.max(0, totalIncome.value - projectedExpense)
 })
 
 const summaryLines = computed(() => [
   `این ماه ${toPersianNumber(budgetUsage.value)}٪ بودجه مصرف شده است.`,
-  `بیشترین هزینه مربوط به ${safeMaxCategory.value.label ?? 'بدون دسته'} بوده است.`,
-  '۱۵٪ نسبت به ماه قبل کمتر خرج کرده‌اید.',
+  hasExpenseData.value ? `بیشترین هزینه مربوط به ${safeMaxCategory.value.label ?? 'بدون دسته'} بوده است.` : 'هنوز هزینه‌ای برای این ماه ثبت نشده است.',
+  formatChangeSentence(expenseChangePercent.value, 'هزینه نسبت به ماه قبل افزایش داشته است.', 'هزینه نسبت به ماه قبل کمتر شده است.', 'هزینه نسبت به ماه قبل تغییری نکرده است.'),
 ])
 
 const insights = computed(() => [
-  '💡 این ماه نسبت به ماه گذشته ۱۸٪ کمتر خرج کرده‌اید.',
-  `💡 بیشترین هزینه شما مربوط به ${safeMaxCategory.value.label ?? 'غذا'} است.`,
-  `💡 اگر با همین روند ادامه دهید تا پایان ماه حدود ${formatCompact(balance.value)} پس‌انداز خواهید داشت.`,
+  `💡 ${formatChangeSentence(incomeChangePercent.value, 'درآمدتان نسبت به ماه قبل رشد کرده است.', 'درآمدتان نسبت به ماه قبل کمتر شده است.', 'درآمدتان نسبت به ماه قبل ثابت مانده است.')}`,
+  hasExpenseData.value ? `💡 بیشترین هزینه شما مربوط به ${safeMaxCategory.value.label ?? 'غذا'} است.` : '💡 با ثبت اولین هزینه، دسته‌های پرمصرف همین‌جا مشخص می‌شوند.',
+  `💡 اگر با همین روند ادامه دهید تا پایان ماه حدود ${formatCompact(projectedSavings.value)} پس‌انداز خواهید داشت.`,
 ])
 
 const dashboardCards = computed(() => [
-  { label: 'درآمد ماه', value: totalIncome.value, icon: '💰', hint: '۱۲٪ رشد نسبت به ماه قبل', className: 'card-cyan' },
-  { label: 'هزینه ماه', value: totalExpense.value, icon: '💸', hint: '۱۵٪ کمتر از ماه قبل', className: 'card-violet' },
-  { label: 'باقی مانده', value: balance.value, icon: '💵', hint: 'وضعیت عالی برای پس‌انداز', className: 'card-blue' },
-  { label: 'درصد مصرف بودجه', value: budgetUsage.value, suffix: '٪', icon: '📈', hint: 'زیر سقف هدف ماهانه', className: 'card-pink' },
+  { label: 'درآمد ماه', value: totalIncome.value, icon: '💰', hint: formatPercentHint(incomeChangePercent.value, 'ماه قبل'), className: 'card-cyan' },
+  { label: 'هزینه ماه', value: totalExpense.value, icon: '💸', hint: formatPercentHint(expenseChangePercent.value, 'ماه قبل'), className: 'card-violet' },
+  { label: 'باقی مانده', value: balance.value, icon: '💵', hint: balance.value >= 0 ? 'وضعیت مثبت برای پس‌انداز' : 'هزینه‌ها از درآمد جلو زده‌اند', className: 'card-blue' },
+  { label: 'درصد مصرف بودجه', value: budgetUsage.value, suffix: '٪', icon: '📈', hint: budgetUsage.value <= 100 ? 'زیر سقف هدف ماهانه' : 'بالاتر از سقف بودجه ماهانه', className: 'card-pink' },
 ])
 
 const widgets = computed(() => [
@@ -240,6 +448,17 @@ const widgets = computed(() => [
   { label: 'خرج امروز', value: formatMoney(todayExpense.value), icon: '💸' },
   { label: 'درآمد امروز', value: formatMoney(todayIncome.value), icon: '💰' },
   { label: 'پس انداز', value: `${toPersianNumber(savingsPercent.value)}٪`, icon: '📈' },
+])
+
+const statsItems = computed(() => [
+  { label: 'بیشترین هزینه', value: `${highestExpense.value.title} · ${formatMoney(highestExpense.value.amount)}` },
+  { label: 'کمترین هزینه', value: `${lowestExpense.value.title} · ${formatMoney(lowestExpense.value.amount)}` },
+  { label: 'بیشترین دسته خرج', value: hasExpenseData.value ? `${safeMaxCategory.value.icon} ${safeMaxCategory.value.label}` : 'بدون داده' },
+  { label: 'میانگین خرج روزانه', value: formatMoney(averageDailyExpense.value) },
+  { label: 'درصد پس انداز', value: `${toPersianNumber(savingsPercent.value)}٪` },
+  { label: 'تعداد تراکنش‌ها', value: toPersianNumber(currentMonthTransactions.value.length) },
+  { label: 'بودجه کل ماه', value: formatMoney(totalBudget.value) },
+  { label: 'پیش‌بینی پس‌انداز', value: formatCompact(projectedSavings.value) },
 ])
 
 function getCategory(key?: CategoryKey) {
@@ -264,8 +483,11 @@ function getTrendDays() {
   return [...new Set([1, 5, 10, 15, 20, 25, currentMonthLength].filter((day) => day <= currentMonthLength))].sort((a, b) => a - b)
 }
 
-function toLinePath(points: Array<{ x: number; y: number }>) {
-  return points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ')
+function getPreviousMonthPrefix(date: ReturnType<typeof toJalali>) {
+  const month = date.month === 1 ? 12 : date.month - 1
+  const year = date.month === 1 ? date.year - 1 : date.year
+
+  return `${year}/${String(month).padStart(2, '0')}/`
 }
 
 function getCurrentJalaliDate() {
@@ -278,6 +500,16 @@ function formatJalaliInputDate(date: ReturnType<typeof toJalali>) {
 
 function formatDisplayJalaliDate(date: ReturnType<typeof toJalali>) {
   return formatJalaliInputDate(date).replace(/\d/g, (digit) => '۰۱۲۳۴۵۶۷۸۹'[Number(digit)])
+}
+
+function jalaliInputToIso(value: string) {
+  const parsed = parseJalaliInput(value)
+
+  return parsed ? toGregorian(parsed.year, parsed.month, parsed.day) : null
+}
+
+function isoToJalaliInput(value: string) {
+  return formatJalaliInputDate(toJalali(value))
 }
 
 function toPersianNumber(value: number | string) {
@@ -319,6 +551,26 @@ function progressPercent(spent: number, budget: number) {
   return Math.min(100, Math.round((spent / Math.max(budget, 1)) * 100))
 }
 
+function getChangePercent(current: number, previous: number) {
+  if (!previous) return current ? 100 : 0
+
+  return Math.round(((current - previous) / previous) * 100)
+}
+
+function formatPercentHint(percent: number, baseline: string) {
+  if (percent > 0) return `${toPersianNumber(percent)}٪ بیشتر از ${baseline}`
+  if (percent < 0) return `${toPersianNumber(Math.abs(percent))}٪ کمتر از ${baseline}`
+
+  return `بدون تغییر نسبت به ${baseline}`
+}
+
+function formatChangeSentence(percent: number, increaseText: string, decreaseText: string, neutralText: string) {
+  if (percent > 0) return `${toPersianNumber(percent)}٪ ${increaseText}`
+  if (percent < 0) return `${toPersianNumber(Math.abs(percent))}٪ ${decreaseText}`
+
+  return neutralText
+}
+
 function selectSection(item: string) {
   activeSection.value = item
   isMobileMenuOpen.value = false
@@ -350,7 +602,7 @@ function editTransaction(item: Transaction) {
 }
 
 function saveTransaction() {
-  if (!form.title || !form.amount) return
+  if (!form.title || !form.amount || !form.date) return
   const payload: Transaction = {
     id: editingId.value ?? Date.now(),
     type: formType.value,
@@ -449,17 +701,335 @@ function pushToast(text: string) {
   }, 2800)
 }
 
-function pieSegments() {
-  let offset = 25
-  const total = Math.max(totalExpense.value, 1)
-  return categoryTotals.value
-    .filter((item) => item.spent > 0)
-    .map((item) => {
-      const percent = (item.spent / total) * 100
-      const segment = { ...item, dash: `${percent} ${100 - percent}`, offset }
-      offset -= percent
-      return segment
+function baseChartOptions(): ChartOptions {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    locale: 'fa-IR',
+    plugins: {
+      legend: {
+        display: false,
+        rtl: true,
+        labels: {
+          color: chartTextColor,
+          font: { family: chartFontFamily },
+        },
+      },
+      tooltip: {
+        rtl: true,
+        textDirection: 'rtl',
+        backgroundColor: 'rgba(15, 23, 42, .94)',
+        borderColor: 'rgba(255, 255, 255, .12)',
+        borderWidth: 1,
+        bodyColor: '#f8fafc',
+        titleColor: chartTextColor,
+        bodyFont: { family: chartFontFamily },
+        titleFont: { family: chartFontFamily },
+        padding: 12,
+      },
+    },
+  }
+}
+
+function doughnutOptions(): ChartOptions<'doughnut'> {
+  return {
+    ...baseChartOptions(),
+    cutout: '64%',
+    plugins: {
+      ...baseChartOptions().plugins,
+      tooltip: {
+        ...baseChartOptions().plugins?.tooltip,
+        callbacks: {
+          label: (context: TooltipItem<'doughnut'>) => {
+            const value = Number(context.raw ?? 0)
+            const percent = hasExpenseData.value ? Math.round((value / Math.max(totalExpense.value, 1)) * 100) : 0
+
+            return hasExpenseData.value ? `${context.label}: ${formatCompact(value)} (${toPersianNumber(percent)}٪)` : 'هنوز هزینه‌ای ثبت نشده است'
+          },
+        },
+      },
+    },
+  }
+}
+
+function barOptions(): ChartOptions<'bar'> {
+  return {
+    ...baseChartOptions(),
+    indexAxis: 'y',
+    scales: {
+      x: {
+        beginAtZero: true,
+        grid: { color: chartGridColor },
+        ticks: {
+          color: chartMutedColor,
+          font: { family: chartFontFamily },
+          callback: (value) => formatCompact(Number(value)),
+        },
+      },
+      y: {
+        grid: { display: false },
+        ticks: {
+          color: chartTextColor,
+          font: { family: chartFontFamily },
+        },
+      },
+    },
+  }
+}
+
+function lineOptions(): ChartOptions<'line'> {
+  return {
+    ...baseChartOptions(),
+    plugins: {
+      ...baseChartOptions().plugins,
+      legend: {
+        display: true,
+        rtl: true,
+        position: 'bottom',
+        labels: {
+          color: chartTextColor,
+          boxWidth: 10,
+          boxHeight: 10,
+          usePointStyle: true,
+          font: { family: chartFontFamily },
+        },
+      },
+    },
+    scales: {
+      x: {
+        grid: { color: chartGridColor },
+        ticks: {
+          color: chartMutedColor,
+          font: { family: chartFontFamily },
+        },
+      },
+      y: {
+        beginAtZero: true,
+        grid: { color: chartGridColor },
+        ticks: {
+          color: chartMutedColor,
+          font: { family: chartFontFamily },
+          callback: (value) => formatCompact(Number(value)),
+        },
+      },
+    },
+  }
+}
+
+function polarAreaOptions(): ChartOptions<'polarArea'> {
+  return {
+    ...baseChartOptions(),
+    scales: {
+      r: {
+        grid: { color: chartGridColor },
+        ticks: {
+          backdropColor: 'transparent',
+          color: chartMutedColor,
+          font: { family: chartFontFamily },
+          callback: (value) => formatCompact(Number(value)),
+        },
+        pointLabels: {
+          color: chartTextColor,
+          font: { family: chartFontFamily },
+        },
+      },
+    },
+    plugins: {
+      ...baseChartOptions().plugins,
+      tooltip: {
+        ...baseChartOptions().plugins?.tooltip,
+        callbacks: {
+          label: (context: TooltipItem<'polarArea'>) => {
+            const value = Number(context.raw ?? 0)
+            const percent = hasExpenseData.value ? Math.round((value / Math.max(totalExpense.value, 1)) * 100) : 0
+
+            return hasExpenseData.value ? `${context.label}: ${formatCompact(value)} (${toPersianNumber(percent)}٪)` : 'هنوز هزینه‌ای ثبت نشده است'
+          },
+        },
+      },
+    },
+  }
+}
+
+function stackedBudgetOptions(): ChartOptions<'bar'> {
+  return {
+    ...baseChartOptions(),
+    indexAxis: 'y',
+    plugins: {
+      ...baseChartOptions().plugins,
+      legend: {
+        display: true,
+        rtl: true,
+        position: 'bottom',
+        labels: {
+          color: chartTextColor,
+          boxWidth: 10,
+          boxHeight: 10,
+          font: { family: chartFontFamily },
+        },
+      },
+    },
+    scales: {
+      x: {
+        stacked: true,
+        beginAtZero: true,
+        grid: { color: chartGridColor },
+        ticks: {
+          color: chartMutedColor,
+          font: { family: chartFontFamily },
+          callback: (value) => formatCompact(Number(value)),
+        },
+      },
+      y: {
+        stacked: true,
+        grid: { display: false },
+        ticks: {
+          color: chartTextColor,
+          font: { family: chartFontFamily },
+        },
+      },
+    },
+  }
+}
+
+function cashFlowOptions(): ChartOptions<'bar'> {
+  return {
+    ...baseChartOptions(),
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: {
+          color: chartTextColor,
+          font: { family: chartFontFamily },
+        },
+      },
+      y: {
+        beginAtZero: true,
+        grid: { color: chartGridColor },
+        ticks: {
+          color: chartMutedColor,
+          font: { family: chartFontFamily },
+          callback: (value) => formatCompact(Number(value)),
+        },
+      },
+    },
+  }
+}
+
+function createCharts() {
+  if (!expenseShareChart.value && expenseShareCanvas.value) {
+    expenseShareChart.value = new Chart(expenseShareCanvas.value, {
+      type: 'doughnut',
+      data: expenseShareChartData.value,
+      options: doughnutOptions(),
     })
+  }
+
+  if (!categoryBarChart.value && categoryBarCanvas.value) {
+    categoryBarChart.value = new Chart(categoryBarCanvas.value, {
+      type: 'bar',
+      data: categoryBarChartData.value,
+      options: barOptions(),
+    })
+  }
+
+  if (!trendLineChart.value && trendLineCanvas.value) {
+    trendLineChart.value = new Chart(trendLineCanvas.value, {
+      type: 'line',
+      data: trendLineChartData.value,
+      options: lineOptions(),
+    })
+  }
+
+  if (!statsExpenseMixChart.value && statsExpenseMixCanvas.value) {
+    statsExpenseMixChart.value = new Chart(statsExpenseMixCanvas.value, {
+      type: 'polarArea',
+      data: statsExpenseMixChartData.value,
+      options: polarAreaOptions(),
+    })
+  }
+
+  if (!statsBudgetUsageChart.value && statsBudgetUsageCanvas.value) {
+    statsBudgetUsageChart.value = new Chart(statsBudgetUsageCanvas.value, {
+      type: 'bar',
+      data: statsBudgetUsageChartData.value,
+      options: stackedBudgetOptions(),
+    })
+  }
+
+  if (!statsDailyExpenseChart.value && statsDailyExpenseCanvas.value) {
+    statsDailyExpenseChart.value = new Chart(statsDailyExpenseCanvas.value, {
+      type: 'line',
+      data: statsDailyExpenseChartData.value,
+      options: lineOptions(),
+    })
+  }
+
+  if (!statsCashFlowChart.value && statsCashFlowCanvas.value) {
+    statsCashFlowChart.value = new Chart(statsCashFlowCanvas.value, {
+      type: 'bar',
+      data: statsCashFlowChartData.value,
+      options: cashFlowOptions(),
+    })
+  }
+}
+
+function syncCharts() {
+  if (activeSection.value !== 'داشبورد' && activeSection.value !== 'آمار') return
+
+  createCharts()
+
+  if (expenseShareChart.value) {
+    expenseShareChart.value.data = expenseShareChartData.value
+    expenseShareChart.value.update()
+  }
+
+  if (categoryBarChart.value) {
+    categoryBarChart.value.data = categoryBarChartData.value
+    categoryBarChart.value.update()
+  }
+
+  if (trendLineChart.value) {
+    trendLineChart.value.data = trendLineChartData.value
+    trendLineChart.value.update()
+  }
+
+  if (statsExpenseMixChart.value) {
+    statsExpenseMixChart.value.data = statsExpenseMixChartData.value
+    statsExpenseMixChart.value.update()
+  }
+
+  if (statsBudgetUsageChart.value) {
+    statsBudgetUsageChart.value.data = statsBudgetUsageChartData.value
+    statsBudgetUsageChart.value.update()
+  }
+
+  if (statsDailyExpenseChart.value) {
+    statsDailyExpenseChart.value.data = statsDailyExpenseChartData.value
+    statsDailyExpenseChart.value.update()
+  }
+
+  if (statsCashFlowChart.value) {
+    statsCashFlowChart.value.data = statsCashFlowChartData.value
+    statsCashFlowChart.value.update()
+  }
+}
+
+function destroyCharts() {
+  expenseShareChart.value?.destroy()
+  categoryBarChart.value?.destroy()
+  trendLineChart.value?.destroy()
+  statsExpenseMixChart.value?.destroy()
+  statsBudgetUsageChart.value?.destroy()
+  statsDailyExpenseChart.value?.destroy()
+  statsCashFlowChart.value?.destroy()
+  expenseShareChart.value = null
+  categoryBarChart.value = null
+  trendLineChart.value = null
+  statsExpenseMixChart.value = null
+  statsBudgetUsageChart.value = null
+  statsDailyExpenseChart.value = null
+  statsCashFlowChart.value = null
 }
 
 onMounted(() => {
@@ -521,7 +1091,11 @@ onMounted(() => {
       }
     }
   }
+
+  nextTick(syncCharts)
 })
+
+onBeforeUnmount(destroyCharts)
 
 watch(
   transactions,
@@ -546,6 +1120,32 @@ watch(
   },
   { deep: true },
 )
+
+watch(
+  [
+    expenseShareChartData,
+    categoryBarChartData,
+    trendLineChartData,
+    statsExpenseMixChartData,
+    statsBudgetUsageChartData,
+    statsDailyExpenseChartData,
+    statsCashFlowChartData,
+  ],
+  () => {
+    nextTick(syncCharts)
+  },
+  { deep: true },
+)
+
+watch(activeSection, (section) => {
+  if (section === 'داشبورد' || section === 'آمار') {
+    destroyCharts()
+    nextTick(syncCharts)
+    return
+  }
+
+  destroyCharts()
+})
 </script>
 
 <template>
@@ -648,26 +1248,16 @@ watch(
             </div>
           </div>
           <div class="pie-wrap">
-            <svg viewBox="0 0 42 42" class="pie-chart" aria-label="نمودار دایره‌ای هزینه‌ها">
-              <circle cx="21" cy="21" r="15.9" fill="transparent" stroke="rgba(255,255,255,.08)" stroke-width="6" />
-              <circle
-                v-for="segment in pieSegments()"
-                :key="segment.key"
-                cx="21"
-                cy="21"
-                r="15.9"
-                fill="transparent"
-                :stroke="segment.color"
-                stroke-width="6"
-                :stroke-dasharray="segment.dash"
-                :stroke-dashoffset="segment.offset"
-              />
-            </svg>
+            <div class="chart-canvas pie-chart" :class="{ empty: !hasExpenseData }">
+              <canvas ref="expenseShareCanvas" aria-label="نمودار دایره‌ای هزینه‌ها" role="img" />
+              <span v-if="!hasExpenseData">بدون داده</span>
+            </div>
             <div class="legend">
-              <span v-for="item in categoryTotals.filter((category) => category.spent > 0).slice(0, 7)" :key="item.key">
+              <span v-for="item in visibleCategoryTotals.slice(0, 7)" :key="item.key">
                 <i :style="{ background: item.color }" />
                 {{ item.icon }} {{ item.label }} · {{ formatCompact(item.spent) }}
               </span>
+              <span v-if="!hasExpenseData">بعد از ثبت هزینه، سهم دسته‌ها نمایش داده می‌شود.</span>
             </div>
           </div>
         </article>
@@ -679,14 +1269,8 @@ watch(
               <p>نمودار ستونی بودجه مصرف‌شده</p>
             </div>
           </div>
-          <div class="bar-chart">
-            <div v-for="item in categoryTotals.slice(0, 10)" :key="item.key" class="bar-row">
-              <span>{{ item.icon }} {{ item.label }}</span>
-              <div class="bar-track">
-                <i :style="{ width: `${progressPercent(item.spent, safeMaxCategory.spent || 1)}%`, background: item.color }" />
-              </div>
-              <strong>{{ formatCompact(item.spent) }}</strong>
-            </div>
+          <div class="chart-canvas bar-chart">
+            <canvas ref="categoryBarCanvas" aria-label="نمودار ستونی دسته‌های هزینه" role="img" />
           </div>
         </article>
 
@@ -697,23 +1281,8 @@ watch(
               <p>نمودار خطی و ناحیه‌ای در طول ماه</p>
             </div>
           </div>
-          <div class="line-chart">
-            <svg viewBox="0 0 700 240" preserveAspectRatio="none" aria-label="نمودار روند ماهانه">
-              <defs>
-                <linearGradient id="areaGradient" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stop-color="#22d3ee" stop-opacity=".45" />
-                  <stop offset="100%" stop-color="#7c3aed" stop-opacity=".04" />
-                </linearGradient>
-              </defs>
-              <path :d="trendChart.expenseAreaPath" fill="url(#areaGradient)" />
-              <path :d="trendChart.expensePath" fill="none" stroke="#22d3ee" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
-              <path :d="trendChart.balancePath" fill="none" stroke="#a78bfa" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
-              <g v-for="point in trendChart.points" :key="point.label">
-                <circle :cx="point.x" :cy="point.expenseY" r="6" fill="#22d3ee" />
-                <circle :cx="point.x" :cy="point.balanceY" r="5" fill="#a78bfa" />
-                <text :x="point.x" y="230" text-anchor="middle">{{ point.label }}</text>
-              </g>
-            </svg>
+          <div class="chart-canvas line-chart">
+            <canvas ref="trendLineCanvas" aria-label="نمودار روند ماهانه" role="img" />
           </div>
         </article>
       </section>
@@ -741,12 +1310,60 @@ watch(
             </div>
           </div>
           <div class="stats-grid">
-            <div><span>بیشترین هزینه</span><strong>{{ highestExpense.title }} · {{ formatMoney(highestExpense.amount) }}</strong></div>
-            <div><span>کمترین هزینه</span><strong>{{ lowestExpense.title }} · {{ formatMoney(lowestExpense.amount) }}</strong></div>
-            <div><span>بیشترین دسته خرج</span><strong>{{ safeMaxCategory.icon }} {{ safeMaxCategory.label }}</strong></div>
-            <div><span>میانگین خرج روزانه</span><strong>{{ formatMoney(averageDailyExpense) }}</strong></div>
-            <div><span>درصد پس انداز</span><strong>{{ toPersianNumber(savingsPercent) }}٪</strong></div>
-            <div><span>تعداد تراکنش‌ها</span><strong>{{ toPersianNumber(transactions.length) }}</strong></div>
+            <div v-for="item in statsItems" :key="item.label">
+              <span>{{ item.label }}</span>
+              <strong>{{ item.value }}</strong>
+            </div>
+          </div>
+          <div class="stats-analysis-grid">
+            <section class="stats-chart-panel">
+              <div class="section-title compact">
+                <div>
+                  <h2>ترکیب هزینه‌ها</h2>
+                  <p>سهم نسبی دسته‌های پرمصرف</p>
+                </div>
+              </div>
+              <div class="chart-canvas stats-polar-chart" :class="{ empty: !hasExpenseData }">
+                <canvas ref="statsExpenseMixCanvas" aria-label="نمودار ترکیب هزینه‌ها" role="img" />
+                <span v-if="!hasExpenseData">بدون داده</span>
+              </div>
+            </section>
+
+            <section class="stats-chart-panel wide">
+              <div class="section-title compact">
+                <div>
+                  <h2>مصرف بودجه دسته‌ها</h2>
+                  <p>مصرف‌شده، مانده و عبور از سقف</p>
+                </div>
+              </div>
+              <div class="chart-canvas stats-budget-chart">
+                <canvas ref="statsBudgetUsageCanvas" aria-label="نمودار مصرف بودجه دسته‌ها" role="img" />
+              </div>
+            </section>
+
+            <section class="stats-chart-panel wide">
+              <div class="section-title compact">
+                <div>
+                  <h2>خرج روزانه</h2>
+                  <p>نوسان هزینه در روزهای ماه</p>
+                </div>
+              </div>
+              <div class="chart-canvas stats-line-chart">
+                <canvas ref="statsDailyExpenseCanvas" aria-label="نمودار خرج روزانه" role="img" />
+              </div>
+            </section>
+
+            <section class="stats-chart-panel">
+              <div class="section-title compact">
+                <div>
+                  <h2>جریان پول</h2>
+                  <p>درآمد، هزینه و پس‌انداز</p>
+                </div>
+              </div>
+              <div class="chart-canvas stats-cash-chart">
+                <canvas ref="statsCashFlowCanvas" aria-label="نمودار جریان پول" role="img" />
+              </div>
+            </section>
           </div>
         </article>
       </section>
@@ -825,8 +1442,12 @@ watch(
             <option>درآمد</option>
             <option>هزینه</option>
           </select>
-          <input v-model="dateRange.start" type="text" placeholder="از تاریخ" aria-label="از تاریخ" />
-          <input v-model="dateRange.end" type="text" placeholder="تا تاریخ" aria-label="تا تاریخ" />
+          <JalaliRangeDatePicker
+            v-model="pickerDateRange"
+            class="date-range-filter"
+            placeholder="از تاریخ تا تاریخ"
+            popover-class="date-picker-popover"
+          />
         </div>
 
         <div v-if="filteredTransactions.length" class="table-wrap">
@@ -922,7 +1543,15 @@ watch(
               <option v-for="category in categories" :key="category.key" :value="category.key">{{ category.icon }} {{ category.label }}</option>
             </select>
           </label>
-          <label>تاریخ <input v-model="form.date" type="text" required /></label>
+          <label>تاریخ
+            <JalaliDatePicker
+              v-model="formDatePickerValue"
+              class="date-picker-field"
+              placeholder="انتخاب تاریخ"
+              :clearable="false"
+              popover-class="date-picker-popover"
+            />
+          </label>
           <label>توضیحات <textarea v-model="form.description" rows="3" placeholder="اختیاری" /></label>
           <button class="primary-button full" type="submit">{{ formType === 'expense' ? 'ثبت هزینه' : 'ثبت درآمد' }}</button>
         </form>
@@ -1205,6 +1834,18 @@ h2 {
   gap: 14px;
 }
 
+.section-title.compact {
+  margin-bottom: 12px;
+}
+
+.section-title.compact h2 {
+  font-size: 1rem;
+}
+
+.section-title.compact p {
+  font-size: .84rem;
+}
+
 .metric-top span {
   font-size: 1.8rem;
   animation: float 3s ease-in-out infinite;
@@ -1237,15 +1878,35 @@ h2 {
   min-height: 260px;
 }
 
+.chart-canvas {
+  position: relative;
+  width: 100%;
+  min-height: 260px;
+}
+
+.chart-canvas canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
 .pie-chart {
   width: 220px;
   height: 220px;
-  transform: rotate(-90deg);
+  min-height: 220px;
   filter: drop-shadow(0 0 22px rgba(34, 211, 238, .22));
 }
 
-.pie-chart circle {
-  animation: draw 1.2s ease both;
+.pie-chart.empty canvas {
+  opacity: .5;
+}
+
+.pie-chart > span {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #94a3b8;
+  font-weight: 800;
 }
 
 .legend {
@@ -1267,20 +1928,10 @@ h2 {
 }
 
 .bar-chart {
-  display: grid;
-  gap: 13px;
+  height: 320px;
   margin-top: 20px;
 }
 
-.bar-row {
-  display: grid;
-  grid-template-columns: 112px 1fr 110px;
-  gap: 12px;
-  align-items: center;
-  color: #cbd5e1;
-}
-
-.bar-track,
 .progress {
   height: 11px;
   overflow: hidden;
@@ -1288,7 +1939,6 @@ h2 {
   background: rgba(255, 255, 255, .08);
 }
 
-.bar-track i,
 .progress i {
   display: block;
   height: 100%;
@@ -1299,16 +1949,6 @@ h2 {
 .line-chart {
   height: 280px;
   margin-top: 14px;
-}
-
-.line-chart svg {
-  width: 100%;
-  height: 100%;
-}
-
-.line-chart text {
-  fill: #94a3b8;
-  font-size: 14px;
 }
 
 .summary-card,
@@ -1346,6 +1986,50 @@ h2 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.stats-analysis-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.stats-chart-panel {
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 18px;
+  padding: 14px;
+  background: rgba(255, 255, 255, .045);
+}
+
+.stats-chart-panel.wide {
+  grid-column: 1 / -1;
+}
+
+.stats-polar-chart,
+.stats-cash-chart {
+  min-height: 260px;
+  height: 260px;
+}
+
+.stats-budget-chart,
+.stats-line-chart {
+  min-height: 310px;
+  height: 310px;
+}
+
+.stats-polar-chart.empty canvas {
+  opacity: .42;
+}
+
+.stats-polar-chart > span {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #94a3b8;
+  font-weight: 800;
 }
 
 .stats-grid div,
@@ -1434,9 +2118,19 @@ h2 {
 
 .filters {
   display: grid;
-  grid-template-columns: 1.6fr repeat(6, 1fr);
+  grid-template-columns: 1.6fr repeat(4, 1fr) 2fr;
   gap: 10px;
   margin: 18px 0;
+}
+
+.date-range-filter,
+.date-picker-field {
+  width: 100%;
+  max-width: none;
+}
+
+.date-picker-popover {
+  min-width: min(18rem, calc(100vw - 32px));
 }
 
 input,
@@ -1618,10 +2312,6 @@ th {
   from { width: 0; }
 }
 
-@keyframes draw {
-  from { stroke-dasharray: 0 100; }
-}
-
 @keyframes countPop {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
@@ -1688,16 +2378,13 @@ th {
   .report-grid,
   .settings-grid,
   .stats-grid,
+  .stats-analysis-grid,
   .pie-wrap {
     grid-template-columns: 1fr;
   }
 
   .pie-chart {
     justify-self: center;
-  }
-
-  .bar-row {
-    grid-template-columns: 1fr;
   }
 
   .fab {
@@ -1898,6 +2585,7 @@ th {
   .pie-chart {
     width: min(240px, 72vw);
     height: min(240px, 72vw);
+    min-height: min(240px, 72vw);
   }
 
   .legend {
@@ -1909,11 +2597,8 @@ th {
     margin-inline: -4px;
   }
 
-  .bar-row strong {
-    justify-self: start;
-  }
-
   .stats-grid div,
+  .stats-chart-panel,
   .budget-item,
   .report-grid span,
   .settings-grid label {
@@ -2187,6 +2872,7 @@ th {
   .pie-chart {
     width: min(178px, 62vw);
     height: min(178px, 62vw);
+    min-height: min(178px, 62vw);
   }
 
   .legend {
@@ -2194,7 +2880,6 @@ th {
   }
 
   .legend span,
-  .bar-row,
   .budget-item,
   .report-grid span,
   .settings-grid label,
@@ -2203,7 +2888,7 @@ th {
   }
 
   .bar-chart {
-    gap: 9px;
+    height: 280px;
     margin-top: 12px;
   }
 
@@ -2212,6 +2897,7 @@ th {
   }
 
   .stats-grid,
+  .stats-analysis-grid,
   .budget-grid,
   .report-grid,
   .settings-grid,
@@ -2233,6 +2919,7 @@ th {
   }
 
   .stats-grid div,
+  .stats-chart-panel,
   .budget-item,
   .report-grid span,
   .settings-grid label {
