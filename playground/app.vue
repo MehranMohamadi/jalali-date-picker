@@ -70,6 +70,12 @@ const defaultCategories: Category[] = [
   { key: 'other', label: 'سایر', icon: '📦', color: '#94a3b8' },
 ]
 
+const persianOnes = ['', 'یک', 'دو', 'سه', 'چهار', 'پنج', 'شش', 'هفت', 'هشت', 'نه']
+const persianTeens = ['ده', 'یازده', 'دوازده', 'سیزده', 'چهارده', 'پانزده', 'شانزده', 'هفده', 'هجده', 'نوزده']
+const persianTens = ['', '', 'بیست', 'سی', 'چهل', 'پنجاه', 'شصت', 'هفتاد', 'هشتاد', 'نود']
+const persianHundreds = ['', 'صد', 'دویست', 'سیصد', 'چهارصد', 'پانصد', 'ششصد', 'هفتصد', 'هشتصد', 'نهصد']
+const persianScales = ['', 'هزار', 'میلیون', 'میلیارد', 'تریلیون', 'کوادریلیون']
+
 const categories = ref<Category[]>([...defaultCategories])
 
 const transactions = ref<Transaction[]>([
@@ -149,6 +155,7 @@ const form = reactive({
   category: 'food' as CategoryKey,
   description: '',
 })
+const formAmountInWords = computed(() => formatMoneyWords(form.amount))
 const formDatePickerValue = computed({
   get: () => jalaliInputToIso(form.date),
   set: (value: string | null) => {
@@ -531,6 +538,55 @@ function parseMoneyInput(value: number | string) {
 function formatMoneyInput(value: number | string) {
   const amount = parseMoneyInput(value)
   return amount ? new Intl.NumberFormat('fa-IR').format(amount) : ''
+}
+
+function formatMoneyWords(value: number | string) {
+  const amount = parseMoneyInput(value)
+  if (!amount) return ''
+
+  return `${numberToPersianWords(amount)} تومان`
+}
+
+function numberToPersianWords(value: number) {
+  const amount = Math.trunc(Math.abs(value))
+  if (!amount) return 'صفر'
+  if (!Number.isSafeInteger(amount)) return new Intl.NumberFormat('fa-IR').format(amount)
+
+  const parts: string[] = []
+  let remaining = amount
+  let scaleIndex = 0
+
+  while (remaining > 0 && scaleIndex < persianScales.length) {
+    const chunk = remaining % 1000
+    if (chunk) {
+      parts.unshift([chunkToPersianWords(chunk), persianScales[scaleIndex]].filter(Boolean).join(' '))
+    }
+
+    remaining = Math.floor(remaining / 1000)
+    scaleIndex += 1
+  }
+
+  if (remaining > 0) parts.unshift(new Intl.NumberFormat('fa-IR').format(remaining))
+
+  return parts.join(' و ')
+}
+
+function chunkToPersianWords(value: number) {
+  const parts: string[] = []
+  const hundreds = Math.floor(value / 100)
+  const remainder = value % 100
+
+  if (hundreds) parts.push(persianHundreds[hundreds])
+  if (remainder >= 10 && remainder < 20) {
+    parts.push(persianTeens[remainder - 10])
+  } else {
+    const tens = Math.floor(remainder / 10)
+    const ones = remainder % 10
+    if (tens) parts.push(persianTens[tens])
+    if (ones) parts.push(persianOnes[ones])
+  }
+
+  return parts.join(' و ')
 }
 
 function updateMoneyInput(target: { amount?: number; budget?: number }, key: 'amount' | 'budget', event: Event) {
@@ -1698,7 +1754,11 @@ watch(activeSection, (section) => {
             <button type="button" :class="{ active: formType === 'expense' }" @click="formType = 'expense'">ثبت هزینه</button>
             <button type="button" :class="{ active: formType === 'income' }" @click="formType = 'income'">ثبت درآمد</button>
           </div>
-          <label>مبلغ <input :value="formatMoneyInput(form.amount)" type="text" inputmode="numeric" required @input="updateMoneyInput(form, 'amount', $event)" /></label>
+          <label class="amount-field">
+            مبلغ
+            <input :value="formatMoneyInput(form.amount)" type="text" inputmode="numeric" required @input="updateMoneyInput(form, 'amount', $event)" />
+            <small v-if="formAmountInWords" class="amount-in-words">{{ formAmountInWords }}</small>
+          </label>
           <label>عنوان <input v-model="form.title" type="text" required /></label>
           <label v-if="formType === 'expense'">دسته بندی
             <select v-model="form.category">
@@ -2423,6 +2483,12 @@ th {
   gap: 8px;
   margin-top: 14px;
   color: #cbd5e1;
+}
+
+.amount-in-words {
+  color: #67e8f9;
+  font-size: .82rem;
+  line-height: 1.8;
 }
 
 .close {
