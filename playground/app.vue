@@ -7,9 +7,11 @@ import {
   type TooltipItem,
   registerables,
 } from 'chart.js'
+import { Capacitor, registerPlugin } from '@capacitor/core'
 import { addJalaliDays, getJalaliMonthLength, parseJalaliInput, toGregorian, toJalali } from '../src/utils/jalali'
 
 Chart.register(...registerables)
+const BankNotifications = registerPlugin<BankNotificationsPlugin>('BankNotifications')
 
 type TransactionType = 'income' | 'expense'
 
@@ -36,6 +38,38 @@ interface Transaction {
 interface BudgetGoal {
   category: CategoryKey
   budget: number
+}
+
+interface BankAppOption {
+  packageName: string
+  label: string
+}
+
+interface BankNotificationStatus {
+  isAndroid: boolean
+  isEnabled: boolean
+  selectedPackage: string
+  selectedAppLabel: string
+}
+
+interface BankNotificationSuggestion {
+  id: string
+  sourcePackage: string
+  sourceApp: string
+  title: string
+  amount: number
+  category: CategoryKey
+  postTime: number
+  rawText: string
+}
+
+interface BankNotificationsPlugin {
+  getStatus: () => Promise<BankNotificationStatus>
+  openNotificationSettings: () => Promise<void>
+  getSelectableApps: () => Promise<{ apps: BankAppOption[] }>
+  setSelectedPackage: (options: { packageName: string }) => Promise<void>
+  getSuggestions: () => Promise<{ suggestions: BankNotificationSuggestion[] }>
+  markSuggestion: (options: { id: string; action: 'accepted' | 'dismissed' }) => Promise<void>
 }
 
 interface ToastMessage {
@@ -104,7 +138,7 @@ const isMobileMenuOpen = ref(false)
 const STORAGE_KEY = 'budgetyar-transactions-v1'
 const CATEGORIES_STORAGE_KEY = 'budgetyar-categories-v1'
 const BUDGETS_STORAGE_KEY = 'budgetyar-budgets-v1'
-const navItems = ['داشبورد', 'درآمدها', 'هزینه‌ها', 'بودجه‌ها', 'گزارش‌ها', 'آمار', 'تنظیمات']
+const navItems = ['داشبورد', 'درآمدها', 'هزینه‌ها', 'بودجه‌ها', 'گزارش‌ها', 'آمار', 'اعلان‌ها', 'تنظیمات']
 const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند']
 const currentJalaliDate = getCurrentJalaliDate()
 const todayKey = formatJalaliInputDate(currentJalaliDate)
@@ -175,6 +209,17 @@ const categoryForm = reactive({
 })
 const installPrompt = ref<InstallPromptEvent | null>(null)
 const isStandalone = ref(false)
+const isAndroidNative = ref(false)
+const isNotificationsLoading = ref(false)
+const bankApps = ref<BankAppOption[]>([])
+const bankSuggestions = ref<BankNotificationSuggestion[]>([])
+const selectedBankPackage = ref('')
+const bankNotificationStatus = reactive<BankNotificationStatus>({
+  isAndroid: false,
+  isEnabled: false,
+  selectedPackage: '',
+  selectedAppLabel: '',
+})
 const today = formatDisplayJalaliDate(currentJalaliDate)
 
 const previousMonthPrefix = getPreviousMonthPrefix(currentJalaliDate)
@@ -814,6 +859,97 @@ function removeTransaction(id: number) {
   pushToast('حذف شد 🗑️')
 }
 
+async function refreshBankNotifications(showToast = false) {
+  if (!isAndroidNative.value) return
+
+  isNotificationsLoading.value = true
+  try {
+    const [status, apps, suggestions] = await Promise.all([
+      BankNotifications.getStatus(),
+      BankNotifications.getSelectableApps(),
+      BankNotifications.getSuggestions(),
+    ])
+
+    Object.assign(bankNotificationStatus, status)
+    bankApps.value = apps.apps
+    bankSuggestions.value = suggestions.suggestions
+    selectedBankPackage.value = status.selectedPackage
+    if (showToast) pushToast('اعلان‌ها به‌روزرسانی شد')
+  } catch {
+    pushToast('خواندن اعلان‌ها در این نسخه در دسترس نیست')
+  } finally {
+    isNotificationsLoading.value = false
+  }
+}
+
+async function openNotificationAccessSettings() {
+  if (!isAndroidNative.value) return
+
+  await BankNotifications.openNotificationSettings()
+  window.setTimeout(() => refreshBankNotifications(), 900)
+}
+
+async function updateSelectedBankPackage(event: Event) {
+  const packageName = (event.target as HTMLSelectElement).value
+  selectedBankPackage.value = packageName
+
+  if (!isAndroidNative.value) return
+
+  try {
+    await BankNotifications.setSelectedPackage({ packageName })
+    await refreshBankNotifications()
+    pushToast(packageName ? 'بلو بانک انتخاب شد' : 'انتخاب اپ پاک شد')
+  } catch {
+    pushToast('انتخاب اپ ذخیره نشد')
+  }
+}
+
+async function acceptBankSuggestion(suggestion: BankNotificationSuggestion) {
+  const category = categories.value.some((item) => item.key === suggestion.category)
+    ? suggestion.category
+    : categories.value.some((item) => item.key === 'shopping')
+      ? 'shopping'
+      : 'other'
+
+  const date = suggestion.postTime ? formatJalaliInputDate(toJalali(new Date(suggestion.postTime))) : todayKey
+  const payload: Transaction = {
+    id: Date.now(),
+    type: 'expense',
+    title: suggestion.title || 'هزینه بلو بانک',
+    amount: suggestion.amount,
+    date,
+    category,
+    description: `ثبت‌شده از اعلان ${suggestion.sourceApp}\n${suggestion.rawText}`,
+  }
+
+  transactions.value = [payload, ...transactions.value]
+  bankSuggestions.value = bankSuggestions.value.filter((item) => item.id !== suggestion.id)
+  await markBankSuggestion(suggestion.id, 'accepted')
+  pushToast('هزینه از اعلان ثبت شد ✅')
+}
+
+async function dismissBankSuggestion(id: string) {
+  bankSuggestions.value = bankSuggestions.value.filter((item) => item.id !== id)
+  await markBankSuggestion(id, 'dismissed')
+  pushToast('پیشنهاد رد شد')
+}
+
+async function markBankSuggestion(id: string, action: 'accepted' | 'dismissed') {
+  if (!isAndroidNative.value) return
+
+  try {
+    await BankNotifications.markSuggestion({ id, action })
+  } catch {
+    await refreshBankNotifications()
+  }
+}
+
+function formatSuggestionDate(postTime: number) {
+  if (!postTime) return todayKey
+
+  return formatDisplayJalaliDate(toJalali(new Date(postTime)))
+}
+
 function updateBudget(category: CategoryKey, event: Event) {
   const input = event.target as HTMLInputElement
   const amount = Math.max(0, parseMoneyInput(input.value))
@@ -1389,6 +1525,7 @@ function destroyCharts() {
 
 onMounted(() => {
   isStandalone.value = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as Navigator & { standalone?: boolean }).standalone === true
+  isAndroidNative.value = Capacitor.getPlatform() === 'android'
 
   window.addEventListener('beforeinstallprompt', (event) => {
     event.preventDefault()
@@ -1445,6 +1582,10 @@ onMounted(() => {
         })
       }
     }
+  }
+
+  if (isAndroidNative.value) {
+    refreshBankNotifications()
   }
 
   nextTick(syncCharts)
@@ -1592,11 +1733,6 @@ watch(activeSection, (section) => {
         </article>
       </section>
 
-      <section v-if="activeSection === 'داشبورد'" class="weekly-budget-line glass-panel">
-        <span>بودجه هفتگی</span>
-        <strong>{{ formatMoney(weeklyBudgetAllowance) }}</strong>
-        <small>بودجه ماه تقسیم بر {{ toPersianNumber(currentMonthWeekCount) }} هفته</small>
-      </section>
 
       <section v-if="activeSection === 'داشبورد'" class="recent-expenses-card glass-panel">
         <div class="section-title compact">
@@ -1918,6 +2054,65 @@ watch(activeSection, (section) => {
         </div>
       </section>
 
+      <section v-if="activeSection === 'اعلان‌ها'" class="glass-panel notifications-card" data-section="اعلان‌ها">
+        <div class="section-title">
+          <div>
+            <h2>اعلان‌ها</h2>
+            <p>پیشنهاد ثبت هزینه از اعلان‌های بلو بانک</p>
+          </div>
+          <button class="soft-button" type="button" :disabled="!isAndroidNative || isNotificationsLoading" @click="refreshBankNotifications(true)">
+            تازه‌سازی
+          </button>
+        </div>
+
+        <div v-if="!isAndroidNative" class="empty-state">
+          <div>◇</div>
+          <strong>خواندن اعلان‌ها فقط در نسخه Android Native فعال است.</strong>
+          <span>نسخه PWA و مرورگر به اعلان‌های اپ‌های دیگر گوشی دسترسی ندارند.</span>
+        </div>
+
+        <div v-else class="notification-panel">
+          <div class="notification-status-grid">
+            <article class="notification-status">
+              <small>دسترسی اعلان</small>
+              <strong>{{ bankNotificationStatus.isEnabled ? 'فعال' : 'غیرفعال' }}</strong>
+              <button class="soft-button" type="button" @click="openNotificationAccessSettings">
+                تنظیم دسترسی
+              </button>
+            </article>
+            <label class="notification-status">
+              <small>اپ منبع</small>
+              <select :value="selectedBankPackage" @change="updateSelectedBankPackage">
+                <option value="">انتخاب بلو بانک</option>
+                <option v-for="app in bankApps" :key="app.packageName" :value="app.packageName">
+                  {{ app.label }}
+                </option>
+              </select>
+            </label>
+          </div>
+
+          <div v-if="bankSuggestions.length" class="notification-list">
+            <article v-for="suggestion in bankSuggestions" :key="suggestion.id" class="notification-suggestion">
+              <div>
+                <small>{{ suggestion.sourceApp }} · {{ formatSuggestionDate(suggestion.postTime) }}</small>
+                <strong>{{ suggestion.title }}</strong>
+                <span>{{ getCategory(suggestion.category).icon }} {{ getCategory(suggestion.category).label }} · {{ formatMoney(suggestion.amount) }}</span>
+              </div>
+              <div class="notification-actions">
+                <button class="primary-button" type="button" @click="acceptBankSuggestion(suggestion)">ثبت هزینه</button>
+                <button class="soft-button" type="button" @click="dismissBankSuggestion(suggestion.id)">رد</button>
+              </div>
+            </article>
+          </div>
+
+          <div v-else class="empty-state compact-empty">
+            <div>◇</div>
+            <strong>پیشنهاد تازه‌ای ندارید.</strong>
+            <span>بعد از فعال‌سازی دسترسی و انتخاب بلو بانک، اعلان‌های هزینه اینجا می‌آیند.</span>
+          </div>
+        </div>
+      </section>
+
       <section v-if="activeSection === 'تنظیمات'" class="glass-panel settings-card" data-section="تنظیمات">
         <div class="section-title">
           <div>
@@ -2076,7 +2271,10 @@ button {
 .budget-item span,
 .budget-item small,
 .summary-card p,
-.settings-card p {
+.settings-card p,
+.notification-status small,
+.notification-suggestion small,
+.notification-suggestion span {
   color: #94a3b8;
 }
 
@@ -2199,6 +2397,7 @@ h2 {
 .budgets-card,
 .table-card,
 .reports-card,
+.notifications-card,
 .settings-card {
   border-radius: 22px;
   padding: 20px;
@@ -2855,6 +3054,72 @@ th {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.notification-panel,
+.notification-list {
+  display: grid;
+  gap: 14px;
+}
+
+.notification-status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.notification-status,
+.notification-suggestion {
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 18px;
+  background: rgba(15, 23, 42, .54);
+}
+
+.notification-status {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.notification-status strong {
+  font-size: 1.05rem;
+}
+
+.notification-status select {
+  min-width: 0;
+}
+
+.notification-suggestion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px;
+}
+
+.notification-suggestion div:first-child {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.notification-suggestion strong,
+.notification-suggestion span {
+  overflow-wrap: anywhere;
+}
+
+.notification-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.notification-actions button {
+  padding: 9px 12px;
+}
+
+.compact-empty {
+  min-height: 150px;
+}
+
 .settings-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -3179,6 +3444,7 @@ th {
   .budgets-card,
   .table-card,
   .reports-card,
+  .notifications-card,
   .settings-card {
     border-radius: 18px;
     padding: 16px;
@@ -3252,9 +3518,28 @@ th {
   .stats-grid div,
   .stats-chart-panel,
   .budget-item,
+  .notification-status,
+  .notification-suggestion,
   .report-grid span,
   .settings-grid label {
     border-radius: 16px;
+  }
+
+  .notification-status-grid,
+  .notification-suggestion {
+    grid-template-columns: 1fr;
+  }
+
+  .notification-suggestion {
+    display: grid;
+  }
+
+  .notification-actions {
+    width: 100%;
+  }
+
+  .notification-actions button {
+    flex: 1;
   }
 
   .filters {
@@ -3428,6 +3713,7 @@ th {
   .budgets-card,
   .table-card,
   .reports-card,
+  .notifications-card,
   .settings-card {
     border-radius: 14px;
     padding: 12px;
