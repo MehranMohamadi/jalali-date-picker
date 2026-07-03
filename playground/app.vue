@@ -2193,6 +2193,8 @@ watch(activeSection, (section) => {
 body {
   margin: 0;
   min-width: 320px;
+  max-width: 100%;
+  overflow-x: hidden;
   font-size: .94rem;
   background:
     radial-gradient(circle at 18% 12%, rgba(34, 211, 238, .26), transparent 28%),
@@ -2405,6 +2407,7 @@ h2 {
 
 .mini-card {
   display: flex;
+  min-width: 0;
   min-height: 52px;
   align-items: center;
   justify-content: space-between;
@@ -2424,7 +2427,10 @@ h2 {
 
 .mini-card strong {
   display: block;
+  min-width: 0;
   margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: .95rem;
   line-height: 1.25;
   text-align: left;
@@ -2435,6 +2441,7 @@ h2 {
   position: relative;
   overflow: hidden;
   display: flex;
+  min-width: 0;
   min-height: 52px;
   align-items: center;
   justify-content: space-between;
@@ -2461,6 +2468,19 @@ h2 {
   gap: 14px;
 }
 
+.metric-top,
+.metric-top small,
+.mini-card small {
+  min-width: 0;
+}
+
+.metric-top small,
+.mini-card small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .section-title.compact {
   margin-bottom: 12px;
 }
@@ -2479,7 +2499,11 @@ h2 {
 }
 
 .metric-card strong {
+  min-width: 0;
+  max-width: 100%;
   margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: clamp(1rem, 1.45vw, 1.22rem);
   line-height: 1.25;
   text-align: left;
@@ -2528,6 +2552,7 @@ h2 {
 
 .recent-expense-row {
   display: flex;
+  min-width: 0;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -2566,12 +2591,17 @@ h2 {
 
 .recent-expense-row b {
   flex: 0 0 auto;
+  max-width: 42%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: #fda4af;
   font-size: .86rem;
 }
 
 .weekly-category-budget {
   display: grid;
+  min-width: 0;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
   gap: 10px 14px;
@@ -2596,7 +2626,7 @@ h2 {
 
 .weekly-category-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(124px, 1fr));
   gap: 6px;
   min-width: 0;
 }
@@ -3774,6 +3804,12 @@ th {
     gap: 9px;
   }
 
+  .mini-card,
+  .metric-card {
+    gap: 8px;
+    padding-inline: 10px;
+  }
+
   .mini-card {
     min-height: 46px;
   }
@@ -3796,8 +3832,7 @@ th {
 
   .metric-card strong {
     margin: 0;
-    font-size: .9rem;
-    word-break: break-word;
+    font-size: clamp(.78rem, 3vw, .9rem);
   }
 
   .metric-top {
@@ -3806,6 +3841,14 @@ th {
 
   .dashboard-grid {
     gap: 10px;
+  }
+
+  .weekly-category-budget {
+    grid-template-columns: 1fr;
+  }
+
+  .weekly-category-head {
+    white-space: normal;
   }
 
   .pie-chart {
