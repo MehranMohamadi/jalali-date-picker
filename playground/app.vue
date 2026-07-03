@@ -198,6 +198,8 @@ const weeklyIncome = computed(() => weeklyIncomeTransactions.value.reduce((sum, 
 const weeklyExpense = computed(() => weeklyExpenseTransactions.value.reduce((sum, item) => sum + item.amount, 0))
 const weeklyBalance = computed(() => weeklyIncome.value - weeklyExpense.value)
 const totalBudget = computed(() => budgets.value.reduce((sum, item) => sum + item.budget, 0))
+const currentMonthWeekCount = computed(() => Math.ceil(currentMonthLength / 7))
+const weeklyBudgetAllowance = computed(() => Math.round(totalBudget.value / Math.max(currentMonthWeekCount.value, 1)))
 const balance = computed(() => totalIncome.value - totalExpense.value)
 const budgetUsage = computed(() => Math.round((totalExpense.value / Math.max(totalBudget.value, 1)) * 100))
 const savingsPercent = computed(() => Math.max(0, Math.round((balance.value / Math.max(totalIncome.value, 1)) * 100)))
@@ -210,6 +212,35 @@ const categoryTotals = computed(() =>
       .reduce((sum, item) => sum + item.amount, 0),
     budget: budgets.value.find((goal) => goal.category === category.key)?.budget ?? 0,
   })),
+)
+
+const weeklyCategoryBudgets = computed(() =>
+  categoryTotals.value
+    .filter((item) => item.budget > 0)
+    .map((item) => ({
+      ...item,
+      weeklyBudget: Math.round(item.budget / Math.max(currentMonthWeekCount.value, 1)),
+    })),
+)
+
+const weeklyBudgetAnalysis = computed(() =>
+  weeklyCategoryBudgets.value
+    .map((item) => {
+      const spentThisWeek = weeklyExpenseTransactions.value
+        .filter((expense) => expense.category === item.key)
+        .reduce((sum, expense) => sum + expense.amount, 0)
+      const ratio = Math.round((spentThisWeek / Math.max(item.weeklyBudget, 1)) * 100)
+
+      return {
+        ...item,
+        spentThisWeek,
+        ratio,
+        overAmount: Math.max(spentThisWeek - item.weeklyBudget, 0),
+      }
+    })
+    .filter((item) => item.spentThisWeek > 0 && item.ratio >= 80)
+    .sort((a, b) => b.ratio - a.ratio)
+    .slice(0, 3),
 )
 
 const sortedCategoryTotals = computed(() => [...categoryTotals.value].sort((a, b) => b.spent - a.spent))
@@ -1561,6 +1592,12 @@ watch(activeSection, (section) => {
         </article>
       </section>
 
+      <section v-if="activeSection === 'داشبورد'" class="weekly-budget-line glass-panel">
+        <span>بودجه هفتگی</span>
+        <strong>{{ formatMoney(weeklyBudgetAllowance) }}</strong>
+        <small>بودجه ماه تقسیم بر {{ toPersianNumber(currentMonthWeekCount) }} هفته</small>
+      </section>
+
       <section v-if="activeSection === 'داشبورد'" class="recent-expenses-card glass-panel">
         <div class="section-title compact">
           <div>
@@ -1627,6 +1664,19 @@ watch(activeSection, (section) => {
         </article>
       </section>
 
+      <section v-if="activeSection === 'داشبورد'" class="weekly-category-budget glass-panel">
+        <div class="weekly-category-head">
+          <strong>بودجه هفتگی بخش‌ها</strong>
+          <small>برای هر هفته</small>
+        </div>
+        <div class="weekly-category-list">
+          <span v-for="item in weeklyCategoryBudgets" :key="item.key">
+            <b>{{ item.icon }} {{ item.label }}</b>
+            <em>{{ formatCompact(item.weeklyBudget) }}</em>
+          </span>
+        </div>
+      </section>
+
       <section v-if="activeSection === 'گزارش‌ها' || activeSection === 'آمار'" class="dashboard-grid page-grid">
         <article v-if="activeSection === 'گزارش‌ها'" class="glass-panel summary-card" data-section="گزارش‌ها">
           <div class="section-title">
@@ -1634,6 +1684,17 @@ watch(activeSection, (section) => {
               <h2>خلاصه ماهانه</h2>
               <p>به‌صورت خودکار از داده‌های همین ماه</p>
             </div>
+          </div>
+          <div class="weekly-overanalysis">
+            <strong>خرج‌های مشکوک این هفته</strong>
+            <div v-if="weeklyBudgetAnalysis.length" class="weekly-overanalysis-list">
+              <span v-for="item in weeklyBudgetAnalysis" :key="item.key">
+                <b>{{ item.icon }} {{ item.label }}</b>
+                <em>{{ formatCompact(item.spentThisWeek) }} / {{ formatCompact(item.weeklyBudget) }}</em>
+                <small>{{ item.overAmount ? `${formatCompact(item.overAmount)} بیشتر از بودجه هفتگی` : `${toPersianNumber(item.ratio)}٪ بودجه هفتگی مصرف شده` }}</small>
+              </span>
+            </div>
+            <p v-else>این هفته هنوز هیچ دسته‌ای به محدوده خطر بودجه هفتگی نرسیده.</p>
           </div>
           <p v-for="line in summaryLines" :key="line">{{ line }}</p>
           <div class="insights">
@@ -2227,6 +2288,35 @@ h2 {
   overflow-wrap: anywhere;
 }
 
+.weekly-budget-line {
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  gap: 12px;
+  border-radius: 18px;
+  padding: 10px 12px;
+}
+
+.weekly-budget-line span,
+.weekly-budget-line small {
+  min-width: 0;
+  color: #94a3b8;
+}
+
+.weekly-budget-line strong {
+  margin-inline-start: auto;
+  color: #facc15;
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
+.weekly-budget-line small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: .78rem;
+  white-space: nowrap;
+}
+
 .recent-expenses-card {
   border-radius: 18px;
   padding: 10px 12px;
@@ -2279,6 +2369,71 @@ h2 {
   flex: 0 0 auto;
   color: #fda4af;
   font-size: .86rem;
+}
+
+.weekly-category-budget {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 10px 14px;
+  border-radius: 18px;
+  padding: 10px 12px;
+}
+
+.weekly-category-head {
+  display: grid;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.weekly-category-head strong {
+  font-size: .9rem;
+}
+
+.weekly-category-head small {
+  color: #94a3b8;
+  font-size: .72rem;
+}
+
+.weekly-category-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 6px;
+  min-width: 0;
+}
+
+.weekly-category-list span {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, .07);
+  border-radius: 10px;
+  padding: 5px 7px;
+  background: rgba(255, 255, 255, .035);
+}
+
+.weekly-category-list b,
+.weekly-category-list em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.weekly-category-list b {
+  min-width: 0;
+  color: #dbeafe;
+  font-size: .76rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.weekly-category-list em {
+  flex: 0 0 auto;
+  color: #facc15;
+  font-size: .72rem;
+  font-style: normal;
 }
 
 .counter {
@@ -2384,6 +2539,71 @@ h2 {
 .summary-card > p {
   margin-top: 16px;
   line-height: 2;
+}
+
+.weekly-overanalysis {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  border: 1px solid rgba(250, 204, 21, .16);
+  border-radius: 14px;
+  padding: 10px;
+  background: rgba(250, 204, 21, .06);
+}
+
+.weekly-overanalysis > strong {
+  color: #fde68a;
+  font-size: .9rem;
+}
+
+.weekly-overanalysis > p {
+  color: #cbd5e1;
+  font-size: .8rem;
+  line-height: 1.7;
+}
+
+.weekly-overanalysis-list {
+  display: grid;
+  gap: 6px;
+}
+
+.weekly-overanalysis-list span {
+  display: grid;
+  grid-template-columns: minmax(90px, 1fr) auto minmax(120px, 1.2fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  border-top: 1px solid rgba(255, 255, 255, .08);
+  padding-top: 6px;
+}
+
+.weekly-overanalysis-list span:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.weekly-overanalysis-list b,
+.weekly-overanalysis-list em,
+.weekly-overanalysis-list small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.weekly-overanalysis-list b {
+  min-width: 0;
+  font-size: .82rem;
+}
+
+.weekly-overanalysis-list em {
+  color: #facc15;
+  font-size: .78rem;
+  font-style: normal;
+}
+
+.weekly-overanalysis-list small {
+  color: #fca5a5;
+  font-size: .75rem;
 }
 
 .insights,
