@@ -7,7 +7,7 @@ import {
   type TooltipItem,
   registerables,
 } from 'chart.js'
-import { getJalaliMonthLength, parseJalaliInput, toGregorian, toJalali } from '../src/utils/jalali'
+import { addJalaliDays, getJalaliMonthLength, parseJalaliInput, toGregorian, toJalali } from '../src/utils/jalali'
 
 Chart.register(...registerables)
 
@@ -111,6 +111,9 @@ const todayKey = formatJalaliInputDate(currentJalaliDate)
 const currentMonthPrefix = getJalaliMonthPrefix(currentJalaliDate)
 const currentMonthLength = getJalaliMonthLength(currentJalaliDate.year, currentJalaliDate.month)
 const currentMonthStartKey = formatJalaliInputDate({ ...currentJalaliDate, day: 1 })
+const currentWeekRange = getCurrentWeekRange(currentJalaliDate)
+const currentWeekStartKey = formatJalaliInputDate(currentWeekRange.start)
+const currentWeekEndKey = formatJalaliInputDate(currentWeekRange.end)
 const currentMonthYear = `${months[currentJalaliDate.month - 1]} ${toPersianNumber(currentJalaliDate.year)}`
 const years = [currentJalaliDate.year - 1, currentJalaliDate.year, currentJalaliDate.year + 1].map(toPersianNumber)
 const query = ref('')
@@ -139,6 +142,7 @@ const trendLineCanvas = ref<HTMLCanvasElement | null>(null)
 const statsExpenseMixCanvas = ref<HTMLCanvasElement | null>(null)
 const statsBudgetUsageCanvas = ref<HTMLCanvasElement | null>(null)
 const statsDailyExpenseCanvas = ref<HTMLCanvasElement | null>(null)
+const statsWeeklyFlowCanvas = ref<HTMLCanvasElement | null>(null)
 const statsCashFlowCanvas = ref<HTMLCanvasElement | null>(null)
 const expenseShareChart = shallowRef<Chart<'doughnut'> | null>(null)
 const categoryBarChart = shallowRef<Chart<'bar'> | null>(null)
@@ -146,6 +150,7 @@ const trendLineChart = shallowRef<Chart<'line'> | null>(null)
 const statsExpenseMixChart = shallowRef<Chart<'polarArea'> | null>(null)
 const statsBudgetUsageChart = shallowRef<Chart<'bar'> | null>(null)
 const statsDailyExpenseChart = shallowRef<Chart<'line'> | null>(null)
+const statsWeeklyFlowChart = shallowRef<Chart<'bar'> | null>(null)
 const statsCashFlowChart = shallowRef<Chart<'bar'> | null>(null)
 
 const form = reactive({
@@ -175,12 +180,23 @@ const today = formatDisplayJalaliDate(currentJalaliDate)
 const previousMonthPrefix = getPreviousMonthPrefix(currentJalaliDate)
 const currentMonthTransactions = computed(() => transactions.value.filter((item) => normalizeJalaliDate(item.date).startsWith(currentMonthPrefix)))
 const previousMonthTransactions = computed(() => transactions.value.filter((item) => normalizeJalaliDate(item.date).startsWith(previousMonthPrefix)))
+const currentWeekTransactions = computed(() =>
+  transactions.value.filter((item) => {
+    const date = normalizeJalaliDate(item.date)
+    return date >= currentWeekStartKey && date <= currentWeekEndKey
+  }),
+)
 const expenseTransactions = computed(() => currentMonthTransactions.value.filter((item) => item.type === 'expense'))
 const incomeTransactions = computed(() => currentMonthTransactions.value.filter((item) => item.type === 'income'))
+const weeklyExpenseTransactions = computed(() => currentWeekTransactions.value.filter((item) => item.type === 'expense'))
+const weeklyIncomeTransactions = computed(() => currentWeekTransactions.value.filter((item) => item.type === 'income'))
 const previousExpense = computed(() => previousMonthTransactions.value.filter((item) => item.type === 'expense').reduce((sum, item) => sum + item.amount, 0))
 const previousIncome = computed(() => previousMonthTransactions.value.filter((item) => item.type === 'income').reduce((sum, item) => sum + item.amount, 0))
 const totalIncome = computed(() => incomeTransactions.value.reduce((sum, item) => sum + item.amount, 0))
 const totalExpense = computed(() => expenseTransactions.value.reduce((sum, item) => sum + item.amount, 0))
+const weeklyIncome = computed(() => weeklyIncomeTransactions.value.reduce((sum, item) => sum + item.amount, 0))
+const weeklyExpense = computed(() => weeklyExpenseTransactions.value.reduce((sum, item) => sum + item.amount, 0))
+const weeklyBalance = computed(() => weeklyIncome.value - weeklyExpense.value)
 const totalBudget = computed(() => budgets.value.reduce((sum, item) => sum + item.budget, 0))
 const balance = computed(() => totalIncome.value - totalExpense.value)
 const budgetUsage = computed(() => Math.round((totalExpense.value / Math.max(totalBudget.value, 1)) * 100))
@@ -219,6 +235,12 @@ const lowestExpense = computed<Transaction>(() => [...expenseTransactions.value]
 const todayExpense = computed(() => expenseTransactions.value.filter((item) => normalizeJalaliDate(item.date) === todayKey).reduce((sum, item) => sum + item.amount, 0))
 const todayIncome = computed(() => incomeTransactions.value.filter((item) => normalizeJalaliDate(item.date) === todayKey).reduce((sum, item) => sum + item.amount, 0))
 const averageDailyExpense = computed(() => Math.round(totalExpense.value / Math.max(currentJalaliDate.day, 1)))
+const latestExpenses = computed(() =>
+  [...transactions.value]
+    .filter((item) => item.type === 'expense')
+    .sort((a, b) => normalizeJalaliDate(b.date).localeCompare(normalizeJalaliDate(a.date)) || b.id - a.id)
+    .slice(0, 3),
+)
 
 const filteredTransactions = computed(() => {
   const normalizedQuery = query.value.trim()
@@ -337,6 +359,22 @@ const dailyExpensePoints = computed(() => {
   })
 })
 
+const weeklyFlowPoints = computed(() =>
+  Array.from({ length: 7 }, (_, index) => {
+    const date = addJalaliDays(currentWeekRange.start, index)
+    const dateKey = formatJalaliInputDate(date)
+    const label = getWeekdayLabel(date)
+    const expense = weeklyExpenseTransactions.value
+      .filter((item) => normalizeJalaliDate(item.date) === dateKey)
+      .reduce((sum, item) => sum + item.amount, 0)
+    const income = weeklyIncomeTransactions.value
+      .filter((item) => normalizeJalaliDate(item.date) === dateKey)
+      .reduce((sum, item) => sum + item.amount, 0)
+
+    return { label, expense, income }
+  }),
+)
+
 const budgetAnalysisItems = computed(() =>
   [...categoryTotals.value]
     .sort((a, b) => progressPercent(b.spent, b.budget) - progressPercent(a.spent, a.budget))
@@ -416,6 +454,26 @@ const statsDailyExpenseChartData = computed<ChartData<'line'>>(() => ({
   ],
 }))
 
+const statsWeeklyFlowChartData = computed<ChartData<'bar'>>(() => ({
+  labels: weeklyFlowPoints.value.map((point) => point.label),
+  datasets: [
+    {
+      label: 'درآمد هفتگی',
+      data: weeklyFlowPoints.value.map((point) => point.income),
+      backgroundColor: '#34d399',
+      borderRadius: 8,
+      borderSkipped: false,
+    },
+    {
+      label: 'هزینه هفتگی',
+      data: weeklyFlowPoints.value.map((point) => point.expense),
+      backgroundColor: '#fb7185',
+      borderRadius: 8,
+      borderSkipped: false,
+    },
+  ],
+}))
+
 const statsCashFlowChartData = computed<ChartData<'bar'>>(() => ({
   labels: ['درآمد', 'هزینه', 'پس‌انداز'],
   datasets: [
@@ -451,7 +509,7 @@ const insights = computed(() => [
 ])
 
 const dashboardCards = computed(() => [
-  { label: 'درآمد ماه', value: totalIncome.value, icon: '💰', hint: formatPercentHint(incomeChangePercent.value, 'ماه قبل'), className: 'card-cyan' },
+  { label: 'خرج هفتگی', value: weeklyExpense.value, icon: '💸', hint: `${toPersianNumber(currentWeekTransactions.value.length)} تراکنش در هفته جاری`, className: 'card-cyan' },
   { label: 'هزینه ماه', value: totalExpense.value, icon: '💸', hint: formatPercentHint(expenseChangePercent.value, 'ماه قبل'), className: 'card-violet' },
   { label: 'باقی مانده', value: balance.value, icon: '💵', hint: balance.value >= 0 ? 'وضعیت مثبت برای پس‌انداز' : 'هزینه‌ها از درآمد جلو زده‌اند', className: 'card-blue' },
   { label: 'درصد مصرف بودجه', value: budgetUsage.value, suffix: '٪', icon: '📈', hint: budgetUsage.value <= 100 ? 'زیر سقف هدف ماهانه' : 'بالاتر از سقف بودجه ماهانه', className: 'card-pink' },
@@ -465,6 +523,10 @@ const widgets = computed(() => [
 ])
 
 const statsItems = computed(() => [
+  { label: 'درآمد هفته', value: formatMoney(weeklyIncome.value) },
+  { label: 'هزینه هفته', value: formatMoney(weeklyExpense.value) },
+  { label: 'مانده هفته', value: formatMoney(weeklyBalance.value) },
+  { label: 'تراکنش‌های هفته', value: toPersianNumber(currentWeekTransactions.value.length) },
   { label: 'بیشترین هزینه', value: `${highestExpense.value.title} · ${formatMoney(highestExpense.value.amount)}` },
   { label: 'کمترین هزینه', value: `${lowestExpense.value.title} · ${formatMoney(lowestExpense.value.amount)}` },
   { label: 'بیشترین دسته خرج', value: hasExpenseData.value ? `${safeMaxCategory.value.icon} ${safeMaxCategory.value.label}` : 'بدون داده' },
@@ -508,6 +570,25 @@ function getPreviousMonthPrefix(date: ReturnType<typeof toJalali>) {
   const year = date.month === 1 ? date.year - 1 : date.year
 
   return `${year}/${String(month).padStart(2, '0')}/`
+}
+
+function getCurrentWeekRange(date: ReturnType<typeof toJalali>) {
+  const gregorian = toGregorian(date.year, date.month, date.day)
+  const weekday = new Date(`${gregorian}T00:00:00`).getDay()
+  const daysFromSaturday = (weekday + 1) % 7
+  const start = addJalaliDays(date, -daysFromSaturday)
+
+  return {
+    start,
+    end: addJalaliDays(start, 6),
+  }
+}
+
+function getWeekdayLabel(date: ReturnType<typeof toJalali>) {
+  const labels = ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه']
+  const gregorian = toGregorian(date.year, date.month, date.day)
+
+  return labels[new Date(`${gregorian}T00:00:00`).getDay()]
 }
 
 function getJalaliMonthPrefix(date: ReturnType<typeof toJalali>) {
@@ -1193,6 +1274,14 @@ function createCharts() {
     })
   }
 
+  if (!statsWeeklyFlowChart.value && statsWeeklyFlowCanvas.value) {
+    statsWeeklyFlowChart.value = new Chart(statsWeeklyFlowCanvas.value, {
+      type: 'bar',
+      data: statsWeeklyFlowChartData.value,
+      options: cashFlowOptions(),
+    })
+  }
+
   if (!statsCashFlowChart.value && statsCashFlowCanvas.value) {
     statsCashFlowChart.value = new Chart(statsCashFlowCanvas.value, {
       type: 'bar',
@@ -1237,6 +1326,11 @@ function syncCharts() {
     statsDailyExpenseChart.value.update()
   }
 
+  if (statsWeeklyFlowChart.value) {
+    statsWeeklyFlowChart.value.data = statsWeeklyFlowChartData.value
+    statsWeeklyFlowChart.value.update()
+  }
+
   if (statsCashFlowChart.value) {
     statsCashFlowChart.value.data = statsCashFlowChartData.value
     statsCashFlowChart.value.update()
@@ -1250,6 +1344,7 @@ function destroyCharts() {
   statsExpenseMixChart.value?.destroy()
   statsBudgetUsageChart.value?.destroy()
   statsDailyExpenseChart.value?.destroy()
+  statsWeeklyFlowChart.value?.destroy()
   statsCashFlowChart.value?.destroy()
   expenseShareChart.value = null
   categoryBarChart.value = null
@@ -1257,6 +1352,7 @@ function destroyCharts() {
   statsExpenseMixChart.value = null
   statsBudgetUsageChart.value = null
   statsDailyExpenseChart.value = null
+  statsWeeklyFlowChart.value = null
   statsCashFlowChart.value = null
 }
 
@@ -1357,6 +1453,7 @@ watch(
     statsExpenseMixChartData,
     statsBudgetUsageChartData,
     statsDailyExpenseChartData,
+    statsWeeklyFlowChartData,
     statsCashFlowChartData,
   ],
   () => {
@@ -1448,7 +1545,6 @@ watch(activeSection, (section) => {
 
       <section v-if="activeSection === 'داشبورد'" class="widgets-grid">
         <article v-for="widget in widgets" :key="widget.label" class="mini-card glass-panel">
-          <span>{{ widget.icon }}</span>
           <small>{{ widget.label }}</small>
           <strong>{{ widget.value }}</strong>
         </article>
@@ -1457,14 +1553,30 @@ watch(activeSection, (section) => {
       <section v-if="activeSection === 'داشبورد'" class="cards-grid">
         <article v-for="card in dashboardCards" :key="card.label" class="metric-card glass-panel" :class="card.className">
           <div class="metric-top">
-            <span>{{ card.icon }}</span>
             <small>{{ card.label }}</small>
           </div>
           <strong>
             <span class="counter">{{ card.suffix ? toPersianNumber(card.value) : formatMoney(card.value) }}</span>{{ card.suffix ?? '' }}
           </strong>
-          <p>{{ card.hint }}</p>
         </article>
+      </section>
+
+      <section v-if="activeSection === 'داشبورد'" class="recent-expenses-card glass-panel">
+        <div class="section-title compact">
+          <div>
+            <h2>سه خرج آخر</h2>
+          </div>
+        </div>
+        <div v-if="latestExpenses.length" class="recent-expenses-list">
+          <div v-for="expense in latestExpenses" :key="expense.id" class="recent-expense-row">
+            <div>
+              <strong>{{ expense.title }}</strong>
+              <span>{{ getCategory(expense.category).label }} · {{ expense.date }}</span>
+            </div>
+            <b>{{ formatCompact(expense.amount) }}</b>
+          </div>
+        </div>
+        <p v-else class="empty-inline">هنوز خرجی ثبت نشده</p>
       </section>
 
       <section v-if="activeSection === 'داشبورد'" class="dashboard-grid">
@@ -1578,6 +1690,18 @@ watch(activeSection, (section) => {
               </div>
               <div class="chart-canvas stats-line-chart">
                 <canvas ref="statsDailyExpenseCanvas" aria-label="نمودار خرج روزانه" role="img" />
+              </div>
+            </section>
+
+            <section class="stats-chart-panel wide">
+              <div class="section-title compact">
+                <div>
+                  <h2>آمار هفتگی</h2>
+                  <p>درآمد و هزینه روزهای هفته جاری</p>
+                </div>
+              </div>
+              <div class="chart-canvas stats-weekly-chart">
+                <canvas ref="statsWeeklyFlowCanvas" aria-label="نمودار آمار هفتگی" role="img" />
               </div>
             </section>
 
@@ -1813,6 +1937,7 @@ watch(activeSection, (section) => {
 body {
   margin: 0;
   min-width: 320px;
+  font-size: .94rem;
   background:
     radial-gradient(circle at 18% 12%, rgba(34, 211, 238, .26), transparent 28%),
     radial-gradient(circle at 82% 8%, rgba(124, 58, 237, .32), transparent 26%),
@@ -2002,6 +2127,7 @@ h2 {
 
 .cards-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .mini-card,
@@ -2018,12 +2144,16 @@ h2 {
 }
 
 .mini-card {
-  min-height: 108px;
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
   transition: transform .25s ease;
 }
 
 .mini-card:hover,
-.metric-card:hover,
 .budget-item:hover {
   transform: translateY(-4px);
 }
@@ -2034,23 +2164,27 @@ h2 {
 
 .mini-card strong {
   display: block;
-  margin-top: 8px;
+  margin: 0;
+  font-size: .95rem;
+  line-height: 1.25;
+  text-align: left;
+  white-space: nowrap;
 }
 
 .metric-card {
   position: relative;
   overflow: hidden;
-  min-height: 174px;
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
   transition: .25s ease;
 }
 
 .metric-card::after {
-  position: absolute;
-  inset: auto -20% -45% -20%;
-  height: 90px;
-  content: '';
-  filter: blur(28px);
-  opacity: .5;
+  display: none;
 }
 
 .card-cyan::after { background: #22d3ee; }
@@ -2085,8 +2219,66 @@ h2 {
 }
 
 .metric-card strong {
-  margin: 18px 0 8px;
-  font-size: clamp(1.25rem, 2vw, 1.65rem);
+  margin: 0;
+  font-size: clamp(1rem, 1.45vw, 1.22rem);
+  line-height: 1.25;
+  text-align: left;
+  white-space: nowrap;
+  overflow-wrap: anywhere;
+}
+
+.recent-expenses-card {
+  border-radius: 18px;
+  padding: 10px 12px;
+}
+
+.recent-expenses-list {
+  display: grid;
+  gap: 8px;
+}
+
+.recent-expense-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid rgba(255, 255, 255, .08);
+  padding-top: 6px;
+}
+
+.recent-expense-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.recent-expense-row div {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+}
+
+.recent-expense-row strong,
+.recent-expense-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-expense-row strong {
+  font-size: .9rem;
+}
+
+.recent-expense-row span,
+.empty-inline {
+  color: #94a3b8;
+  font-size: .78rem;
+}
+
+.recent-expense-row b {
+  flex: 0 0 auto;
+  color: #fda4af;
+  font-size: .86rem;
 }
 
 .counter {
@@ -2247,7 +2439,8 @@ h2 {
 }
 
 .stats-budget-chart,
-.stats-line-chart {
+.stats-line-chart,
+.stats-weekly-chart {
   min-height: 310px;
   height: 310px;
 }
@@ -2804,16 +2997,16 @@ th {
   }
 
   .mini-card {
-    min-height: 96px;
+    min-height: 48px;
   }
 
   .metric-card {
-    min-height: 142px;
+    min-height: 48px;
   }
 
   .metric-card strong {
-    font-size: 1.25rem;
-    line-height: 1.7;
+    font-size: 1rem;
+    line-height: 1.25;
     overflow-wrap: anywhere;
   }
 
@@ -3076,7 +3269,7 @@ th {
   }
 
   .mini-card {
-    min-height: 76px;
+    min-height: 46px;
   }
 
   .mini-card span,
@@ -3085,18 +3278,19 @@ th {
   }
 
   .mini-card strong {
-    margin-top: 4px;
+    margin: 0;
     font-size: .82rem;
+    white-space: nowrap;
     overflow-wrap: anywhere;
   }
 
   .metric-card {
-    min-height: 112px;
+    min-height: 46px;
   }
 
   .metric-card strong {
-    margin: 10px 0 4px;
-    font-size: .98rem;
+    margin: 0;
+    font-size: .9rem;
     word-break: break-word;
   }
 
