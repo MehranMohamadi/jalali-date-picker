@@ -14,6 +14,8 @@ Chart.register(...registerables)
 const BankNotifications = registerPlugin<BankNotificationsPlugin>('BankNotifications')
 
 type TransactionType = 'income' | 'expense'
+type PaymentMethod = 'cash' | 'credit'
+type CashFlowMode = 'regular' | 'afterCredit'
 
 type CategoryKey = string
 type ExportFormat = 'PDF' | 'Excel' | 'CSV' | 'JSON'
@@ -33,6 +35,10 @@ interface Transaction {
   date: string
   category?: CategoryKey
   description?: string
+  paymentMethod?: PaymentMethod
+  isEssential?: boolean
+  isLoan?: boolean
+  loanPerson?: string
 }
 
 interface BudgetGoal {
@@ -138,6 +144,7 @@ const isMobileMenuOpen = ref(false)
 const STORAGE_KEY = 'budgetyar-transactions-v1'
 const CATEGORIES_STORAGE_KEY = 'budgetyar-categories-v1'
 const BUDGETS_STORAGE_KEY = 'budgetyar-budgets-v1'
+const CREDIT_STORAGE_KEY = 'budgetyar-credit-limit-v1'
 const navItems = ['داشبورد', 'درآمدها', 'هزینه‌ها', 'بودجه‌ها', 'گزارش‌ها', 'آمار', 'اعلان‌ها', 'تنظیمات']
 const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند']
 const currentJalaliDate = getCurrentJalaliDate()
@@ -193,6 +200,10 @@ const form = reactive({
   date: todayKey,
   category: 'food' as CategoryKey,
   description: '',
+  paymentMethod: 'cash' as PaymentMethod,
+  isEssential: true,
+  isLoan: false,
+  loanPerson: '',
 })
 const formAmountInWords = computed(() => formatMoneyWords(form.amount))
 const formDatePickerValue = computed({
@@ -214,6 +225,8 @@ const isNotificationsLoading = ref(false)
 const bankApps = ref<BankAppOption[]>([])
 const bankSuggestions = ref<BankNotificationSuggestion[]>([])
 const selectedBankPackage = ref('')
+const creditLimit = ref(0)
+const cashFlowMode = ref<CashFlowMode>('regular')
 const bankNotificationStatus = reactive<BankNotificationStatus>({
   isAndroid: false,
   isEnabled: false,
@@ -239,8 +252,17 @@ const previousExpense = computed(() => previousMonthTransactions.value.filter((i
 const previousIncome = computed(() => previousMonthTransactions.value.filter((item) => item.type === 'income').reduce((sum, item) => sum + item.amount, 0))
 const totalIncome = computed(() => incomeTransactions.value.reduce((sum, item) => sum + item.amount, 0))
 const totalExpense = computed(() => expenseTransactions.value.reduce((sum, item) => sum + item.amount, 0))
+const creditExpense = computed(() => expenseTransactions.value.filter((item) => item.paymentMethod === 'credit').reduce((sum, item) => sum + item.amount, 0))
+const creditRemaining = computed(() => Math.max(creditLimit.value - creditExpense.value, 0))
+const cashExpense = computed(() => expenseTransactions.value.filter((item) => item.paymentMethod !== 'credit').reduce((sum, item) => sum + item.amount, 0))
+const cashBeforeCreditPayment = computed(() => totalIncome.value - cashExpense.value)
+const balanceAfterCreditPayment = computed(() => cashBeforeCreditPayment.value - creditExpense.value)
+const loanedExpense = computed(() => expenseTransactions.value.filter((item) => item.isLoan).reduce((sum, item) => sum + item.amount, 0))
+const essentialExpense = computed(() => expenseTransactions.value.filter((item) => item.isEssential !== false).reduce((sum, item) => sum + item.amount, 0))
+const nonEssentialExpense = computed(() => expenseTransactions.value.filter((item) => item.isEssential === false).reduce((sum, item) => sum + item.amount, 0))
 const weeklyIncome = computed(() => weeklyIncomeTransactions.value.reduce((sum, item) => sum + item.amount, 0))
 const weeklyExpense = computed(() => weeklyExpenseTransactions.value.reduce((sum, item) => sum + item.amount, 0))
+const weeklyCreditExpense = computed(() => weeklyExpenseTransactions.value.filter((item) => item.paymentMethod === 'credit').reduce((sum, item) => sum + item.amount, 0))
 const weeklyBalance = computed(() => weeklyIncome.value - weeklyExpense.value)
 const totalBudget = computed(() => budgets.value.reduce((sum, item) => sum + item.budget, 0))
 const currentMonthWeekCount = computed(() => Math.ceil(currentMonthLength / 7))
@@ -317,13 +339,19 @@ const latestExpenses = computed(() =>
     .sort((a, b) => normalizeJalaliDate(b.date).localeCompare(normalizeJalaliDate(a.date)) || b.id - a.id)
     .slice(0, 3),
 )
+const latestLoans = computed(() =>
+  [...expenseTransactions.value]
+    .filter((item) => item.isLoan)
+    .sort((a, b) => normalizeJalaliDate(b.date).localeCompare(normalizeJalaliDate(a.date)) || b.id - a.id)
+    .slice(0, 3),
+)
 
 const filteredTransactions = computed(() => {
   const normalizedQuery = query.value.trim()
   return transactions.value.filter((item) => {
     const itemDate = normalizeJalaliDate(item.date)
     const category = item.category ? getCategory(item.category).label : 'درآمد'
-    const matchesQuery = !normalizedQuery || `${item.title} ${category} ${item.description ?? ''}`.includes(normalizedQuery)
+    const matchesQuery = !normalizedQuery || `${item.title} ${category} ${item.loanPerson ?? ''} ${item.description ?? ''}`.includes(normalizedQuery)
     const matchesCategory = selectedCategory.value === 'همه' || category === selectedCategory.value
     const matchesType =
       selectedType.value === 'همه' ||
@@ -550,18 +578,35 @@ const statsWeeklyFlowChartData = computed<ChartData<'bar'>>(() => ({
   ],
 }))
 
-const statsCashFlowChartData = computed<ChartData<'bar'>>(() => ({
-  labels: ['درآمد', 'هزینه', 'پس‌انداز'],
-  datasets: [
-    {
-      label: currentMonthYear,
-      data: [totalIncome.value, totalExpense.value, Math.max(balance.value, 0)],
-      backgroundColor: ['#34d399', '#fb7185', '#60a5fa'],
-      borderRadius: 12,
-      borderSkipped: false,
-    },
-  ],
-}))
+const statsCashFlowChartData = computed<ChartData<'bar'>>(() => {
+  if (cashFlowMode.value === 'afterCredit') {
+    return {
+      labels: ['پول کل', 'بدهی اعتبار', 'مانده واقعی'],
+      datasets: [
+        {
+          label: 'بعد از پرداخت اعتبار',
+          data: [cashBeforeCreditPayment.value, creditExpense.value, balanceAfterCreditPayment.value],
+          backgroundColor: ['#34d399', '#fb7185', '#60a5fa'],
+          borderRadius: 12,
+          borderSkipped: false,
+        },
+      ],
+    }
+  }
+
+  return {
+    labels: ['درآمد', 'هزینه', 'پس‌انداز'],
+    datasets: [
+      {
+        label: currentMonthYear,
+        data: [totalIncome.value, totalExpense.value, Math.max(balance.value, 0)],
+        backgroundColor: ['#34d399', '#fb7185', '#60a5fa'],
+        borderRadius: 12,
+        borderSkipped: false,
+      },
+    ],
+  }
+})
 
 const incomeChangePercent = computed(() => getChangePercent(totalIncome.value, previousIncome.value))
 const expenseChangePercent = computed(() => getChangePercent(totalExpense.value, previousExpense.value))
@@ -588,20 +633,28 @@ const dashboardCards = computed(() => [
   { label: 'خرج هفتگی', value: weeklyExpense.value, icon: '💸', hint: `${toPersianNumber(currentWeekTransactions.value.length)} تراکنش در هفته جاری`, className: 'card-cyan' },
   { label: 'هزینه ماه', value: totalExpense.value, icon: '💸', hint: formatPercentHint(expenseChangePercent.value, 'ماه قبل'), className: 'card-violet' },
   { label: 'باقی مانده', value: balance.value, icon: '💵', hint: balance.value >= 0 ? 'وضعیت مثبت برای پس‌انداز' : 'هزینه‌ها از درآمد جلو زده‌اند', className: 'card-blue' },
-  { label: 'درصد مصرف بودجه', value: budgetUsage.value, suffix: '٪', icon: '📈', hint: budgetUsage.value <= 100 ? 'زیر سقف هدف ماهانه' : 'بالاتر از سقف بودجه ماهانه', className: 'card-pink' },
+  { label: 'پرداخت اعتبار', value: creditExpense.value, icon: '💳', hint: 'جمع خرج‌های اعتباری این ماه', className: 'card-pink' },
 ])
 
 const widgets = computed(() => [
   { label: 'امروز', value: today, icon: '📅' },
   { label: 'خرج امروز', value: formatMoney(todayExpense.value), icon: '💸' },
   { label: 'درآمد امروز', value: formatMoney(todayIncome.value), icon: '💰' },
-  { label: 'پس انداز', value: `${toPersianNumber(savingsPercent.value)}٪`, icon: '📈' },
+  { label: 'اعتبار مانده', value: formatMoney(creditRemaining.value), icon: '💳' },
 ])
 
 const statsItems = computed(() => [
   { label: 'درآمد هفته', value: formatMoney(weeklyIncome.value) },
   { label: 'هزینه هفته', value: formatMoney(weeklyExpense.value) },
   { label: 'مانده هفته', value: formatMoney(weeklyBalance.value) },
+  { label: 'خرج اعتباری هفته', value: formatMoney(weeklyCreditExpense.value) },
+  { label: 'پرداخت آخر ماه', value: formatMoney(creditExpense.value) },
+  { label: 'اعتبار باقی‌مانده', value: formatMoney(creditRemaining.value) },
+  { label: 'پول کل قبل اعتبار', value: formatMoney(cashBeforeCreditPayment.value) },
+  { label: 'مانده بعد اعتبار', value: formatMoney(balanceAfterCreditPayment.value) },
+  { label: 'خرج ضروری', value: formatMoney(essentialExpense.value) },
+  { label: 'خرج غیرضروری', value: formatMoney(nonEssentialExpense.value) },
+  { label: 'پول قرض‌داده‌شده', value: formatMoney(loanedExpense.value) },
   { label: 'تراکنش‌های هفته', value: toPersianNumber(currentWeekTransactions.value.length) },
   { label: 'بیشترین هزینه', value: `${highestExpense.value.title} · ${formatMoney(highestExpense.value.amount)}` },
   { label: 'کمترین هزینه', value: `${lowestExpense.value.title} · ${formatMoney(lowestExpense.value.amount)}` },
@@ -764,6 +817,13 @@ function updateMoneyInput(target: { amount?: number; budget?: number }, key: 'am
   input.value = formatMoneyInput(amount)
 }
 
+function updateCreditLimit(event: Event) {
+  const input = event.target as HTMLInputElement
+  const amount = Math.max(0, parseMoneyInput(input.value))
+  creditLimit.value = amount
+  input.value = formatMoneyInput(amount)
+}
+
 function formatMoney(value: number) {
   return `${new Intl.NumberFormat('fa-IR').format(value)} تومان`
 }
@@ -814,7 +874,17 @@ function selectSection(item: string) {
 function openModal(type: TransactionType) {
   formType.value = type
   editingId.value = null
-  Object.assign(form, { amount: 0, title: '', date: todayKey, category: categories.value[0]?.key ?? 'other', description: '' })
+  Object.assign(form, {
+    amount: 0,
+    title: '',
+    date: todayKey,
+    category: categories.value[0]?.key ?? 'other',
+    description: '',
+    paymentMethod: 'cash',
+    isEssential: true,
+    isLoan: false,
+    loanPerson: '',
+  })
   isModalOpen.value = true
 }
 
@@ -827,12 +897,21 @@ function editTransaction(item: Transaction) {
     date: item.date,
     category: item.category ?? 'food',
     description: item.description ?? '',
+    paymentMethod: item.paymentMethod ?? 'cash',
+    isEssential: item.isEssential ?? true,
+    isLoan: item.isLoan ?? false,
+    loanPerson: item.loanPerson ?? '',
   })
   isModalOpen.value = true
 }
 
 function saveTransaction() {
   if (!form.title || !form.amount || !form.date) return
+  if (formType.value === 'expense' && form.isLoan && !form.loanPerson.trim()) {
+    pushToast('نام شخص را وارد کنید')
+    return
+  }
+
   const payload: Transaction = {
     id: editingId.value ?? Date.now(),
     type: formType.value,
@@ -841,6 +920,10 @@ function saveTransaction() {
     date: normalizeJalaliDate(form.date),
     category: formType.value === 'expense' ? form.category : undefined,
     description: form.description,
+    paymentMethod: formType.value === 'expense' ? form.paymentMethod : undefined,
+    isEssential: formType.value === 'expense' ? form.isEssential : undefined,
+    isLoan: formType.value === 'expense' ? form.isLoan : undefined,
+    loanPerson: formType.value === 'expense' && form.isLoan ? form.loanPerson.trim() : undefined,
   }
 
   if (editingId.value) {
@@ -920,6 +1003,9 @@ async function acceptBankSuggestion(suggestion: BankNotificationSuggestion) {
     date,
     category,
     description: `ثبت‌شده از اعلان ${suggestion.sourceApp}\n${suggestion.rawText}`,
+    paymentMethod: 'cash',
+    isEssential: true,
+    isLoan: false,
   }
 
   transactions.value = [payload, ...transactions.value]
@@ -1008,14 +1094,29 @@ function getTransactionCategoryLabel(item: Transaction) {
   return item.type === 'income' ? 'درآمد' : getCategory(item.category ?? 'other').label
 }
 
+function getPaymentMethodLabel(item: Transaction) {
+  if (item.type === 'income') return '-'
+
+  return item.paymentMethod === 'credit' ? 'اعتباری' : 'نقدی'
+}
+
+function getNecessityLabel(item: Transaction) {
+  if (item.type === 'income') return '-'
+
+  return item.isEssential === false ? 'غیرضروری' : 'ضروری'
+}
+
 function buildCsvReport() {
-  const headers = ['نوع', 'عنوان', 'دسته', 'تاریخ', 'مبلغ', 'توضیحات']
+  const headers = ['نوع', 'عنوان', 'دسته', 'تاریخ', 'مبلغ', 'روش پرداخت', 'ضرورت', 'قرض به', 'توضیحات']
   const rows = getSortedTransactions().map((item) => [
     item.type === 'income' ? 'درآمد' : 'هزینه',
     item.title,
     getTransactionCategoryLabel(item),
     item.date,
     item.amount,
+    getPaymentMethodLabel(item),
+    getNecessityLabel(item),
+    item.loanPerson ?? '',
     item.description ?? '',
   ])
 
@@ -1030,6 +1131,9 @@ function buildExcelReport() {
       <td>${getTransactionCategoryLabel(item)}</td>
       <td>${item.date}</td>
       <td>${item.amount}</td>
+      <td>${getPaymentMethodLabel(item)}</td>
+      <td>${getNecessityLabel(item)}</td>
+      <td>${item.loanPerson ?? ''}</td>
       <td>${item.description ?? ''}</td>
     </tr>
   `).join('')
@@ -1049,10 +1153,13 @@ function buildExcelReport() {
   <h1>گزارش بودجه‌یار</h1>
   <p>درآمد ماه: ${formatMoney(totalIncome.value)}</p>
   <p>هزینه ماه: ${formatMoney(totalExpense.value)}</p>
+  <p>پرداخت اعتبار آخر ماه: ${formatMoney(creditExpense.value)}</p>
+  <p>خرج ضروری: ${formatMoney(essentialExpense.value)}</p>
+  <p>خرج غیرضروری: ${formatMoney(nonEssentialExpense.value)}</p>
   <p>مانده: ${formatMoney(balance.value)}</p>
   <table>
     <thead>
-      <tr><th>نوع</th><th>عنوان</th><th>دسته</th><th>تاریخ</th><th>مبلغ</th><th>توضیحات</th></tr>
+      <tr><th>نوع</th><th>عنوان</th><th>دسته</th><th>تاریخ</th><th>مبلغ</th><th>روش پرداخت</th><th>ضرورت</th><th>قرض به</th><th>توضیحات</th></tr>
     </thead>
     <tbody>${rows}</tbody>
   </table>
@@ -1071,6 +1178,12 @@ function buildBackupJson() {
     summary: {
       totalIncome: totalIncome.value,
       totalExpense: totalExpense.value,
+      creditLimit: creditLimit.value,
+      creditExpense: creditExpense.value,
+      creditRemaining: creditRemaining.value,
+      essentialExpense: essentialExpense.value,
+      nonEssentialExpense: nonEssentialExpense.value,
+      loanedExpense: loanedExpense.value,
       balance: balance.value,
       totalBudget: totalBudget.value,
     },
@@ -1541,6 +1654,7 @@ onMounted(() => {
   const savedTransactions = localStorage.getItem(STORAGE_KEY)
   const savedCategories = localStorage.getItem(CATEGORIES_STORAGE_KEY)
   const savedBudgets = localStorage.getItem(BUDGETS_STORAGE_KEY)
+  const savedCreditLimit = localStorage.getItem(CREDIT_STORAGE_KEY)
 
   if (savedTransactions) {
     try {
@@ -1567,6 +1681,10 @@ onMounted(() => {
     } catch {
       localStorage.removeItem(BUDGETS_STORAGE_KEY)
     }
+  }
+
+  if (savedCreditLimit) {
+    creditLimit.value = Math.max(0, parseMoneyInput(savedCreditLimit))
   }
 
   if ('serviceWorker' in navigator) {
@@ -1616,6 +1734,10 @@ watch(
   },
   { deep: true },
 )
+
+watch(creditLimit, (value) => {
+  localStorage.setItem(CREDIT_STORAGE_KEY, String(value))
+})
 
 watch(
   [
@@ -1852,6 +1974,13 @@ watch(activeSection, (section) => {
               <strong>{{ item.value }}</strong>
             </div>
           </div>
+          <div v-if="latestLoans.length" class="loan-summary-list">
+            <strong>قرض‌های این ماه</strong>
+            <span v-for="item in latestLoans" :key="item.id">
+              <b>{{ item.loanPerson }}</b>
+              <em>{{ item.title }} · {{ formatMoney(item.amount) }}</em>
+            </span>
+          </div>
           <div class="stats-analysis-grid">
             <section class="stats-chart-panel">
               <div class="section-title compact">
@@ -1906,8 +2035,12 @@ watch(activeSection, (section) => {
               <div class="section-title compact">
                 <div>
                   <h2>جریان پول</h2>
-                  <p>درآمد، هزینه و پس‌انداز</p>
+                  <p>{{ cashFlowMode === 'afterCredit' ? 'پول کل منهای بدهی اعتبار' : 'درآمد، هزینه و پس‌انداز' }}</p>
                 </div>
+              </div>
+              <div class="chart-toggle segmented compact-toggle">
+                <button type="button" :class="{ active: cashFlowMode === 'regular' }" @click="cashFlowMode = 'regular'">معمولی</button>
+                <button type="button" :class="{ active: cashFlowMode === 'afterCredit' }" @click="cashFlowMode = 'afterCredit'">بعد از اعتبار</button>
               </div>
               <div class="chart-canvas stats-cash-chart">
                 <canvas ref="statsCashFlowCanvas" aria-label="نمودار جریان پول" role="img" />
@@ -2008,6 +2141,7 @@ watch(activeSection, (section) => {
                 <th>دسته</th>
                 <th>تاریخ</th>
                 <th>مبلغ</th>
+                <th>جزئیات</th>
                 <th>عملیات</th>
               </tr>
             </thead>
@@ -2018,6 +2152,14 @@ watch(activeSection, (section) => {
                 <td>{{ item.type === 'income' ? 'درآمد' : `${getCategory(item.category).icon} ${getCategory(item.category).label}` }}</td>
                 <td>{{ item.date }}</td>
                 <td>{{ formatMoney(item.amount) }}</td>
+                <td>
+                  <div v-if="item.type === 'expense'" class="transaction-meta">
+                    <span>{{ getPaymentMethodLabel(item) }}</span>
+                    <span>{{ getNecessityLabel(item) }}</span>
+                    <span v-if="item.isLoan">قرض: {{ item.loanPerson }}</span>
+                  </div>
+                  <span v-else>-</span>
+                </td>
                 <td class="actions">
                   <button type="button" @click="editTransaction(item)">ویرایش</button>
                   <button type="button" @click="removeTransaction(item.id)">حذف</button>
@@ -2048,6 +2190,9 @@ watch(activeSection, (section) => {
         </div>
         <div class="report-grid">
           <span>گزارش ماهانه · {{ formatMoney(totalExpense) }}</span>
+          <span>پرداخت اعتبار · {{ formatMoney(creditExpense) }}</span>
+          <span>خرج ضروری · {{ formatMoney(essentialExpense) }}</span>
+          <span>خرج غیرضروری · {{ formatMoney(nonEssentialExpense) }}</span>
           <span>گزارش سالانه · روند هزینه کنترل‌شده</span>
           <span>گزارش دسته‌بندی · {{ safeMaxCategory.label }} در صدر</span>
           <span>گزارش پس‌انداز · {{ formatMoney(balance) }}</span>
@@ -2121,6 +2266,15 @@ watch(activeSection, (section) => {
           </div>
         </div>
         <div class="settings-grid">
+          <label>سقف اعتبار
+            <input :value="formatMoneyInput(creditLimit)" type="text" inputmode="numeric" @input="updateCreditLimit" />
+          </label>
+          <label>پرداخت آخر ماه
+            <input :value="formatMoneyInput(creditExpense)" type="text" readonly />
+          </label>
+          <label>اعتبار باقی‌مانده
+            <input :value="formatMoneyInput(creditRemaining)" type="text" readonly />
+          </label>
           <label>ارز <select><option>تومان</option><option>ریال</option></select></label>
           <label>پوسته <select><option>فقط تاریک</option></select></label>
           <label>زبان <select><option>فارسی</option></select></label>
@@ -2155,6 +2309,27 @@ watch(activeSection, (section) => {
             <select v-model="form.category">
               <option v-for="category in categories" :key="category.key" :value="category.key">{{ category.icon }} {{ category.label }}</option>
             </select>
+          </label>
+          <div v-if="formType === 'expense'" class="form-inline-grid">
+            <label>روش پرداخت
+              <select v-model="form.paymentMethod">
+                <option value="cash">نقدی</option>
+                <option value="credit">اعتباری</option>
+              </select>
+            </label>
+            <label>نوع خرید
+              <select v-model="form.isEssential">
+                <option :value="true">ضروری</option>
+                <option :value="false">غیرضروری</option>
+              </select>
+            </label>
+          </div>
+          <label v-if="formType === 'expense'" class="check-row">
+            <input v-model="form.isLoan" type="checkbox" />
+            پولی که قرض دادم
+          </label>
+          <label v-if="formType === 'expense' && form.isLoan">نام شخص
+            <input v-model="form.loanPerson" type="text" placeholder="مثلا علی" />
           </label>
           <label>تاریخ
             <JalaliDatePicker
@@ -2907,6 +3082,17 @@ h2 {
   font-weight: 800;
 }
 
+.chart-toggle {
+  margin: 10px 0 12px;
+}
+
+.compact-toggle button {
+  flex: 1;
+  min-height: 38px;
+  padding: 8px 10px;
+  font-size: .86rem;
+}
+
 .stats-grid div,
 .budget-item,
 .report-grid span,
@@ -3030,7 +3216,7 @@ textarea {
 
 table {
   width: 100%;
-  min-width: 760px;
+  min-width: 920px;
   border-collapse: collapse;
 }
 
@@ -3064,6 +3250,49 @@ th {
 
 .actions button {
   padding: 8px 11px;
+}
+
+.transaction-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.transaction-meta span {
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, .045);
+  color: #cbd5e1;
+  font-size: .78rem;
+  white-space: nowrap;
+}
+
+.loan-summary-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.loan-summary-list > strong {
+  grid-column: 1 / -1;
+  color: #e2e8f0;
+}
+
+.loan-summary-list span {
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 14px;
+  padding: 10px;
+  background: rgba(255, 255, 255, .045);
+}
+
+.loan-summary-list em {
+  color: #94a3b8;
+  font-style: normal;
+  font-size: .84rem;
 }
 
 .empty-state {
@@ -3202,6 +3431,25 @@ th {
   gap: 8px;
   margin-top: 14px;
   color: #cbd5e1;
+}
+
+.form-inline-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.check-row {
+  display: flex !important;
+  grid-template-columns: none !important;
+  align-items: center;
+  gap: 10px !important;
+}
+
+.check-row input {
+  width: 18px;
+  height: 18px;
+  accent-color: #22d3ee;
 }
 
 .amount-in-words {
