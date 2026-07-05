@@ -17,7 +17,7 @@ const {
 <template>
   <Transition name="modal">
     <div v-if="isModalOpen" class="modal-backdrop" @click.self="isModalOpen = false">
-      <form class="modal glass-panel" @submit.prevent="saveTransaction">
+      <form class="modal transaction-modal glass-panel" @submit.prevent="saveTransaction">
         <div class="section-title">
           <div>
             <h2>{{ editingId ? 'ویرایش تراکنش' : 'ثبت تراکنش' }}</h2>
@@ -69,7 +69,7 @@ const {
             popover-class="date-picker-popover"
           />
         </label>
-        <label>توضیحات <textarea v-model="form.description" rows="3" placeholder="اختیاری" /></label>
+        <label>توضیحات <textarea v-model="form.description" rows="2" placeholder="اختیاری" /></label>
         <button class="primary-button full" type="submit">{{ formType === 'expense' ? 'ثبت هزینه' : 'ثبت درآمد' }}</button>
       </form>
     </div>

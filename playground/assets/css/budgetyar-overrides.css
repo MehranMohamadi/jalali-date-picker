@@ -2,9 +2,192 @@
   text-decoration: none;
 }
 
+.transaction-modal {
+  border-radius: 18px;
+  column-gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 14px;
+  row-gap: 0;
+  width: min(440px, 100%);
+}
+
+.transaction-modal > .section-title,
+.transaction-modal > .segmented,
+.transaction-modal > .form-inline-grid,
+.transaction-modal > .check-row,
+.transaction-modal > .primary-button {
+  grid-column: 1 / -1;
+}
+
+.transaction-modal > label:has(textarea),
+.transaction-modal > label:has(.date-picker-field),
+.transaction-modal > label:has(input[placeholder]) {
+  grid-column: 1 / -1;
+}
+
+.transaction-modal .section-title {
+  align-items: center;
+  flex-direction: row;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.transaction-modal .section-title h2 {
+  font-size: 0.98rem;
+}
+
+.transaction-modal .close {
+  border-radius: 10px;
+  font-size: 1.05rem;
+  height: 30px;
+  width: 30px;
+}
+
+.transaction-modal .segmented {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 8px;
+}
+
+.transaction-modal .segmented button,
+.transaction-modal .primary-button {
+  border-radius: 11px;
+  min-height: 36px;
+  padding: 7px 10px;
+}
+
+.transaction-modal label {
+  font-size: 0.8rem;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.transaction-modal input,
+.transaction-modal select,
+.transaction-modal textarea,
+.transaction-modal .jalali-date-picker__input {
+  border-radius: 10px;
+  font-size: 0.82rem;
+  min-height: 34px;
+  padding: 7px 10px;
+}
+
+.transaction-modal textarea {
+  max-height: 54px;
+  min-height: 42px;
+}
+
+.transaction-modal .form-inline-grid {
+  gap: 7px;
+}
+
+.transaction-modal .check-row {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  margin-top: 8px;
+  min-height: 34px;
+  padding: 6px 9px;
+}
+
+.transaction-modal .check-row input {
+  height: 16px;
+  width: 16px;
+}
+
+.transaction-modal .amount-in-words {
+  display: block;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  max-height: 1.4em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.transaction-modal .date-picker-popover,
+.transaction-modal .jalali-date-picker__popover {
+  bottom: calc(100% + 6px);
+  margin-top: 0;
+  top: auto;
+}
+
 @media (max-width: 760px) {
   td:nth-child(6)::before { content: 'جزئیات'; }
   td:nth-child(7)::before { content: 'عملیات'; }
+
+  .modal-backdrop {
+    padding: 6px;
+  }
+
+  .transaction-modal {
+    border-radius: 16px;
+    column-gap: 6px;
+    max-height: min(82svh, 560px);
+    padding: 10px;
+    width: min(390px, 100%);
+  }
+
+  .transaction-modal > label:has(.date-picker-field) {
+    grid-column: auto;
+  }
+
+  .transaction-modal .section-title {
+    flex-direction: row !important;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .transaction-modal .section-title h2 {
+    font-size: 0.9rem;
+  }
+
+  .transaction-modal .segmented {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    margin-bottom: 6px;
+  }
+
+  .transaction-modal .segmented button,
+  .transaction-modal .primary-button {
+    font-size: 0.75rem;
+    min-height: 32px;
+    padding: 6px 8px;
+  }
+
+  .transaction-modal label {
+    font-size: 0.74rem;
+    gap: 4px;
+    margin-top: 6px;
+  }
+
+  .transaction-modal input,
+  .transaction-modal select,
+  .transaction-modal textarea,
+  .transaction-modal .jalali-date-picker__input {
+    border-radius: 9px;
+    font-size: 0.76rem;
+    min-height: 31px;
+    padding: 6px 8px;
+  }
+
+  .transaction-modal textarea {
+    max-height: 42px;
+    min-height: 34px;
+  }
+
+  .transaction-modal .amount-in-words {
+    display: none;
+  }
+
+  .transaction-modal .form-inline-grid {
+    gap: 6px;
+  }
+
+  .transaction-modal .check-row {
+    min-height: 31px;
+    padding: 5px 8px;
+  }
 }
 
 @media (min-width: 1181px) {
