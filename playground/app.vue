@@ -15,7 +15,7 @@ const BankNotifications = registerPlugin<BankNotificationsPlugin>('BankNotificat
 
 type TransactionType = 'income' | 'expense'
 type PaymentMethod = 'cash' | 'credit'
-type CashFlowMode = 'regular' | 'afterCredit'
+type CashFlowMode = 'regular' | 'afterCredit' | 'afterCommitments'
 
 type CategoryKey = string
 type ExportFormat = 'PDF' | 'Excel' | 'CSV' | 'JSON'
@@ -44,6 +44,19 @@ interface Transaction {
 interface BudgetGoal {
   category: CategoryKey
   budget: number
+}
+
+interface InstallmentPlan {
+  id: number
+  title: string
+  amount: number
+  category: CategoryKey
+  startDate: string
+  dueDay: number
+  totalCount: number
+  paidCount: number
+  description?: string
+  paymentMethod: PaymentMethod
 }
 
 interface BankAppOption {
@@ -145,13 +158,15 @@ const STORAGE_KEY = 'budgetyar-transactions-v1'
 const CATEGORIES_STORAGE_KEY = 'budgetyar-categories-v1'
 const BUDGETS_STORAGE_KEY = 'budgetyar-budgets-v1'
 const CREDIT_STORAGE_KEY = 'budgetyar-credit-limit-v1'
-const navItems = ['داشبورد', 'درآمدها', 'هزینه‌ها', 'بودجه‌ها', 'گزارش‌ها', 'آمار', 'اعلان‌ها', 'تنظیمات']
+const INSTALLMENTS_STORAGE_KEY = 'budgetyar-installments-v1'
+const navItems = ['داشبورد', 'درآمدها', 'هزینه‌ها', 'بودجه‌ها', 'قسط‌ها', 'گزارش‌ها', 'آمار', 'اعلان‌ها', 'تنظیمات']
 const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند']
 const currentJalaliDate = getCurrentJalaliDate()
 const todayKey = formatJalaliInputDate(currentJalaliDate)
 const currentMonthPrefix = getJalaliMonthPrefix(currentJalaliDate)
 const currentMonthLength = getJalaliMonthLength(currentJalaliDate.year, currentJalaliDate.month)
 const currentMonthStartKey = formatJalaliInputDate({ ...currentJalaliDate, day: 1 })
+const currentMonthEndKey = formatJalaliInputDate({ ...currentJalaliDate, day: currentMonthLength })
 const currentWeekRange = getCurrentWeekRange(currentJalaliDate)
 const currentWeekStartKey = formatJalaliInputDate(currentWeekRange.start)
 const currentWeekEndKey = formatJalaliInputDate(currentWeekRange.end)
@@ -217,6 +232,24 @@ const categoryForm = reactive({
   label: '',
   icon: '✨',
   budget: 1000000,
+})
+const installments = ref<InstallmentPlan[]>([])
+const installmentForm = reactive({
+  title: '',
+  amount: 0,
+  category: 'other' as CategoryKey,
+  startDate: todayKey,
+  dueDay: currentJalaliDate.day,
+  totalCount: 12,
+  description: '',
+  paymentMethod: 'cash' as PaymentMethod,
+})
+const installmentAmountInWords = computed(() => formatMoneyWords(installmentForm.amount))
+const installmentStartDatePickerValue = computed({
+  get: () => jalaliInputToIso(installmentForm.startDate),
+  set: (value: string | null) => {
+    installmentForm.startDate = value ? isoToJalaliInput(value) : ''
+  },
 })
 const installPrompt = ref<InstallPromptEvent | null>(null)
 const isStandalone = ref(false)
@@ -345,6 +378,40 @@ const latestLoans = computed(() =>
     .sort((a, b) => normalizeJalaliDate(b.date).localeCompare(normalizeJalaliDate(a.date)) || b.id - a.id)
     .slice(0, 3),
 )
+const installmentSummaries = computed(() =>
+  installments.value
+    .map((plan) => {
+      const remainingCount = Math.max(plan.totalCount - plan.paidCount, 0)
+      const nextDueDate = remainingCount ? getInstallmentDueDate(plan, plan.paidCount) : ''
+      const status = getInstallmentStatus(plan)
+
+      return {
+        ...plan,
+        remainingCount,
+        nextDueDate,
+        status,
+        statusLabel: getInstallmentStatusLabel(status),
+      }
+    })
+    .sort((a, b) => {
+      if (!a.nextDueDate) return 1
+      if (!b.nextDueDate) return -1
+      return a.nextDueDate.localeCompare(b.nextDueDate)
+    }),
+)
+const activeInstallmentSummaries = computed(() => installmentSummaries.value.filter((item) => item.status !== 'completed'))
+const overdueInstallments = computed(() => activeInstallmentSummaries.value.filter((item) => item.status === 'overdue'))
+const upcomingInstallments = computed(() => activeInstallmentSummaries.value.filter((item) => item.status === 'upcoming').slice(0, 3))
+const dueInstallmentsThisMonth = computed(() =>
+  activeInstallmentSummaries.value.filter((item) => item.nextDueDate >= currentMonthStartKey && item.nextDueDate <= currentMonthEndKey),
+)
+const monthlyInstallmentDue = computed(() => dueInstallmentsThisMonth.value.reduce((sum, item) => sum + item.amount, 0))
+const commitmentInstallmentDue = computed(() =>
+  activeInstallmentSummaries.value
+    .filter((item) => item.nextDueDate <= currentMonthEndKey)
+    .reduce((sum, item) => sum + item.amount, 0),
+)
+const balanceAfterCommitments = computed(() => cashBeforeCreditPayment.value - creditExpense.value - commitmentInstallmentDue.value)
 
 const filteredTransactions = computed(() => {
   const normalizedQuery = query.value.trim()
@@ -594,6 +661,21 @@ const statsCashFlowChartData = computed<ChartData<'bar'>>(() => {
     }
   }
 
+  if (cashFlowMode.value === 'afterCommitments') {
+    return {
+      labels: ['پول کل', 'بدهی اعتبار', 'قسط‌ها', 'مانده واقعی'],
+      datasets: [
+        {
+          label: 'بعد از تعهدات',
+          data: [cashBeforeCreditPayment.value, creditExpense.value, commitmentInstallmentDue.value, balanceAfterCommitments.value],
+          backgroundColor: ['#34d399', '#fb7185', '#facc15', '#60a5fa'],
+          borderRadius: 12,
+          borderSkipped: false,
+        },
+      ],
+    }
+  }
+
   return {
     labels: ['درآمد', 'هزینه', 'پس‌انداز'],
     datasets: [
@@ -632,7 +714,7 @@ const insights = computed(() => [
 const dashboardCards = computed(() => [
   { label: 'خرج هفتگی', value: weeklyExpense.value, icon: '💸', hint: `${toPersianNumber(currentWeekTransactions.value.length)} تراکنش در هفته جاری`, className: 'card-cyan' },
   { label: 'هزینه ماه', value: totalExpense.value, icon: '💸', hint: formatPercentHint(expenseChangePercent.value, 'ماه قبل'), className: 'card-violet' },
-  { label: 'باقی مانده', value: balance.value, icon: '💵', hint: balance.value >= 0 ? 'وضعیت مثبت برای پس‌انداز' : 'هزینه‌ها از درآمد جلو زده‌اند', className: 'card-blue' },
+  { label: 'مانده واقعی', value: balanceAfterCommitments.value, icon: '💵', hint: 'بعد از اعتبار و قسط‌های سررسید', className: 'card-blue' },
   { label: 'پرداخت اعتبار', value: creditExpense.value, icon: '💳', hint: 'جمع خرج‌های اعتباری این ماه', className: 'card-pink' },
 ])
 
@@ -641,6 +723,7 @@ const widgets = computed(() => [
   { label: 'خرج امروز', value: formatMoney(todayExpense.value), icon: '💸' },
   { label: 'درآمد امروز', value: formatMoney(todayIncome.value), icon: '💰' },
   { label: 'اعتبار مانده', value: formatMoney(creditRemaining.value), icon: '💳' },
+  { label: 'قسط ماه', value: formatMoney(monthlyInstallmentDue.value), icon: '🧾' },
 ])
 
 const statsItems = computed(() => [
@@ -652,6 +735,9 @@ const statsItems = computed(() => [
   { label: 'اعتبار باقی‌مانده', value: formatMoney(creditRemaining.value) },
   { label: 'پول کل قبل اعتبار', value: formatMoney(cashBeforeCreditPayment.value) },
   { label: 'مانده بعد اعتبار', value: formatMoney(balanceAfterCreditPayment.value) },
+  { label: 'قسط‌های این ماه', value: formatMoney(monthlyInstallmentDue.value) },
+  { label: 'قسط عقب‌افتاده', value: toPersianNumber(overdueInstallments.value.length) },
+  { label: 'مانده بعد تعهدات', value: formatMoney(balanceAfterCommitments.value) },
   { label: 'خرج ضروری', value: formatMoney(essentialExpense.value) },
   { label: 'خرج غیرضروری', value: formatMoney(nonEssentialExpense.value) },
   { label: 'پول قرض‌داده‌شده', value: formatMoney(loanedExpense.value) },
@@ -699,6 +785,43 @@ function getPreviousMonthPrefix(date: ReturnType<typeof toJalali>) {
   const year = date.month === 1 ? date.year - 1 : date.year
 
   return `${year}/${String(month).padStart(2, '0')}/`
+}
+
+function addJalaliMonths(date: ReturnType<typeof toJalali>, count: number) {
+  const monthIndex = date.month - 1 + count
+  const year = date.year + Math.floor(monthIndex / 12)
+  const month = ((monthIndex % 12) + 12) % 12 + 1
+  const day = Math.min(date.day, getJalaliMonthLength(year, month))
+
+  return { year, month, day }
+}
+
+function getInstallmentDueDate(plan: InstallmentPlan, index: number) {
+  const start = parseJalaliInput(plan.startDate) ?? currentJalaliDate
+  const dueMonth = addJalaliMonths(start, index)
+  const day = Math.min(Math.max(1, plan.dueDay), getJalaliMonthLength(dueMonth.year, dueMonth.month))
+
+  return formatJalaliInputDate({ ...dueMonth, day })
+}
+
+function getInstallmentStatus(plan: InstallmentPlan) {
+  if (plan.paidCount >= plan.totalCount) return 'completed'
+
+  const dueDate = getInstallmentDueDate(plan, plan.paidCount)
+  const upcomingLimit = formatJalaliInputDate(addJalaliDays(currentJalaliDate, 7))
+
+  if (dueDate < todayKey) return 'overdue'
+  if (dueDate <= upcomingLimit) return 'upcoming'
+
+  return 'active'
+}
+
+function getInstallmentStatusLabel(status: string) {
+  if (status === 'completed') return 'تکمیل‌شده'
+  if (status === 'overdue') return 'عقب‌افتاده'
+  if (status === 'upcoming') return 'سررسید نزدیک'
+
+  return 'فعال'
 }
 
 function getCurrentWeekRange(date: ReturnType<typeof toJalali>) {
@@ -1077,6 +1200,70 @@ function deleteCategory(key: CategoryKey) {
   pushToast('دسته‌بندی حذف شد 🗑️')
 }
 
+function addInstallmentPlan() {
+  const title = installmentForm.title.trim()
+  const amount = Math.max(0, Number(installmentForm.amount) || 0)
+  const totalCount = Math.max(1, Math.trunc(Number(installmentForm.totalCount) || 0))
+  const dueDay = Math.min(31, Math.max(1, Math.trunc(Number(installmentForm.dueDay) || 1)))
+
+  if (!title || !amount || !installmentForm.startDate) return
+
+  const plan: InstallmentPlan = {
+    id: Date.now(),
+    title,
+    amount,
+    category: installmentForm.category,
+    startDate: normalizeJalaliDate(installmentForm.startDate),
+    dueDay,
+    totalCount,
+    paidCount: 0,
+    description: installmentForm.description,
+    paymentMethod: installmentForm.paymentMethod,
+  }
+
+  installments.value = [plan, ...installments.value]
+  Object.assign(installmentForm, {
+    title: '',
+    amount: 0,
+    category: 'other',
+    startDate: todayKey,
+    dueDay: currentJalaliDate.day,
+    totalCount: 12,
+    description: '',
+    paymentMethod: 'cash',
+  })
+  pushToast('قسط اضافه شد ✅')
+}
+
+function payInstallment(plan: InstallmentPlan) {
+  if (plan.paidCount >= plan.totalCount) return
+
+  const dueDate = getInstallmentDueDate(plan, plan.paidCount)
+  const transaction: Transaction = {
+    id: Date.now(),
+    type: 'expense',
+    title: `قسط: ${plan.title}`,
+    amount: plan.amount,
+    date: todayKey,
+    category: plan.category,
+    description: [`سررسید قسط: ${dueDate}`, plan.description].filter(Boolean).join('\n'),
+    paymentMethod: plan.paymentMethod,
+    isEssential: true,
+    isLoan: false,
+  }
+
+  transactions.value = [transaction, ...transactions.value]
+  installments.value = installments.value.map((item) =>
+    item.id === plan.id ? { ...item, paidCount: Math.min(item.paidCount + 1, item.totalCount) } : item,
+  )
+  pushToast('قسط پرداخت و هزینه ثبت شد ✅')
+}
+
+function removeInstallmentPlan(id: number) {
+  installments.value = installments.value.filter((item) => item.id !== id)
+  pushToast('قسط حذف شد')
+}
+
 function getExportDateStamp() {
   return new Date().toISOString().slice(0, 10)
 }
@@ -1119,8 +1306,28 @@ function buildCsvReport() {
     item.loanPerson ?? '',
     item.description ?? '',
   ])
+  const installmentHeaders = ['عنوان قسط', 'دسته', 'مبلغ هر قسط', 'سررسید بعدی', 'پرداخت شده', 'کل اقساط', 'وضعیت', 'روش پرداخت', 'توضیحات']
+  const installmentRows = installmentSummaries.value.map((item) => [
+    item.title,
+    getCategory(item.category).label,
+    item.amount,
+    item.nextDueDate || '-',
+    item.paidCount,
+    item.totalCount,
+    item.statusLabel,
+    item.paymentMethod === 'credit' ? 'اعتباری' : 'نقدی',
+    item.description ?? '',
+  ])
 
-  return `\uFEFF${[headers, ...rows].map((row) => row.map(escapeCsvCell).join(',')).join('\n')}`
+  return `\uFEFF${[
+    ['تراکنش‌ها'],
+    headers,
+    ...rows,
+    [],
+    ['قسط‌ها'],
+    installmentHeaders,
+    ...installmentRows,
+  ].map((row) => row.map(escapeCsvCell).join(',')).join('\n')}`
 }
 
 function buildExcelReport() {
@@ -1134,6 +1341,19 @@ function buildExcelReport() {
       <td>${getPaymentMethodLabel(item)}</td>
       <td>${getNecessityLabel(item)}</td>
       <td>${item.loanPerson ?? ''}</td>
+      <td>${item.description ?? ''}</td>
+    </tr>
+  `).join('')
+  const installmentRows = installmentSummaries.value.map((item) => `
+    <tr>
+      <td>${item.title}</td>
+      <td>${getCategory(item.category).label}</td>
+      <td>${item.amount}</td>
+      <td>${item.nextDueDate || '-'}</td>
+      <td>${item.paidCount}</td>
+      <td>${item.totalCount}</td>
+      <td>${item.statusLabel}</td>
+      <td>${item.paymentMethod === 'credit' ? 'اعتباری' : 'نقدی'}</td>
       <td>${item.description ?? ''}</td>
     </tr>
   `).join('')
@@ -1154,14 +1374,23 @@ function buildExcelReport() {
   <p>درآمد ماه: ${formatMoney(totalIncome.value)}</p>
   <p>هزینه ماه: ${formatMoney(totalExpense.value)}</p>
   <p>پرداخت اعتبار آخر ماه: ${formatMoney(creditExpense.value)}</p>
+  <p>قسط‌های سررسید تا پایان ماه: ${formatMoney(commitmentInstallmentDue.value)}</p>
   <p>خرج ضروری: ${formatMoney(essentialExpense.value)}</p>
   <p>خرج غیرضروری: ${formatMoney(nonEssentialExpense.value)}</p>
-  <p>مانده: ${formatMoney(balance.value)}</p>
+  <p>مانده بعد از تعهدات: ${formatMoney(balanceAfterCommitments.value)}</p>
+  <h2>تراکنش‌ها</h2>
   <table>
     <thead>
       <tr><th>نوع</th><th>عنوان</th><th>دسته</th><th>تاریخ</th><th>مبلغ</th><th>روش پرداخت</th><th>ضرورت</th><th>قرض به</th><th>توضیحات</th></tr>
     </thead>
     <tbody>${rows}</tbody>
+  </table>
+  <h2>قسط‌ها</h2>
+  <table>
+    <thead>
+      <tr><th>عنوان</th><th>دسته</th><th>مبلغ هر قسط</th><th>سررسید بعدی</th><th>پرداخت شده</th><th>کل اقساط</th><th>وضعیت</th><th>روش پرداخت</th><th>توضیحات</th></tr>
+    </thead>
+    <tbody>${installmentRows}</tbody>
   </table>
 </body>
 </html>`
@@ -1175,6 +1404,7 @@ function buildBackupJson() {
     transactions: transactions.value,
     categories: categories.value,
     budgets: budgets.value,
+    installments: installments.value,
     summary: {
       totalIncome: totalIncome.value,
       totalExpense: totalExpense.value,
@@ -1184,6 +1414,9 @@ function buildBackupJson() {
       essentialExpense: essentialExpense.value,
       nonEssentialExpense: nonEssentialExpense.value,
       loanedExpense: loanedExpense.value,
+      monthlyInstallmentDue: monthlyInstallmentDue.value,
+      commitmentInstallmentDue: commitmentInstallmentDue.value,
+      balanceAfterCommitments: balanceAfterCommitments.value,
       balance: balance.value,
       totalBudget: totalBudget.value,
     },
@@ -1655,6 +1888,7 @@ onMounted(() => {
   const savedCategories = localStorage.getItem(CATEGORIES_STORAGE_KEY)
   const savedBudgets = localStorage.getItem(BUDGETS_STORAGE_KEY)
   const savedCreditLimit = localStorage.getItem(CREDIT_STORAGE_KEY)
+  const savedInstallments = localStorage.getItem(INSTALLMENTS_STORAGE_KEY)
 
   if (savedTransactions) {
     try {
@@ -1685,6 +1919,14 @@ onMounted(() => {
 
   if (savedCreditLimit) {
     creditLimit.value = Math.max(0, parseMoneyInput(savedCreditLimit))
+  }
+
+  if (savedInstallments) {
+    try {
+      installments.value = JSON.parse(savedInstallments) as InstallmentPlan[]
+    } catch {
+      localStorage.removeItem(INSTALLMENTS_STORAGE_KEY)
+    }
   }
 
   if ('serviceWorker' in navigator) {
@@ -1738,6 +1980,14 @@ watch(
 watch(creditLimit, (value) => {
   localStorage.setItem(CREDIT_STORAGE_KEY, String(value))
 })
+
+watch(
+  installments,
+  (value) => {
+    localStorage.setItem(INSTALLMENTS_STORAGE_KEY, JSON.stringify(value))
+  },
+  { deep: true },
+)
 
 watch(
   [
@@ -1872,6 +2122,19 @@ watch(activeSection, (section) => {
           </div>
         </div>
         <p v-else class="empty-inline">هنوز خرجی ثبت نشده</p>
+      </section>
+
+      <section v-if="activeSection === 'داشبورد' && (upcomingInstallments.length || overdueInstallments.length)" class="installment-alert-card glass-panel">
+        <div class="weekly-category-head">
+          <strong>قسط‌های نزدیک</strong>
+          <small>{{ toPersianNumber(overdueInstallments.length) }} عقب‌افتاده</small>
+        </div>
+        <div class="installment-alert-list">
+          <span v-for="item in [...overdueInstallments, ...upcomingInstallments].slice(0, 4)" :key="item.id">
+            <b>{{ item.title }}</b>
+            <em>{{ item.nextDueDate }} · {{ formatCompact(item.amount) }}</em>
+          </span>
+        </div>
       </section>
 
       <section v-if="activeSection === 'داشبورد'" class="dashboard-grid">
@@ -2035,12 +2298,13 @@ watch(activeSection, (section) => {
               <div class="section-title compact">
                 <div>
                   <h2>جریان پول</h2>
-                  <p>{{ cashFlowMode === 'afterCredit' ? 'پول کل منهای بدهی اعتبار' : 'درآمد، هزینه و پس‌انداز' }}</p>
+                  <p>{{ cashFlowMode === 'afterCommitments' ? 'پول کل منهای اعتبار و قسط' : cashFlowMode === 'afterCredit' ? 'پول کل منهای بدهی اعتبار' : 'درآمد، هزینه و پس‌انداز' }}</p>
                 </div>
               </div>
               <div class="chart-toggle segmented compact-toggle">
                 <button type="button" :class="{ active: cashFlowMode === 'regular' }" @click="cashFlowMode = 'regular'">معمولی</button>
                 <button type="button" :class="{ active: cashFlowMode === 'afterCredit' }" @click="cashFlowMode = 'afterCredit'">بعد از اعتبار</button>
+                <button type="button" :class="{ active: cashFlowMode === 'afterCommitments' }" @click="cashFlowMode = 'afterCommitments'">بعد از تعهدات</button>
               </div>
               <div class="chart-canvas stats-cash-chart">
                 <canvas ref="statsCashFlowCanvas" aria-label="نمودار جریان پول" role="img" />
@@ -2096,6 +2360,94 @@ watch(activeSection, (section) => {
             <small>مصرف: {{ formatMoney(item.spent) }}</small>
             <em v-if="item.spent > item.budget">⚠️ از بودجه این بخش عبور کرده‌اید.</em>
           </article>
+        </div>
+      </section>
+
+      <section v-if="activeSection === 'قسط‌ها'" class="glass-panel installments-card" data-section="قسط‌ها">
+        <div class="section-title">
+          <div>
+            <h2>قسط‌ها</h2>
+            <p>قسط‌های ماهانه، سررسیدها و پرداخت‌های ثبت‌شده</p>
+          </div>
+        </div>
+
+        <form class="installment-form" @submit.prevent="addInstallmentPlan">
+          <label>
+            <span>عنوان</span>
+            <input v-model="installmentForm.title" type="text" placeholder="مثلا وام لپ‌تاپ" required />
+          </label>
+          <label>
+            <span>مبلغ هر قسط</span>
+            <input :value="formatMoneyInput(installmentForm.amount)" type="text" inputmode="numeric" required @input="updateMoneyInput(installmentForm, 'amount', $event)" />
+            <small v-if="installmentAmountInWords" class="amount-in-words">{{ installmentAmountInWords }}</small>
+          </label>
+          <label>
+            <span>دسته</span>
+            <select v-model="installmentForm.category">
+              <option v-for="category in categories" :key="category.key" :value="category.key">{{ category.icon }} {{ category.label }}</option>
+            </select>
+          </label>
+          <label>
+            <span>تاریخ شروع</span>
+            <JalaliDatePicker
+              v-model="installmentStartDatePickerValue"
+              class="date-picker-field"
+              placeholder="شروع اقساط"
+              :clearable="false"
+              popover-class="date-picker-popover"
+            />
+          </label>
+          <label>
+            <span>روز سررسید</span>
+            <input v-model.number="installmentForm.dueDay" type="number" min="1" max="31" required />
+          </label>
+          <label>
+            <span>تعداد اقساط</span>
+            <input v-model.number="installmentForm.totalCount" type="number" min="1" required />
+          </label>
+          <label>
+            <span>روش پرداخت</span>
+            <select v-model="installmentForm.paymentMethod">
+              <option value="cash">نقدی</option>
+              <option value="credit">اعتباری</option>
+            </select>
+          </label>
+          <label class="installment-description">
+            <span>توضیحات</span>
+            <textarea v-model="installmentForm.description" rows="2" placeholder="اختیاری" />
+          </label>
+          <button class="primary-button" type="submit">افزودن قسط</button>
+        </form>
+
+        <div v-if="installmentSummaries.length" class="installments-grid">
+          <article v-for="item in installmentSummaries" :key="item.id" class="installment-item" :class="item.status">
+            <div class="installment-item-head">
+              <div>
+                <strong>{{ item.title }}</strong>
+                <small>{{ getCategory(item.category).icon }} {{ getCategory(item.category).label }} · {{ getPaymentMethodLabel({ ...item, type: 'expense', date: item.startDate }) }}</small>
+              </div>
+              <span>{{ item.statusLabel }}</span>
+            </div>
+            <div class="installment-meta">
+              <span>مبلغ: {{ formatMoney(item.amount) }}</span>
+              <span>سررسید بعدی: {{ item.nextDueDate || 'تمام شده' }}</span>
+              <span>{{ toPersianNumber(item.paidCount) }} از {{ toPersianNumber(item.totalCount) }} پرداخت شده</span>
+            </div>
+            <div class="progress" :class="{ danger: item.status === 'overdue' }">
+              <i :style="{ width: `${progressPercent(item.paidCount, item.totalCount)}%` }" />
+            </div>
+            <p v-if="item.description">{{ item.description }}</p>
+            <div class="installment-actions">
+              <button class="primary-button" type="button" :disabled="item.status === 'completed'" @click="payInstallment(item)">پرداخت شد</button>
+              <button class="soft-button" type="button" @click="removeInstallmentPlan(item.id)">حذف</button>
+            </div>
+          </article>
+        </div>
+
+        <div v-else class="empty-state compact-empty">
+          <div>◇</div>
+          <strong>هنوز قسطی ثبت نشده است.</strong>
+          <span>اولین قسط ماهانه را از فرم بالا اضافه کنید.</span>
         </div>
       </section>
 
@@ -2191,6 +2543,8 @@ watch(activeSection, (section) => {
         <div class="report-grid">
           <span>گزارش ماهانه · {{ formatMoney(totalExpense) }}</span>
           <span>پرداخت اعتبار · {{ formatMoney(creditExpense) }}</span>
+          <span>قسط‌های این ماه · {{ formatMoney(monthlyInstallmentDue) }}</span>
+          <span>مانده تعهدات · {{ formatMoney(balanceAfterCommitments) }}</span>
           <span>خرج ضروری · {{ formatMoney(essentialExpense) }}</span>
           <span>خرج غیرضروری · {{ formatMoney(nonEssentialExpense) }}</span>
           <span>گزارش سالانه · روند هزینه کنترل‌شده</span>
@@ -2774,6 +3128,50 @@ h2 {
   font-size: .86rem;
 }
 
+.installment-alert-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px 14px;
+  border-radius: 18px;
+  padding: 10px 12px;
+}
+
+.installment-alert-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 6px;
+  min-width: 0;
+}
+
+.installment-alert-list span {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 12px;
+  padding: 7px 9px;
+  background: rgba(255, 255, 255, .04);
+}
+
+.installment-alert-list b,
+.installment-alert-list em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.installment-alert-list b {
+  font-size: .82rem;
+}
+
+.installment-alert-list em {
+  color: #facc15;
+  font-size: .76rem;
+  font-style: normal;
+}
+
 .weekly-category-budget {
   display: grid;
   min-width: 0;
@@ -3177,6 +3575,121 @@ h2 {
   padding: 9px 11px;
 }
 
+.installment-form {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  align-items: start;
+  margin-top: 18px;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 18px;
+  padding: 14px;
+  background: rgba(255, 255, 255, .045);
+}
+
+.installment-form label,
+.installment-item {
+  display: grid;
+  gap: 8px;
+}
+
+.installment-form span {
+  color: #94a3b8;
+  font-size: .82rem;
+}
+
+.installment-description {
+  grid-column: span 3;
+}
+
+.installment-form button {
+  min-height: 46px;
+  align-self: end;
+}
+
+.installments-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.installment-item {
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 18px;
+  padding: 14px;
+  background: rgba(255, 255, 255, .045);
+}
+
+.installment-item.overdue {
+  border-color: rgba(248, 113, 113, .34);
+}
+
+.installment-item.upcoming {
+  border-color: rgba(250, 204, 21, .32);
+}
+
+.installment-item.completed {
+  opacity: .68;
+}
+
+.installment-item-head,
+.installment-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.installment-item-head div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.installment-item-head strong,
+.installment-item-head small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.installment-item-head small,
+.installment-meta,
+.installment-item p {
+  color: #94a3b8;
+  font-size: .82rem;
+}
+
+.installment-item-head > span {
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: rgba(34, 211, 238, .12);
+  color: #67e8f9;
+  font-size: .76rem;
+}
+
+.installment-item.overdue .installment-item-head > span {
+  background: rgba(248, 113, 113, .14);
+  color: #fca5a5;
+}
+
+.installment-item.upcoming .installment-item-head > span {
+  background: rgba(250, 204, 21, .14);
+  color: #fde68a;
+}
+
+.installment-meta {
+  display: grid;
+  gap: 4px;
+}
+
+.installment-actions button {
+  flex: 1;
+  padding: 9px 10px;
+}
+
 .filters {
   display: grid;
   grid-template-columns: 1.6fr repeat(4, 1fr) 2fr;
@@ -3540,8 +4053,17 @@ th {
 
   .filters,
   .budget-grid,
-  .report-grid {
+  .report-grid,
+  .installments-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .installment-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .installment-description {
+    grid-column: 1 / -1;
   }
 }
 
@@ -3572,10 +4094,17 @@ th {
   .budget-grid,
   .report-grid,
   .settings-grid,
+  .installment-form,
+  .installments-grid,
+  .installment-alert-card,
   .stats-grid,
   .stats-analysis-grid,
   .pie-wrap {
     grid-template-columns: 1fr;
+  }
+
+  .installment-description {
+    grid-column: auto;
   }
 
   .pie-chart {
