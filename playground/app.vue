@@ -1405,6 +1405,7 @@ function buildBackupJson() {
     categories: categories.value,
     budgets: budgets.value,
     installments: installments.value,
+    creditLimit: creditLimit.value,
     summary: {
       totalIncome: totalIncome.value,
       totalExpense: totalExpense.value,
@@ -1421,6 +1422,95 @@ function buildBackupJson() {
       totalBudget: totalBudget.value,
     },
   }, null, 2)
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value))
+}
+
+function restoreCategories(value: unknown) {
+  if (!Array.isArray(value)) return [...defaultCategories]
+
+  const restored = value.filter((item): item is Category =>
+    isRecord(item) &&
+    typeof item.key === 'string' &&
+    typeof item.label === 'string' &&
+    typeof item.icon === 'string' &&
+    typeof item.color === 'string',
+  )
+
+  return restored.length && restored.some((category) => category.key === 'other') ? restored : [...defaultCategories]
+}
+
+function restoreBudgets(value: unknown) {
+  if (!Array.isArray(value)) return []
+
+  return value.filter((item): item is BudgetGoal =>
+    isRecord(item) &&
+    typeof item.category === 'string' &&
+    typeof item.budget === 'number',
+  )
+}
+
+function restoreTransactions(value: unknown) {
+  if (!Array.isArray(value)) return []
+
+  return value.filter((item): item is Transaction =>
+    isRecord(item) &&
+    typeof item.id === 'number' &&
+    (item.type === 'income' || item.type === 'expense') &&
+    typeof item.title === 'string' &&
+    typeof item.amount === 'number' &&
+    typeof item.date === 'string',
+  )
+}
+
+function restoreInstallments(value: unknown) {
+  if (!Array.isArray(value)) return []
+
+  return value.filter((item): item is InstallmentPlan =>
+    isRecord(item) &&
+    typeof item.id === 'number' &&
+    typeof item.title === 'string' &&
+    typeof item.amount === 'number' &&
+    typeof item.category === 'string' &&
+    typeof item.startDate === 'string' &&
+    typeof item.dueDay === 'number' &&
+    typeof item.totalCount === 'number' &&
+    typeof item.paidCount === 'number' &&
+    (item.paymentMethod === 'cash' || item.paymentMethod === 'credit'),
+  )
+}
+
+async function importBackup(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+
+  try {
+    const backup = JSON.parse(await file.text()) as unknown
+    if (!isRecord(backup) || backup.app !== 'budgetyar') {
+      pushToast('فایل بکاپ بودجه‌یار نیست')
+      return
+    }
+
+    const summary = isRecord(backup.summary) ? backup.summary : {}
+    transactions.value = restoreTransactions(backup.transactions)
+    categories.value = restoreCategories(backup.categories)
+    budgets.value = restoreBudgets(backup.budgets)
+    installments.value = restoreInstallments(backup.installments)
+    creditLimit.value = Math.max(0, Number(backup.creditLimit ?? summary.creditLimit ?? 0) || 0)
+    selectedCategory.value = 'همه'
+    selectedType.value = 'همه'
+    query.value = ''
+    dateRange.start = ''
+    dateRange.end = ''
+    pushToast('بکاپ با موفقیت بازیابی شد ✅')
+  } catch {
+    pushToast('خواندن بکاپ ناموفق بود')
+  } finally {
+    input.value = ''
+  }
 }
 
 function createExportFile(format: ExportFormat) {
@@ -2115,7 +2205,10 @@ watch(activeSection, (section) => {
         <div v-if="latestExpenses.length" class="recent-expenses-list">
           <div v-for="expense in latestExpenses" :key="expense.id" class="recent-expense-row">
             <div>
-              <strong>{{ expense.title }}</strong>
+              <strong>
+                {{ expense.title }}
+                <i v-if="expense.isEssential === false" class="nonessential-mark" title="غیرضروری" aria-label="غیرضروری">⚠️</i>
+              </strong>
               <span>{{ getCategory(expense.category).label }} · {{ expense.date }}</span>
             </div>
             <b>{{ formatCompact(expense.amount) }}</b>
@@ -2507,7 +2600,7 @@ watch(activeSection, (section) => {
                 <td>
                   <div v-if="item.type === 'expense'" class="transaction-meta">
                     <span>{{ getPaymentMethodLabel(item) }}</span>
-                    <span>{{ getNecessityLabel(item) }}</span>
+                    <span v-if="item.isEssential === false" class="nonessential-meta" title="غیرضروری" aria-label="غیرضروری">⚠️</span>
                     <span v-if="item.isLoan">قرض: {{ item.loanPerson }}</span>
                   </div>
                   <span v-else>-</span>
@@ -2632,6 +2725,9 @@ watch(activeSection, (section) => {
           <label>ارز <select><option>تومان</option><option>ریال</option></select></label>
           <label>پوسته <select><option>فقط تاریک</option></select></label>
           <label>زبان <select><option>فارسی</option></select></label>
+          <label class="backup-import">بازیابی بکاپ
+            <input type="file" accept="application/json,.json" @change="importBackup" />
+          </label>
           <button class="primary-button pwa-install" type="button" @click="exportReport('JSON')">ذخیره بکاپ در فایل‌ها</button>
           <button v-if="!isStandalone" class="primary-button pwa-install" type="button" @click="installApp">نصب نسخه PWA</button>
         </div>
@@ -3109,7 +3205,27 @@ h2 {
 }
 
 .recent-expense-row strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: .9rem;
+}
+
+.nonessential-mark,
+.nonessential-meta {
+  display: inline-grid;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid rgba(250, 204, 21, .32);
+  border-radius: 999px;
+  background: rgba(250, 204, 21, .14);
+  color: #fde68a;
+  font-size: .82rem;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1;
 }
 
 .recent-expense-row span,
@@ -3719,6 +3835,21 @@ textarea {
   color: #f8fafc;
 }
 
+input[type='file'] {
+  min-height: 46px;
+  padding: 10px;
+}
+
+input[type='file']::file-selector-button {
+  margin-inline-end: 10px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 10px;
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, .08);
+  color: #f8fafc;
+  font: inherit;
+}
+
 textarea {
   resize: vertical;
 }
@@ -3779,6 +3910,12 @@ th {
   color: #cbd5e1;
   font-size: .78rem;
   white-space: nowrap;
+}
+
+.transaction-meta .nonessential-meta {
+  width: 24px;
+  min-width: 24px;
+  padding: 0;
 }
 
 .loan-summary-list {
