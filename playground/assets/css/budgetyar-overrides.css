@@ -305,3 +305,177 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+body.budgetyar-light {
+  background:
+    radial-gradient(circle at 18% 8%, rgba(14, 165, 233, 0.16), transparent 30%),
+    radial-gradient(circle at 86% 4%, rgba(124, 58, 237, 0.12), transparent 26%),
+    linear-gradient(135deg, #eef7ff, #f8fafc 48%, #eef2ff) !important;
+  color: #0f172a;
+  color-scheme: light;
+}
+
+body.budgetyar-light .glass-panel {
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  background: rgba(255, 255, 255, 0.78) !important;
+  border-color: rgba(15, 23, 42, 0.1);
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.12), inset 0 1px rgba(255, 255, 255, 0.74);
+}
+
+body.budgetyar-light h1,
+body.budgetyar-light h2,
+body.budgetyar-light strong,
+body.budgetyar-light b,
+body.budgetyar-light .brand strong,
+body.budgetyar-light .metric-card strong,
+body.budgetyar-light .mini-card strong,
+body.budgetyar-light .stats-grid strong {
+  color: #0f172a;
+}
+
+body.budgetyar-light p,
+body.budgetyar-light small,
+body.budgetyar-light .brand small,
+body.budgetyar-light .budget-item small,
+body.budgetyar-light .budget-item span,
+body.budgetyar-light .metric-card p,
+body.budgetyar-light .mini-card small,
+body.budgetyar-light .notification-status small,
+body.budgetyar-light .notification-suggestion small,
+body.budgetyar-light .notification-suggestion span,
+body.budgetyar-light .section-title p,
+body.budgetyar-light .settings-card p,
+body.budgetyar-light .summary-card p,
+body.budgetyar-light .empty-inline,
+body.budgetyar-light .recent-expense-row span,
+body.budgetyar-light .weekly-category-head small,
+body.budgetyar-light th,
+body.budgetyar-light td::before {
+  color: #64748b;
+}
+
+body.budgetyar-light .nav-item {
+  color: #334155;
+}
+
+body.budgetyar-light .nav-item.active,
+body.budgetyar-light .nav-item:hover {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.16), rgba(124, 58, 237, 0.14));
+  box-shadow: 0 14px 34px rgba(37, 99, 235, 0.14);
+  color: #0f172a;
+}
+
+body.budgetyar-light input,
+body.budgetyar-light select,
+body.budgetyar-light textarea {
+  background: rgba(255, 255, 255, 0.82);
+  border-color: rgba(15, 23, 42, 0.13);
+  color: #0f172a;
+}
+
+body.budgetyar-light input::placeholder,
+body.budgetyar-light textarea::placeholder {
+  color: #94a3b8;
+}
+
+body.budgetyar-light input[readonly] {
+  background: rgba(226, 232, 240, 0.62);
+  color: #334155;
+}
+
+body.budgetyar-light .actions button,
+body.budgetyar-light .export-actions button,
+body.budgetyar-light .soft-button,
+body.budgetyar-light .segmented button,
+body.budgetyar-light .close,
+body.budgetyar-light input[type=file]::file-selector-button {
+  background: rgba(15, 23, 42, 0.06);
+  border-color: rgba(15, 23, 42, 0.11);
+  color: #0f172a;
+}
+
+body.budgetyar-light .primary-button,
+body.budgetyar-light .segmented .active,
+body.budgetyar-light .fab {
+  color: #ffffff;
+}
+
+body.budgetyar-light .budget-item,
+body.budgetyar-light .report-grid span,
+body.budgetyar-light .settings-grid label,
+body.budgetyar-light .stats-grid div,
+body.budgetyar-light .stats-chart-panel,
+body.budgetyar-light .installment-item,
+body.budgetyar-light .notification-status,
+body.budgetyar-light .notification-suggestion,
+body.budgetyar-light .weekly-overanalysis,
+body.budgetyar-light .insights,
+body.budgetyar-light .mobile-category-list span,
+body.budgetyar-light tr {
+  background: rgba(255, 255, 255, 0.58);
+  border-color: rgba(15, 23, 42, 0.09);
+}
+
+body.budgetyar-light td,
+body.budgetyar-light th {
+  border-bottom-color: rgba(15, 23, 42, 0.08);
+}
+
+body.budgetyar-light .progress {
+  background: rgba(15, 23, 42, 0.1);
+}
+
+body.budgetyar-light .transaction-meta span {
+  background: rgba(15, 23, 42, 0.06);
+  border-color: rgba(15, 23, 42, 0.08);
+  color: #475569;
+}
+
+body.budgetyar-light .pill.income {
+  background: rgba(22, 163, 74, 0.14);
+  color: #15803d;
+}
+
+body.budgetyar-light .pill.expense {
+  background: rgba(225, 29, 72, 0.12);
+  color: #be123c;
+}
+
+body.budgetyar-light .modal-backdrop,
+body.budgetyar-light .mobile-menu-backdrop {
+  background: rgba(15, 23, 42, 0.22);
+}
+
+body.budgetyar-light .toast {
+  background: rgba(15, 23, 42, 0.88);
+  color: #ffffff;
+}
+
+body.budgetyar-light .jalali-date-picker__input,
+body.budgetyar-light .jalali-range-picker__input {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(15, 23, 42, 0.14);
+  color: #0f172a;
+}
+
+body.budgetyar-light .jalali-calendar {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.12);
+  color: #0f172a;
+}
+
+body.budgetyar-light .mobile-perf .glass-panel {
+  background: rgba(255, 255, 255, 0.94) !important;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.12) !important;
+}
+
+@media (max-width: 760px) {
+  body.budgetyar-light {
+    background: linear-gradient(180deg, #f8fbff, #eef7ff 48%, #eef2ff) !important;
+  }
+
+  body.budgetyar-light .mobile-topbar {
+    background: rgba(255, 255, 255, 0.9) !important;
+  }
+}

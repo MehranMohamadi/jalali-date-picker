@@ -4,13 +4,20 @@ const {
   creditLimit,
   creditExpense,
   creditRemaining,
+  themeMode,
   isStandalone,
   formatMoneyInput,
   updateCreditLimit,
+  setThemeMode,
   exportReport,
   importBackup,
   installApp,
 } = budgetyar
+
+function updateThemeMode(event: Event) {
+  const value = (event.target as HTMLSelectElement).value
+  setThemeMode(value === 'light' ? 'light' : 'dark')
+}
 </script>
 
 <template>
@@ -32,7 +39,12 @@ const {
         <input :value="formatMoneyInput(creditRemaining)" type="text" readonly />
       </label>
       <label>ارز <select><option>تومان</option><option>ریال</option></select></label>
-      <label>پوسته <select><option>فقط تاریک</option></select></label>
+      <label>پوسته
+        <select :value="themeMode" @change="updateThemeMode">
+          <option value="dark">تاریک</option>
+          <option value="light">روشن</option>
+        </select>
+      </label>
       <label>زبان <select><option>فارسی</option></select></label>
       <label class="backup-import">بازیابی بکاپ
         <input type="file" accept="application/json,.json" @change="importBackup" />

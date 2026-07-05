@@ -16,6 +16,7 @@ const BankNotifications = registerPlugin<BankNotificationsPlugin>('BankNotificat
 export type TransactionType = 'income' | 'expense'
 export type PaymentMethod = 'cash' | 'credit'
 export type CashFlowMode = 'regular' | 'afterCredit' | 'afterCommitments'
+export type ThemeMode = 'dark' | 'light'
 
 export type CategoryKey = string
 export type ExportFormat = 'PDF' | 'Excel' | 'CSV' | 'JSON'
@@ -160,6 +161,7 @@ const CATEGORIES_STORAGE_KEY = 'budgetyar-categories-v1'
 const BUDGETS_STORAGE_KEY = 'budgetyar-budgets-v1'
 const CREDIT_STORAGE_KEY = 'budgetyar-credit-limit-v1'
 const INSTALLMENTS_STORAGE_KEY = 'budgetyar-installments-v1'
+const THEME_STORAGE_KEY = 'budgetyar-theme-v1'
 const navItems = ['داشبورد', 'درآمدها', 'هزینه‌ها', 'بودجه‌ها', 'قسط‌ها', 'گزارش‌ها', 'آمار', 'اعلان‌ها', 'تنظیمات']
 const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند']
 const currentJalaliDate = getCurrentJalaliDate()
@@ -264,6 +266,7 @@ const bankSuggestions = ref<BankNotificationSuggestion[]>([])
 const selectedBankPackage = ref('')
 const creditLimit = ref(0)
 const cashFlowMode = ref<CashFlowMode>('regular')
+const themeMode = ref<ThemeMode>('dark')
 const bankNotificationStatus = reactive<BankNotificationStatus>({
   isAndroid: false,
   isEnabled: false,
@@ -453,9 +456,11 @@ const dailyTrend = computed(() => {
 
 const hasExpenseData = computed(() => totalExpense.value > 0)
 const chartFontFamily = "'Vazirmatn Variable', Vazirmatn, Tahoma, sans-serif"
-const chartTextColor = '#cbd5e1'
-const chartMutedColor = '#94a3b8'
-const chartGridColor = 'rgba(255, 255, 255, .08)'
+const chartTextColor = () => (themeMode.value === 'light' ? '#334155' : '#cbd5e1')
+const chartMutedColor = () => (themeMode.value === 'light' ? '#64748b' : '#94a3b8')
+const chartGridColor = () => (themeMode.value === 'light' ? 'rgba(15, 23, 42, .1)' : 'rgba(255, 255, 255, .08)')
+const chartTooltipBackground = () => (themeMode.value === 'light' ? 'rgba(255, 255, 255, .96)' : 'rgba(15, 23, 42, .94)')
+const chartTooltipBodyColor = () => (themeMode.value === 'light' ? '#0f172a' : '#f8fafc')
 
 const expenseShareChartData = computed<ChartData<'doughnut'>>(() => {
   const items = visibleCategoryTotals.value
@@ -949,6 +954,18 @@ function updateCreditLimit(event: Event) {
   const amount = Math.max(0, parseMoneyInput(input.value))
   creditLimit.value = amount
   input.value = formatMoneyInput(amount)
+}
+
+function applyTheme(mode = themeMode.value) {
+  if (typeof document === 'undefined') return
+
+  document.body.classList.toggle('budgetyar-light', mode === 'light')
+  document.body.classList.toggle('budgetyar-dark', mode === 'dark')
+}
+
+function setThemeMode(mode: ThemeMode) {
+  themeMode.value = mode
+  applyTheme(mode)
 }
 
 function formatMoney(value: number) {
@@ -1630,18 +1647,18 @@ function baseChartOptions(): ChartOptions {
         display: false,
         rtl: true,
         labels: {
-          color: chartTextColor,
+          color: chartTextColor(),
           font: { family: chartFontFamily },
         },
       },
       tooltip: {
         rtl: true,
         textDirection: 'rtl',
-        backgroundColor: 'rgba(15, 23, 42, .94)',
+        backgroundColor: chartTooltipBackground(),
         borderColor: 'rgba(255, 255, 255, .12)',
         borderWidth: 1,
-        bodyColor: '#f8fafc',
-        titleColor: chartTextColor,
+        bodyColor: chartTooltipBodyColor(),
+        titleColor: chartTextColor(),
         bodyFont: { family: chartFontFamily },
         titleFont: { family: chartFontFamily },
         padding: 12,
@@ -1678,9 +1695,9 @@ function barOptions(): ChartOptions<'bar'> {
     scales: {
       x: {
         beginAtZero: true,
-        grid: { color: chartGridColor },
+        grid: { color: chartGridColor() },
         ticks: {
-          color: chartMutedColor,
+          color: chartMutedColor(),
           font: { family: chartFontFamily },
           callback: (value) => formatCompact(Number(value)),
         },
@@ -1688,7 +1705,7 @@ function barOptions(): ChartOptions<'bar'> {
       y: {
         grid: { display: false },
         ticks: {
-          color: chartTextColor,
+          color: chartTextColor(),
           font: { family: chartFontFamily },
         },
       },
@@ -1715,7 +1732,7 @@ function lineOptions(): ChartOptions<'line'> {
         rtl: true,
         position: 'bottom',
         labels: {
-          color: chartTextColor,
+          color: chartTextColor(),
           boxWidth: 10,
           boxHeight: 10,
           usePointStyle: true,
@@ -1725,17 +1742,17 @@ function lineOptions(): ChartOptions<'line'> {
     },
     scales: {
       x: {
-        grid: { color: chartGridColor },
+        grid: { color: chartGridColor() },
         ticks: {
-          color: chartMutedColor,
+          color: chartMutedColor(),
           font: { family: chartFontFamily },
         },
       },
       y: {
         beginAtZero: true,
-        grid: { color: chartGridColor },
+        grid: { color: chartGridColor() },
         ticks: {
-          color: chartMutedColor,
+          color: chartMutedColor(),
           font: { family: chartFontFamily },
           callback: (value) => formatCompact(Number(value)),
         },
@@ -1749,15 +1766,15 @@ function polarAreaOptions(): ChartOptions<'polarArea'> {
     ...baseChartOptions(),
     scales: {
       r: {
-        grid: { color: chartGridColor },
+        grid: { color: chartGridColor() },
         ticks: {
           backdropColor: 'transparent',
-          color: chartMutedColor,
+          color: chartMutedColor(),
           font: { family: chartFontFamily },
           callback: (value) => formatCompact(Number(value)),
         },
         pointLabels: {
-          color: chartTextColor,
+          color: chartTextColor(),
           font: { family: chartFontFamily },
         },
       },
@@ -1790,7 +1807,7 @@ function stackedBudgetOptions(): ChartOptions<'bar'> {
         rtl: true,
         position: 'bottom',
         labels: {
-          color: chartTextColor,
+          color: chartTextColor(),
           boxWidth: 10,
           boxHeight: 10,
           font: { family: chartFontFamily },
@@ -1801,9 +1818,9 @@ function stackedBudgetOptions(): ChartOptions<'bar'> {
       x: {
         stacked: true,
         beginAtZero: true,
-        grid: { color: chartGridColor },
+        grid: { color: chartGridColor() },
         ticks: {
-          color: chartMutedColor,
+          color: chartMutedColor(),
           font: { family: chartFontFamily },
           callback: (value) => formatCompact(Number(value)),
         },
@@ -1812,7 +1829,7 @@ function stackedBudgetOptions(): ChartOptions<'bar'> {
         stacked: true,
         grid: { display: false },
         ticks: {
-          color: chartTextColor,
+          color: chartTextColor(),
           font: { family: chartFontFamily },
         },
       },
@@ -1827,15 +1844,15 @@ function cashFlowOptions(): ChartOptions<'bar'> {
       x: {
         grid: { display: false },
         ticks: {
-          color: chartTextColor,
+          color: chartTextColor(),
           font: { family: chartFontFamily },
         },
       },
       y: {
         beginAtZero: true,
-        grid: { color: chartGridColor },
+        grid: { color: chartGridColor() },
         ticks: {
-          color: chartMutedColor,
+          color: chartMutedColor(),
           font: { family: chartFontFamily },
           callback: (value) => formatCompact(Number(value)),
         },
@@ -2018,7 +2035,7 @@ function unbindMobileViewport() {
 export function useBudgetyar() {
   return {
     activeSection, isMobileMenuOpen, isMobileViewport, navItems, months, years, today, todayKey, currentMonthYear, currentJalaliDate, currentMonthLength,
-    categories, transactions, budgets, installments, creditLimit, cashFlowMode,
+    categories, transactions, budgets, installments, creditLimit, cashFlowMode, themeMode,
     query, selectedMonth, selectedYear, selectedCategory, selectedType, dateRange, pickerDateRange,
     isModalOpen, formType, form, formAmountInWords, formDatePickerValue, editingId, toasts,
     categoryForm, installmentForm, installmentAmountInWords, installmentStartDatePickerValue,
@@ -2032,7 +2049,7 @@ export function useBudgetyar() {
     filteredTransactions, dailyTrend, hasExpenseData, expenseShareChartData, categoryBarChartData, trendLineChartData, dailyExpensePoints, weeklyFlowPoints, budgetAnalysisItems, statsExpenseMixChartData, statsBudgetUsageChartData, statsDailyExpenseChartData, statsWeeklyFlowChartData, statsCashFlowChartData,
     summaryLines, insights, dashboardCards, widgets, statsItems,
     getCategory, normalizeDigits, normalizeJalaliDate, getJalaliInputDay, getTrendDays, getPreviousMonthPrefix, addJalaliMonths, getInstallmentDueDate, getInstallmentStatus, getInstallmentStatusLabel, getCurrentWeekRange, getWeekdayLabel, getJalaliMonthPrefix, getCurrentJalaliDate, formatJalaliInputDate, formatDisplayJalaliDate, jalaliInputToIso, isoToJalaliInput, toPersianNumber, parseMoneyInput, formatMoneyInput, formatMoneyWords, formatMoney, formatCompact, progressPercent, getChangePercent, formatPercentHint, formatChangeSentence,
-    selectSection, openModal, editTransaction, saveTransaction, removeTransaction, refreshBankNotifications, openNotificationAccessSettings, updateSelectedBankPackage, acceptBankSuggestion, dismissBankSuggestion, formatSuggestionDate, updateBudget, addCategory, deleteCategory, addInstallmentPlan, payInstallment, removeInstallmentPlan,
+    selectSection, openModal, editTransaction, saveTransaction, removeTransaction, refreshBankNotifications, openNotificationAccessSettings, updateSelectedBankPackage, acceptBankSuggestion, dismissBankSuggestion, formatSuggestionDate, updateBudget, addCategory, deleteCategory, addInstallmentPlan, payInstallment, removeInstallmentPlan, setThemeMode,
     getTransactionCategoryLabel, getPaymentMethodLabel, getNecessityLabel, buildCsvReport, buildExcelReport, buildBackupJson, importBackup, createExportFile, saveBlobToDevice, exportReport, installApp, pushToast,
     createCharts, syncCharts, scheduleChartSync, destroyCharts,
   }
@@ -2063,6 +2080,7 @@ export function startBudgetyar() {
     const savedBudgets = localStorage.getItem(BUDGETS_STORAGE_KEY)
     const savedCreditLimit = localStorage.getItem(CREDIT_STORAGE_KEY)
     const savedInstallments = localStorage.getItem(INSTALLMENTS_STORAGE_KEY)
+    const savedThemeMode = localStorage.getItem(THEME_STORAGE_KEY)
   
     if (savedTransactions) {
       try {
@@ -2102,6 +2120,11 @@ export function startBudgetyar() {
         localStorage.removeItem(INSTALLMENTS_STORAGE_KEY)
       }
     }
+
+    if (savedThemeMode === 'light' || savedThemeMode === 'dark') {
+      themeMode.value = savedThemeMode
+    }
+    applyTheme()
   
     if ('serviceWorker' in navigator) {
       if (import.meta.env.PROD) {
@@ -2157,6 +2180,13 @@ export function startBudgetyar() {
   watch(creditLimit, (value) => {
     localStorage.setItem(CREDIT_STORAGE_KEY, String(value))
   })
+
+  watch(themeMode, (value) => {
+    localStorage.setItem(THEME_STORAGE_KEY, value)
+    applyTheme(value)
+    destroyCharts()
+    nextTick(scheduleChartSync)
+  })
   
   watch(
     installments,
@@ -2193,3 +2223,4 @@ export function startBudgetyar() {
     destroyCharts()
   })
 }
+
