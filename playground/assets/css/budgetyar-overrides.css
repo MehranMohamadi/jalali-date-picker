@@ -1,0 +1,14 @@
+.nav-item {
+  text-decoration: none;
+}
+
+@media (max-width: 760px) {
+  td:nth-child(6)::before { content: 'جزئیات'; }
+  td:nth-child(7)::before { content: 'عملیات'; }
+}
+
+@media (min-width: 1181px) {
+  .filters {
+    grid-template-columns: 1.6fr repeat(4, 1fr) 2fr;
+  }
+}
