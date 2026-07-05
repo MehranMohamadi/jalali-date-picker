@@ -456,6 +456,10 @@ const dailyTrend = computed(() => {
 
 const hasExpenseData = computed(() => totalExpense.value > 0)
 const chartFontFamily = "'Vazirmatn Variable', Vazirmatn, Tahoma, sans-serif"
+const moneyInputFormatter = new Intl.NumberFormat('fa-IR', {
+  maximumFractionDigits: 0,
+  useGrouping: true,
+})
 const chartTextColor = () => (themeMode.value === 'light' ? '#334155' : '#cbd5e1')
 const chartMutedColor = () => (themeMode.value === 'light' ? '#64748b' : '#94a3b8')
 const chartGridColor = () => (themeMode.value === 'light' ? 'rgba(15, 23, 42, .1)' : 'rgba(255, 255, 255, .08)')
@@ -890,7 +894,7 @@ function parseMoneyInput(value: number | string) {
 
 function formatMoneyInput(value: number | string) {
   const amount = parseMoneyInput(value)
-  return amount ? new Intl.NumberFormat('fa-IR').format(amount) : ''
+  return amount ? moneyInputFormatter.format(amount) : ''
 }
 
 function formatMoneyWords(value: number | string) {

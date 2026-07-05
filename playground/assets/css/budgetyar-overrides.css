@@ -16,6 +16,7 @@
 .transaction-modal > .segmented,
 .transaction-modal > .form-inline-grid,
 .transaction-modal > .check-row,
+.transaction-modal > .amount-field,
 .transaction-modal > .primary-button {
   grid-column: 1 / -1;
 }
@@ -100,10 +101,9 @@
   display: block;
   font-size: 0.72rem;
   line-height: 1.4;
-  max-height: 1.4em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  max-height: none;
+  overflow: visible;
+  white-space: normal;
 }
 
 .transaction-modal .date-picker-popover,
@@ -177,7 +177,9 @@
   }
 
   .transaction-modal .amount-in-words {
-    display: none;
+    display: block;
+    font-size: 0.68rem;
+    line-height: 1.35;
   }
 
   .transaction-modal .form-inline-grid {
