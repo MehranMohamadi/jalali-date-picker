@@ -502,3 +502,256 @@ body.budgetyar-light .mobile-perf .glass-panel {
     background: rgba(255, 255, 255, 0.9) !important;
   }
 }
+
+body.budgetyar-light {
+  background:
+    radial-gradient(circle at 16% 6%, rgba(20, 184, 166, 0.12), transparent 28%),
+    radial-gradient(circle at 86% 0%, rgba(99, 102, 241, 0.10), transparent 26%),
+    linear-gradient(135deg, #f7fafc, #eef4fb 48%, #f8fafc) !important;
+  color: #111827;
+}
+
+body.budgetyar-light .glass-panel {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(15, 23, 42, 0.10);
+  box-shadow: 0 18px 46px rgba(15, 23, 42, 0.10), inset 0 1px rgba(255, 255, 255, 0.82);
+}
+
+body.budgetyar-light .sidebar,
+body.budgetyar-light .mobile-topbar {
+  background: rgba(255, 255, 255, 0.92) !important;
+}
+
+body.budgetyar-light h1,
+body.budgetyar-light h2,
+body.budgetyar-light strong,
+body.budgetyar-light b,
+body.budgetyar-light .brand strong,
+body.budgetyar-light .metric-card strong,
+body.budgetyar-light .mini-card strong,
+body.budgetyar-light .stats-grid strong,
+body.budgetyar-light .insights span,
+body.budgetyar-light .report-grid span,
+body.budgetyar-light .legend span,
+body.budgetyar-light .weekly-category-list b,
+body.budgetyar-light .mobile-category-list b,
+body.budgetyar-light .notification-suggestion strong,
+body.budgetyar-light .notification-status strong {
+  color: #111827;
+}
+
+body.budgetyar-light p,
+body.budgetyar-light small,
+body.budgetyar-light .brand small,
+body.budgetyar-light .budget-item small,
+body.budgetyar-light .budget-item span,
+body.budgetyar-light .metric-card p,
+body.budgetyar-light .mini-card small,
+body.budgetyar-light .notification-status small,
+body.budgetyar-light .notification-suggestion small,
+body.budgetyar-light .notification-suggestion span,
+body.budgetyar-light .section-title p,
+body.budgetyar-light .settings-card p,
+body.budgetyar-light .summary-card p,
+body.budgetyar-light .empty-inline,
+body.budgetyar-light .recent-expense-row span,
+body.budgetyar-light .weekly-category-head small,
+body.budgetyar-light .installment-item p,
+body.budgetyar-light .installment-meta,
+body.budgetyar-light .installment-item-head small,
+body.budgetyar-light th,
+body.budgetyar-light td::before {
+  color: #64748b;
+}
+
+body.budgetyar-light .eyebrow,
+body.budgetyar-light .amount-in-words {
+  color: #0f766e;
+}
+
+body.budgetyar-light .nav-item {
+  color: #334155;
+}
+
+body.budgetyar-light .nav-item.active,
+body.budgetyar-light .nav-item:hover {
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.15), rgba(99, 102, 241, 0.12));
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+  color: #0f172a;
+}
+
+body.budgetyar-light .brand-mark,
+body.budgetyar-light .primary-button,
+body.budgetyar-light .segmented .active,
+body.budgetyar-light .fab {
+  background: linear-gradient(135deg, #0f766e, #2563eb) !important;
+  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.22) !important;
+  color: #ffffff;
+}
+
+body.budgetyar-light input,
+body.budgetyar-light select,
+body.budgetyar-light textarea,
+body.budgetyar-light .jalali-date-picker__input,
+body.budgetyar-light .jalali-range-picker__input {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #111827;
+}
+
+body.budgetyar-light input::placeholder,
+body.budgetyar-light textarea::placeholder {
+  color: #94a3b8;
+}
+
+body.budgetyar-light input[readonly] {
+  background: #eef2f7;
+  color: #334155;
+}
+
+body.budgetyar-light .actions button,
+body.budgetyar-light .export-actions button,
+body.budgetyar-light .soft-button,
+body.budgetyar-light .segmented button,
+body.budgetyar-light .close,
+body.budgetyar-light input[type=file]::file-selector-button {
+  background: #f1f5f9;
+  border-color: #d8e0ea;
+  color: #1e293b;
+}
+
+body.budgetyar-light .actions button:hover,
+body.budgetyar-light .export-actions button:hover,
+body.budgetyar-light .soft-button:hover,
+body.budgetyar-light .segmented button:hover,
+body.budgetyar-light .close:hover {
+  background: #e8eef6;
+}
+
+body.budgetyar-light .budget-item,
+body.budgetyar-light .report-grid span,
+body.budgetyar-light .settings-grid label,
+body.budgetyar-light .stats-grid div,
+body.budgetyar-light .stats-chart-panel,
+body.budgetyar-light .installment-item,
+body.budgetyar-light .notification-status,
+body.budgetyar-light .notification-suggestion,
+body.budgetyar-light .mobile-category-list span,
+body.budgetyar-light tr {
+  background: #ffffff;
+  border-color: #dde6f0;
+}
+
+body.budgetyar-light .weekly-overanalysis {
+  background: #fff7db;
+  border-color: #fde68a;
+}
+
+body.budgetyar-light .weekly-overanalysis > strong,
+body.budgetyar-light .weekly-overanalysis-list em,
+body.budgetyar-light .weekly-category-list em,
+body.budgetyar-light .installment-alert-list em {
+  color: #a16207;
+}
+
+body.budgetyar-light .weekly-overanalysis > p,
+body.budgetyar-light .weekly-overanalysis-list b,
+body.budgetyar-light .weekly-overanalysis-list small {
+  color: #475569;
+}
+
+body.budgetyar-light .insights,
+body.budgetyar-light .installment-edit-banner {
+  background: #e6f6f4;
+  border-color: #99f6e4;
+}
+
+body.budgetyar-light .recent-expense-row,
+body.budgetyar-light td,
+body.budgetyar-light th {
+  border-color: #e2e8f0;
+}
+
+body.budgetyar-light .recent-expense-row b {
+  color: #be123c;
+}
+
+body.budgetyar-light .progress {
+  background: #e2e8f0;
+}
+
+body.budgetyar-light .transaction-meta span,
+body.budgetyar-light .installment-alert-list span,
+body.budgetyar-light .weekly-category-list span {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #475569;
+}
+
+body.budgetyar-light .pill.income {
+  background: #dcfce7;
+  color: #166534;
+}
+
+body.budgetyar-light .pill.expense {
+  background: #ffe4e6;
+  color: #be123c;
+}
+
+body.budgetyar-light .nonessential-mark,
+body.budgetyar-light .nonessential-meta {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+
+body.budgetyar-light .installment-item.overdue {
+  border-color: rgba(220, 38, 38, 0.35);
+}
+
+body.budgetyar-light .installment-item.upcoming {
+  border-color: rgba(217, 119, 6, 0.35);
+}
+
+body.budgetyar-light .installment-item-head > span {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+body.budgetyar-light .installment-item.overdue .installment-item-head > span {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+body.budgetyar-light .installment-item.upcoming .installment-item-head > span {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+body.budgetyar-light .modal-backdrop,
+body.budgetyar-light .mobile-menu-backdrop {
+  background: rgba(15, 23, 42, 0.24);
+}
+
+body.budgetyar-light .toast {
+  background: #0f172a;
+  color: #ffffff;
+}
+
+body.budgetyar-light .jalali-calendar {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #111827;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.18);
+}
+
+body.budgetyar-light .mobile-perf .glass-panel {
+  background: rgba(255, 255, 255, 0.96) !important;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.10) !important;
+}
+
+@media (max-width: 760px) {
+  body.budgetyar-light {
+    background: linear-gradient(180deg, #f8fafc, #eef4fb 50%, #f7fafc) !important;
+  }
+}
