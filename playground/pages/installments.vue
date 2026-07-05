@@ -2,6 +2,7 @@
 const budgetyar = useBudgetyar()
 const {
   installmentForm,
+  editingInstallmentId,
   installmentAmountInWords,
   installmentStartDatePickerValue,
   installmentSummaries,
@@ -10,6 +11,8 @@ const {
   formatMoney,
   updateMoneyInput,
   addInstallmentPlan,
+  editInstallmentPlan,
+  cancelInstallmentEdit,
   payInstallment,
   removeInstallmentPlan,
   getCategory,
@@ -29,6 +32,10 @@ const {
     </div>
 
     <form class="installment-form" @submit.prevent="addInstallmentPlan">
+      <div v-if="editingInstallmentId" class="installment-edit-banner">
+        <strong>ویرایش قسط</strong>
+        <button class="soft-button" type="button" @click="cancelInstallmentEdit">لغو</button>
+      </div>
       <label>
         <span>عنوان</span>
         <input v-model="installmentForm.title" type="text" placeholder="مثلا وام لپ‌تاپ" required />
@@ -73,7 +80,7 @@ const {
         <span>توضیحات</span>
         <textarea v-model="installmentForm.description" rows="2" placeholder="اختیاری" />
       </label>
-      <button class="primary-button" type="submit">افزودن قسط</button>
+      <button class="primary-button" type="submit">{{ editingInstallmentId ? 'ذخیره ویرایش' : 'افزودن قسط' }}</button>
     </form>
 
     <div v-if="installmentSummaries.length" class="installments-grid">
@@ -96,6 +103,7 @@ const {
         <p v-if="item.description">{{ item.description }}</p>
         <div class="installment-actions">
           <button class="primary-button" type="button" :disabled="item.status === 'completed'" @click="payInstallment(item)">پرداخت شد</button>
+          <button class="soft-button" type="button" @click="editInstallmentPlan(item)">ویرایش</button>
           <button class="soft-button" type="button" @click="removeInstallmentPlan(item.id)">حذف</button>
         </div>
       </article>

@@ -240,6 +240,7 @@ const categoryForm = reactive({
   budget: 1000000,
 })
 const installments = ref<InstallmentPlan[]>([])
+const editingInstallmentId = ref<number | null>(null)
 const installmentForm = reactive({
   title: '',
   amount: 0,
@@ -1225,10 +1226,27 @@ function deleteCategory(key: CategoryKey) {
   pushToast('دسته‌بندی حذف شد 🗑️')
 }
 
+function resetInstallmentForm() {
+  editingInstallmentId.value = null
+  Object.assign(installmentForm, {
+    title: '',
+    amount: 0,
+    category: 'other',
+    startDate: todayKey,
+    dueDay: currentJalaliDate.day,
+    totalCount: 12,
+    description: '',
+    paymentMethod: 'cash',
+  })
+}
+
 function addInstallmentPlan() {
   const title = installmentForm.title.trim()
   const amount = Math.max(0, Number(installmentForm.amount) || 0)
-  const totalCount = Math.max(1, Math.trunc(Number(installmentForm.totalCount) || 0))
+  const existingPlan = editingInstallmentId.value
+    ? installments.value.find((item) => item.id === editingInstallmentId.value)
+    : undefined
+  const totalCount = Math.max(1, existingPlan?.paidCount ?? 0, Math.trunc(Number(installmentForm.totalCount) || 0))
   const dueDay = Math.min(31, Math.max(1, Math.trunc(Number(installmentForm.dueDay) || 1)))
 
   if (!title || !amount || !installmentForm.startDate) return
@@ -1246,18 +1264,37 @@ function addInstallmentPlan() {
     paymentMethod: installmentForm.paymentMethod,
   }
 
+  if (existingPlan) {
+    installments.value = installments.value.map((item) =>
+      item.id === existingPlan.id ? { ...plan, id: existingPlan.id, paidCount: existingPlan.paidCount } : item,
+    )
+    resetInstallmentForm()
+    pushToast('قسط ویرایش شد ✅')
+    return
+  }
+
   installments.value = [plan, ...installments.value]
-  Object.assign(installmentForm, {
-    title: '',
-    amount: 0,
-    category: 'other',
-    startDate: todayKey,
-    dueDay: currentJalaliDate.day,
-    totalCount: 12,
-    description: '',
-    paymentMethod: 'cash',
-  })
+  resetInstallmentForm()
   pushToast('قسط اضافه شد ✅')
+}
+
+function editInstallmentPlan(plan: InstallmentPlan) {
+  editingInstallmentId.value = plan.id
+  Object.assign(installmentForm, {
+    title: plan.title,
+    amount: plan.amount,
+    category: plan.category,
+    startDate: plan.startDate,
+    dueDay: plan.dueDay,
+    totalCount: plan.totalCount,
+    description: plan.description ?? '',
+    paymentMethod: plan.paymentMethod,
+  })
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function cancelInstallmentEdit() {
+  resetInstallmentForm()
 }
 
 function payInstallment(plan: InstallmentPlan) {
@@ -1286,6 +1323,7 @@ function payInstallment(plan: InstallmentPlan) {
 
 function removeInstallmentPlan(id: number) {
   installments.value = installments.value.filter((item) => item.id !== id)
+  if (editingInstallmentId.value === id) resetInstallmentForm()
   pushToast('قسط حذف شد')
 }
 
@@ -2042,7 +2080,7 @@ export function useBudgetyar() {
     categories, transactions, budgets, installments, creditLimit, cashFlowMode, themeMode,
     query, selectedMonth, selectedYear, selectedCategory, selectedType, dateRange, pickerDateRange,
     isModalOpen, formType, form, formAmountInWords, formDatePickerValue, editingId, toasts,
-    categoryForm, installmentForm, installmentAmountInWords, installmentStartDatePickerValue,
+    categoryForm, installmentForm, editingInstallmentId, installmentAmountInWords, installmentStartDatePickerValue,
     installPrompt, isStandalone, isAndroidNative, isNotificationsLoading, bankApps, bankSuggestions, selectedBankPackage, bankNotificationStatus,
     expenseShareCanvas, categoryBarCanvas, trendLineCanvas, statsExpenseMixCanvas, statsBudgetUsageCanvas, statsDailyExpenseCanvas, statsWeeklyFlowCanvas, statsCashFlowCanvas,
     currentMonthTransactions, currentWeekTransactions, expenseTransactions, incomeTransactions, weeklyExpenseTransactions, weeklyIncomeTransactions,
@@ -2053,7 +2091,7 @@ export function useBudgetyar() {
     filteredTransactions, dailyTrend, hasExpenseData, expenseShareChartData, categoryBarChartData, trendLineChartData, dailyExpensePoints, weeklyFlowPoints, budgetAnalysisItems, statsExpenseMixChartData, statsBudgetUsageChartData, statsDailyExpenseChartData, statsWeeklyFlowChartData, statsCashFlowChartData,
     summaryLines, insights, dashboardCards, widgets, statsItems,
     getCategory, normalizeDigits, normalizeJalaliDate, getJalaliInputDay, getTrendDays, getPreviousMonthPrefix, addJalaliMonths, getInstallmentDueDate, getInstallmentStatus, getInstallmentStatusLabel, getCurrentWeekRange, getWeekdayLabel, getJalaliMonthPrefix, getCurrentJalaliDate, formatJalaliInputDate, formatDisplayJalaliDate, jalaliInputToIso, isoToJalaliInput, toPersianNumber, parseMoneyInput, formatMoneyInput, formatMoneyWords, formatMoney, formatCompact, progressPercent, getChangePercent, formatPercentHint, formatChangeSentence,
-    selectSection, openModal, editTransaction, saveTransaction, removeTransaction, refreshBankNotifications, openNotificationAccessSettings, updateSelectedBankPackage, acceptBankSuggestion, dismissBankSuggestion, formatSuggestionDate, updateMoneyInput, updateCreditLimit, updateBudget, addCategory, deleteCategory, addInstallmentPlan, payInstallment, removeInstallmentPlan, setThemeMode,
+    selectSection, openModal, editTransaction, saveTransaction, removeTransaction, refreshBankNotifications, openNotificationAccessSettings, updateSelectedBankPackage, acceptBankSuggestion, dismissBankSuggestion, formatSuggestionDate, updateMoneyInput, updateCreditLimit, updateBudget, addCategory, deleteCategory, addInstallmentPlan, editInstallmentPlan, cancelInstallmentEdit, payInstallment, removeInstallmentPlan, setThemeMode,
     getTransactionCategoryLabel, getPaymentMethodLabel, getNecessityLabel, buildCsvReport, buildExcelReport, buildBackupJson, importBackup, createExportFile, saveBlobToDevice, exportReport, installApp, pushToast,
     createCharts, syncCharts, scheduleChartSync, destroyCharts,
   }

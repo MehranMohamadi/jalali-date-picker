@@ -113,6 +113,23 @@
   top: auto;
 }
 
+.installment-edit-banner {
+  align-items: center;
+  background: rgba(34, 211, 238, 0.12);
+  border: 1px solid rgba(34, 211, 238, 0.18);
+  border-radius: 12px;
+  display: flex;
+  gap: 10px;
+  grid-column: 1 / -1;
+  justify-content: space-between;
+  padding: 8px 10px;
+}
+
+.installment-edit-banner .soft-button {
+  min-height: 32px;
+  padding: 6px 10px;
+}
+
 @media (max-width: 760px) {
   td:nth-child(6)::before { content: 'جزئیات'; }
   td:nth-child(7)::before { content: 'عملیات'; }
@@ -189,6 +206,10 @@
   .transaction-modal .check-row {
     min-height: 31px;
     padding: 5px 8px;
+  }
+
+  .installment-edit-banner {
+    padding: 7px 9px;
   }
 }
 
