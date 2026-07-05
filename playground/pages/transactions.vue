@@ -11,6 +11,7 @@ const {
   years,
   categories,
   filteredTransactions,
+  isMobileViewport,
   getCategory,
   getPaymentMethodLabel,
   formatMoney,
@@ -18,10 +19,22 @@ const {
   editTransaction,
   removeTransaction,
 } = budgetyar
+const visibleTransactionLimit = ref(isMobileViewport.value ? 24 : 80)
+const transactionPageSize = computed(() => (isMobileViewport.value ? 24 : 80))
+const visibleTransactions = computed(() => filteredTransactions.value.slice(0, visibleTransactionLimit.value))
+const hasMoreTransactions = computed(() => visibleTransactionLimit.value < filteredTransactions.value.length)
 
 onMounted(() => {
   selectedType.value = 'همه'
 })
+
+watch([filteredTransactions, isMobileViewport], () => {
+  visibleTransactionLimit.value = transactionPageSize.value
+})
+
+function showMoreTransactions() {
+  visibleTransactionLimit.value += transactionPageSize.value
+}
 </script>
 
 <template>
@@ -76,7 +89,7 @@ onMounted(() => {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="item in filteredTransactions" :key="item.id">
+          <tr v-for="item in visibleTransactions" :key="item.id">
             <td><span class="pill" :class="item.type">{{ item.type === 'income' ? 'درآمد' : 'هزینه' }}</span></td>
             <td>{{ item.title }}</td>
             <td>{{ item.type === 'income' ? 'درآمد' : `${getCategory(item.category).icon} ${getCategory(item.category).label}` }}</td>
@@ -97,6 +110,11 @@ onMounted(() => {
           </tr>
         </tbody>
       </table>
+      <div v-if="hasMoreTransactions" class="load-more-row">
+        <button type="button" class="soft-button" @click="showMoreTransactions">
+          نمایش بیشتر
+        </button>
+      </div>
     </div>
 
     <EmptyState

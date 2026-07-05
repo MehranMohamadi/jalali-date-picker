@@ -12,3 +12,113 @@
     grid-template-columns: 1.6fr repeat(4, 1fr) 2fr;
   }
 }
+
+@media (max-width: 760px) {
+  body {
+    background: linear-gradient(180deg, #050816, #0b1024 54%, #101827);
+  }
+
+  .mobile-perf *,
+  .mobile-perf *::before,
+  .mobile-perf *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .mobile-perf .glass-panel,
+  .mobile-perf .mobile-topbar,
+  .mobile-perf .modal-backdrop,
+  .mobile-perf .mobile-menu-backdrop {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  .mobile-perf .glass-panel {
+    background: rgba(15, 23, 42, 0.92) !important;
+    box-shadow: 0 10px 28px rgba(2, 8, 23, 0.34) !important;
+  }
+
+  .mobile-perf .fab,
+  .mobile-perf .brand-mark,
+  .mobile-perf .primary-button,
+  .mobile-perf .segmented .active {
+    box-shadow: 0 8px 22px rgba(37, 99, 235, 0.26) !important;
+  }
+
+  .mobile-perf .table-card,
+  .mobile-perf .summary-card,
+  .mobile-perf .stats-card,
+  .mobile-perf .settings-card,
+  .mobile-perf .budgets-card,
+  .mobile-perf .notifications-card,
+  .mobile-perf .recent-expenses-card,
+  .mobile-perf .weekly-category-budget {
+    content-visibility: auto;
+    contain-intrinsic-size: 320px;
+  }
+
+  .mobile-chart-summary {
+    border-radius: 18px;
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .mobile-category-list {
+    display: grid;
+    gap: 8px;
+  }
+
+  .mobile-category-list span {
+    align-items: center;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
+    padding: 9px 10px;
+  }
+
+  .mobile-category-list b {
+    align-items: center;
+    display: inline-flex;
+    gap: 6px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-category-list i {
+    border-radius: 999px;
+    flex: 0 0 auto;
+    height: 9px;
+    width: 9px;
+  }
+
+  .mobile-category-list em {
+    color: #cbd5e1;
+    flex: 0 0 auto;
+    font-style: normal;
+  }
+
+  .load-more-row {
+    display: grid;
+    margin-top: 12px;
+    place-items: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

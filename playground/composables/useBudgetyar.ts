@@ -154,6 +154,7 @@ const budgets = ref<BudgetGoal[]>([
 
 const activeSection = ref('داشبورد')
 const isMobileMenuOpen = ref(false)
+const isMobileViewport = ref(false)
 const STORAGE_KEY = 'budgetyar-transactions-v1'
 const CATEGORIES_STORAGE_KEY = 'budgetyar-categories-v1'
 const BUDGETS_STORAGE_KEY = 'budgetyar-budgets-v1'
@@ -208,6 +209,9 @@ const statsBudgetUsageChart = shallowRef<Chart<'bar'> | null>(null)
 const statsDailyExpenseChart = shallowRef<Chart<'line'> | null>(null)
 const statsWeeklyFlowChart = shallowRef<Chart<'bar'> | null>(null)
 const statsCashFlowChart = shallowRef<Chart<'bar'> | null>(null)
+let chartSyncFrame: number | null = null
+let mobileViewportQuery: MediaQueryList | null = null
+let mobileViewportListener: ((event: MediaQueryListEvent) => void) | null = null
 
 const form = reactive({
   amount: 0,
@@ -1617,6 +1621,9 @@ function baseChartOptions(): ChartOptions {
   return {
     responsive: true,
     maintainAspectRatio: false,
+    animation: false,
+    resizeDelay: 160,
+    devicePixelRatio: isMobileViewport.value ? 1 : undefined,
     locale: 'fa-IR',
     plugins: {
       legend: {
@@ -1692,6 +1699,15 @@ function barOptions(): ChartOptions<'bar'> {
 function lineOptions(): ChartOptions<'line'> {
   return {
     ...baseChartOptions(),
+    elements: {
+      point: {
+        radius: isMobileViewport.value ? 0 : 2,
+        hitRadius: 8,
+      },
+      line: {
+        tension: 0.32,
+      },
+    },
     plugins: {
       ...baseChartOptions().plugins,
       legend: {
@@ -1901,46 +1917,64 @@ function syncCharts() {
 
   if (expenseShareChart.value) {
     expenseShareChart.value.data = expenseShareChartData.value
-    expenseShareChart.value.update()
+    expenseShareChart.value.update('none')
   }
 
   if (categoryBarChart.value) {
     categoryBarChart.value.data = categoryBarChartData.value
-    categoryBarChart.value.update()
+    categoryBarChart.value.update('none')
   }
 
   if (trendLineChart.value) {
     trendLineChart.value.data = trendLineChartData.value
-    trendLineChart.value.update()
+    trendLineChart.value.update('none')
   }
 
   if (statsExpenseMixChart.value) {
     statsExpenseMixChart.value.data = statsExpenseMixChartData.value
-    statsExpenseMixChart.value.update()
+    statsExpenseMixChart.value.update('none')
   }
 
   if (statsBudgetUsageChart.value) {
     statsBudgetUsageChart.value.data = statsBudgetUsageChartData.value
-    statsBudgetUsageChart.value.update()
+    statsBudgetUsageChart.value.update('none')
   }
 
   if (statsDailyExpenseChart.value) {
     statsDailyExpenseChart.value.data = statsDailyExpenseChartData.value
-    statsDailyExpenseChart.value.update()
+    statsDailyExpenseChart.value.update('none')
   }
 
   if (statsWeeklyFlowChart.value) {
     statsWeeklyFlowChart.value.data = statsWeeklyFlowChartData.value
-    statsWeeklyFlowChart.value.update()
+    statsWeeklyFlowChart.value.update('none')
   }
 
   if (statsCashFlowChart.value) {
     statsCashFlowChart.value.data = statsCashFlowChartData.value
-    statsCashFlowChart.value.update()
+    statsCashFlowChart.value.update('none')
   }
 }
 
+function scheduleChartSync() {
+  if (typeof window === 'undefined') return
+
+  if (chartSyncFrame !== null) {
+    window.cancelAnimationFrame(chartSyncFrame)
+  }
+
+  chartSyncFrame = window.requestAnimationFrame(() => {
+    chartSyncFrame = null
+    syncCharts()
+  })
+}
+
 function destroyCharts() {
+  if (chartSyncFrame !== null && typeof window !== 'undefined') {
+    window.cancelAnimationFrame(chartSyncFrame)
+    chartSyncFrame = null
+  }
+
   expenseShareChart.value?.destroy()
   categoryBarChart.value?.destroy()
   trendLineChart.value?.destroy()
@@ -1959,9 +1993,31 @@ function destroyCharts() {
   statsCashFlowChart.value = null
 }
 
+function bindMobileViewport() {
+  if (typeof window === 'undefined') return
+
+  mobileViewportQuery = window.matchMedia('(max-width: 760px)')
+  isMobileViewport.value = mobileViewportQuery.matches
+  mobileViewportListener = (event) => {
+    isMobileViewport.value = event.matches
+    destroyCharts()
+    scheduleChartSync()
+  }
+  mobileViewportQuery.addEventListener('change', mobileViewportListener)
+}
+
+function unbindMobileViewport() {
+  if (mobileViewportQuery && mobileViewportListener) {
+    mobileViewportQuery.removeEventListener('change', mobileViewportListener)
+  }
+
+  mobileViewportQuery = null
+  mobileViewportListener = null
+}
+
 export function useBudgetyar() {
   return {
-    activeSection, isMobileMenuOpen, navItems, months, years, today, todayKey, currentMonthYear, currentJalaliDate, currentMonthLength,
+    activeSection, isMobileMenuOpen, isMobileViewport, navItems, months, years, today, todayKey, currentMonthYear, currentJalaliDate, currentMonthLength,
     categories, transactions, budgets, installments, creditLimit, cashFlowMode,
     query, selectedMonth, selectedYear, selectedCategory, selectedType, dateRange, pickerDateRange,
     isModalOpen, formType, form, formAmountInWords, formDatePickerValue, editingId, toasts,
@@ -1978,7 +2034,7 @@ export function useBudgetyar() {
     getCategory, normalizeDigits, normalizeJalaliDate, getJalaliInputDay, getTrendDays, getPreviousMonthPrefix, addJalaliMonths, getInstallmentDueDate, getInstallmentStatus, getInstallmentStatusLabel, getCurrentWeekRange, getWeekdayLabel, getJalaliMonthPrefix, getCurrentJalaliDate, formatJalaliInputDate, formatDisplayJalaliDate, jalaliInputToIso, isoToJalaliInput, toPersianNumber, parseMoneyInput, formatMoneyInput, formatMoneyWords, formatMoney, formatCompact, progressPercent, getChangePercent, formatPercentHint, formatChangeSentence,
     selectSection, openModal, editTransaction, saveTransaction, removeTransaction, refreshBankNotifications, openNotificationAccessSettings, updateSelectedBankPackage, acceptBankSuggestion, dismissBankSuggestion, formatSuggestionDate, updateBudget, addCategory, deleteCategory, addInstallmentPlan, payInstallment, removeInstallmentPlan,
     getTransactionCategoryLabel, getPaymentMethodLabel, getNecessityLabel, buildCsvReport, buildExcelReport, buildBackupJson, importBackup, createExportFile, saveBlobToDevice, exportReport, installApp, pushToast,
-    createCharts, syncCharts, destroyCharts,
+    createCharts, syncCharts, scheduleChartSync, destroyCharts,
   }
 }
 
@@ -1987,6 +2043,7 @@ export function startBudgetyar() {
   if (budgetyarStarted) return
   budgetyarStarted = true
   onMounted(() => {
+    bindMobileViewport()
     isStandalone.value = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as Navigator & { standalone?: boolean }).standalone === true
     isAndroidNative.value = Capacitor.getPlatform() === 'android'
   
@@ -2065,10 +2122,13 @@ export function startBudgetyar() {
       refreshBankNotifications()
     }
   
-    nextTick(syncCharts)
+    nextTick(scheduleChartSync)
   })
   
-  onBeforeUnmount(destroyCharts)
+  onBeforeUnmount(() => {
+    unbindMobileViewport()
+    destroyCharts()
+  })
   
   watch(
     transactions,
@@ -2118,7 +2178,7 @@ export function startBudgetyar() {
       statsCashFlowChartData,
     ],
     () => {
-      nextTick(syncCharts)
+      nextTick(scheduleChartSync)
     },
     { deep: true },
   )
@@ -2126,7 +2186,7 @@ export function startBudgetyar() {
   watch(activeSection, (section) => {
     if (section === 'داشبورد' || section === 'آمار') {
       destroyCharts()
-      nextTick(syncCharts)
+      nextTick(scheduleChartSync)
       return
     }
   

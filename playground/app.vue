@@ -11,10 +11,11 @@ startBudgetyar()
 const {
   activeSection,
   isMobileMenuOpen,
+  isMobileViewport,
   toasts,
   openModal,
   destroyCharts,
-  syncCharts,
+  scheduleChartSync,
 } = budgetyar
 
 const navItems = [
@@ -50,7 +51,7 @@ watch(
     activeSection.value = routeSectionMap[activePath.value] ?? 'داشبورد'
     isMobileMenuOpen.value = false
     destroyCharts()
-    nextTick(syncCharts)
+    nextTick(scheduleChartSync)
   },
   { immediate: true },
 )
@@ -62,7 +63,7 @@ function quickAdd() {
 </script>
 
 <template>
-  <main dir="rtl" class="app-shell">
+  <main dir="rtl" class="app-shell" :class="{ 'mobile-perf': isMobileViewport }">
     <MobileTopbar :title="activeTitle" :open="isMobileMenuOpen" @open-menu="isMobileMenuOpen = true" />
     <div v-if="isMobileMenuOpen" class="mobile-menu-backdrop" @click="isMobileMenuOpen = false" />
 

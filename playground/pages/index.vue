@@ -9,6 +9,7 @@ const {
   weeklyCategoryBudgets,
   visibleCategoryTotals,
   hasExpenseData,
+  isMobileViewport,
   expenseShareCanvas,
   categoryBarCanvas,
   trendLineCanvas,
@@ -16,7 +17,7 @@ const {
   formatMoney,
   formatCompact,
   toPersianNumber,
-  syncCharts,
+  scheduleChartSync,
   destroyCharts,
 } = budgetyar
 
@@ -24,7 +25,7 @@ function cardValue(card: { value: number; suffix?: string }) {
   return card.suffix ? `${toPersianNumber(card.value)}${card.suffix}` : formatMoney(card.value)
 }
 
-onMounted(() => nextTick(syncCharts))
+onMounted(() => nextTick(scheduleChartSync))
 onBeforeUnmount(destroyCharts)
 </script>
 
@@ -80,7 +81,7 @@ onBeforeUnmount(destroyCharts)
     </div>
   </section>
 
-  <section class="dashboard-grid">
+  <section v-if="!isMobileViewport" class="dashboard-grid">
     <article class="chart-card glass-panel">
       <div class="section-title">
         <div>
@@ -126,6 +127,20 @@ onBeforeUnmount(destroyCharts)
         <canvas ref="trendLineCanvas" aria-label="نمودار روند ماهانه" role="img" />
       </div>
     </article>
+  </section>
+
+  <section v-else class="mobile-chart-summary glass-panel">
+    <div class="weekly-category-head">
+      <strong>سهم دسته‌های هزینه</strong>
+      <small>خلاصه سبک موبایل</small>
+    </div>
+    <div v-if="hasExpenseData" class="mobile-category-list">
+      <span v-for="item in visibleCategoryTotals.slice(0, 6)" :key="item.key">
+        <b><i :style="{ background: item.color }" /> {{ item.icon }} {{ item.label }}</b>
+        <em>{{ formatCompact(item.spent) }}</em>
+      </span>
+    </div>
+    <p v-else class="empty-inline">هنوز هزینه‌ای ثبت نشده</p>
   </section>
 
   <section class="weekly-category-budget glass-panel">

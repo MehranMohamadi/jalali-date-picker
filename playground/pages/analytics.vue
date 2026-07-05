@@ -25,11 +25,11 @@ const {
   formatMoney,
   toPersianNumber,
   exportReport,
-  syncCharts,
+  scheduleChartSync,
   destroyCharts,
 } = budgetyar
 
-onMounted(() => nextTick(syncCharts))
+onMounted(() => nextTick(scheduleChartSync))
 onBeforeUnmount(destroyCharts)
 </script>
 
