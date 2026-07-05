@@ -3898,6 +3898,7 @@ th {
 
 .transaction-meta {
   display: flex;
+  align-items:center;
   flex-wrap: wrap;
   gap: 6px;
 }
