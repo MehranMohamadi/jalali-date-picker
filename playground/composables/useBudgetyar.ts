@@ -23,6 +23,17 @@ import {
   type PurchaseDecisionResult,
   type RecurringFrequency,
 } from '../../src/utils/budgetyarPlanning'
+import {
+  calculateDebtPayoffPlan as calculateAdvancedDebtPayoffPlan,
+  calculateFinancialHealthScore,
+  calculateIrregularIncomeBudget,
+  matchCategorizationRule,
+  type CategorizationMatchType,
+  type DebtPayoffPlan,
+  type DebtPayoffStrategy,
+  type FinancialHealthLevel,
+  type IncomeBudgetingMode,
+} from '../../src/utils/budgetyarAdvancedFinance'
 
 Chart.register(...registerables)
 const BankNotifications = registerPlugin<BankNotificationsPlugin>('BankNotifications')
@@ -34,6 +45,7 @@ export type ThemeMode = 'dark' | 'light'
 export type GoalPriority = 'low' | 'medium' | 'high'
 export type RecurringItemType = 'income' | 'expense'
 export type CashflowForecastPeriod = 'untilEndOfMonth' | 'next30Days' | 'next90Days'
+export type BudgetyarDebtType = 'loan' | 'credit' | 'personal' | 'installment' | 'other'
 
 export type CategoryKey = string
 export type ExportFormat = 'PDF' | 'Excel' | 'CSV' | 'JSON'
@@ -60,6 +72,9 @@ export interface Transaction {
   sourceType?: 'manual' | 'recurring' | 'installment' | 'bank-notification'
   sourceId?: string
   sourceDate?: string
+  autoCategorized?: boolean
+  categorizationRuleId?: string
+  merchantName?: string
 }
 
 export interface BudgetGoal {
@@ -114,6 +129,58 @@ export interface BudgetyarRecurringItem {
   skippedDates?: string[]
   note?: string
   createdAt: string
+  updatedAt: string
+}
+
+export interface BudgetyarDebt {
+  id: string
+  title: string
+  type: BudgetyarDebtType
+  principalAmount: number
+  remainingAmount: number
+  interestRateAnnual?: number
+  minimumMonthlyPayment: number
+  extraMonthlyPayment?: number
+  dueDay?: number
+  startDate?: string
+  targetPayoffDate?: string
+  linkedInstallmentId?: string
+  creditorName?: string
+  priority: GoalPriority
+  isActive: boolean
+  note?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface BudgetyarCategorizationRule {
+  id: string
+  title: string
+  isActive: boolean
+  matchType: CategorizationMatchType
+  pattern?: string
+  minAmount?: number
+  maxAmount?: number
+  merchantName?: string
+  categoryId: string
+  transactionType?: TransactionType
+  paymentMethod?: PaymentMethod
+  priority: number
+  applyToExisting: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface BudgetyarIncomeSettings {
+  mode: IncomeBudgetingMode
+  fixedMonthlyIncome?: number
+  manualBudgetBase?: number
+  historyMonths: 3 | 6 | 12
+  safetyBufferPercent: number
+  badMonthReservePercent: number
+  essentialPercent: number
+  savingPercent: number
+  flexiblePercent: number
   updatedAt: string
 }
 
@@ -221,6 +288,9 @@ const INSTALLMENTS_STORAGE_KEY = 'budgetyar-installments-v1'
 const THEME_STORAGE_KEY = 'budgetyar-theme-v1'
 const GOALS_STORAGE_KEY = 'budgetyar-goals-v1'
 const RECURRING_ITEMS_STORAGE_KEY = 'budgetyar-recurring-items-v1'
+const DEBTS_STORAGE_KEY = 'budgetyar-debts-v1'
+const CATEGORIZATION_RULES_STORAGE_KEY = 'budgetyar-categorization-rules-v1'
+const INCOME_SETTINGS_STORAGE_KEY = 'budgetyar-income-settings-v1'
 const navItems = ['داشبورد', 'درآمدها', 'هزینه‌ها', 'بودجه‌ها', 'قسط‌ها', 'گزارش‌ها', 'آمار', 'اعلان‌ها', 'تنظیمات']
 const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند']
 const currentJalaliDate = getCurrentJalaliDate()
@@ -234,6 +304,16 @@ const currentWeekStartKey = formatJalaliInputDate(currentWeekRange.start)
 const currentWeekEndKey = formatJalaliInputDate(currentWeekRange.end)
 const currentMonthYear = `${months[currentJalaliDate.month - 1]} ${toPersianNumber(currentJalaliDate.year)}`
 const years = [currentJalaliDate.year - 1, currentJalaliDate.year, currentJalaliDate.year + 1].map(toPersianNumber)
+const defaultIncomeSettings: BudgetyarIncomeSettings = {
+  mode: 'average',
+  historyMonths: 3,
+  safetyBufferPercent: 15,
+  badMonthReservePercent: 10,
+  essentialPercent: 60,
+  savingPercent: 20,
+  flexiblePercent: 20,
+  updatedAt: todayKey,
+}
 const query = ref('')
 const selectedMonth = ref(months[currentJalaliDate.month - 1])
 const selectedYear = ref(toPersianNumber(currentJalaliDate.year))
@@ -301,10 +381,16 @@ const categoryForm = reactive({
 const installments = ref<InstallmentPlan[]>([])
 const goals = ref<BudgetyarGoal[]>([])
 const recurringItems = ref<BudgetyarRecurringItem[]>([])
+const debts = ref<BudgetyarDebt[]>([])
+const categorizationRules = ref<BudgetyarCategorizationRule[]>([])
+const incomeSettings = ref<BudgetyarIncomeSettings>({ ...defaultIncomeSettings })
 const editingInstallmentId = ref<number | null>(null)
 const editingGoalId = ref<string | null>(null)
 const editingRecurringItemId = ref<string | null>(null)
+const editingDebtId = ref<string | null>(null)
+const editingCategorizationRuleId = ref<string | null>(null)
 const cashflowForecastPeriod = ref<CashflowForecastPeriod>('untilEndOfMonth')
+const selectedDebtStrategy = ref<DebtPayoffStrategy>('snowball')
 const installmentForm = reactive({
   title: '',
   amount: 0,
@@ -349,11 +435,47 @@ const purchaseForm = reactive({
   paymentMethod: 'cash' as PaymentMethod,
   note: '',
 })
+const debtForm = reactive({
+  title: '',
+  type: 'loan' as BudgetyarDebtType,
+  principalAmount: 0,
+  remainingAmount: 0,
+  interestRateAnnual: 0,
+  minimumMonthlyPayment: 0,
+  extraMonthlyPayment: 0,
+  dueDay: currentJalaliDate.day,
+  startDate: todayKey,
+  targetPayoffDate: '',
+  linkedInstallmentId: '',
+  creditorName: '',
+  priority: 'medium' as GoalPriority,
+  isActive: true,
+  note: '',
+})
+const categorizationRuleForm = reactive({
+  title: '',
+  isActive: true,
+  matchType: 'contains' as CategorizationMatchType,
+  pattern: '',
+  minAmount: 0,
+  maxAmount: 0,
+  merchantName: '',
+  categoryId: 'other' as CategoryKey,
+  transactionType: '' as '' | TransactionType,
+  paymentMethod: '' as '' | PaymentMethod,
+  priority: 10,
+  applyToExisting: false,
+})
 const installmentAmountInWords = computed(() => formatMoneyWords(installmentForm.amount))
 const goalTargetAmountInWords = computed(() => formatMoneyWords(goalForm.targetAmount))
 const goalSavedAmountInWords = computed(() => formatMoneyWords(goalForm.savedAmount))
 const recurringAmountInWords = computed(() => formatMoneyWords(recurringForm.amount))
 const purchaseAmountInWords = computed(() => formatMoneyWords(purchaseForm.amount))
+const debtPrincipalAmountInWords = computed(() => formatMoneyWords(debtForm.principalAmount))
+const debtRemainingAmountInWords = computed(() => formatMoneyWords(debtForm.remainingAmount))
+const debtMinimumPaymentInWords = computed(() => formatMoneyWords(debtForm.minimumMonthlyPayment))
+const ruleMinAmountInWords = computed(() => formatMoneyWords(categorizationRuleForm.minAmount))
+const ruleMaxAmountInWords = computed(() => formatMoneyWords(categorizationRuleForm.maxAmount))
 const installmentStartDatePickerValue = computed({
   get: () => jalaliInputToIso(installmentForm.startDate),
   set: (value: string | null) => {
@@ -382,6 +504,18 @@ const purchaseDatePickerValue = computed({
   get: () => jalaliInputToIso(purchaseForm.date),
   set: (value: string | null) => {
     purchaseForm.date = value ? isoToJalaliInput(value) : todayKey
+  },
+})
+const debtStartDatePickerValue = computed({
+  get: () => jalaliInputToIso(debtForm.startDate),
+  set: (value: string | null) => {
+    debtForm.startDate = value ? isoToJalaliInput(value) : todayKey
+  },
+})
+const debtTargetPayoffDatePickerValue = computed({
+  get: () => (debtForm.targetPayoffDate ? jalaliInputToIso(debtForm.targetPayoffDate) : null),
+  set: (value: string | null) => {
+    debtForm.targetPayoffDate = value ? isoToJalaliInput(value) : ''
   },
 })
 const installPrompt = ref<InstallPromptEvent | null>(null)
@@ -612,6 +746,57 @@ const safeDailySpend = computed(() => {
 })
 const safeWeeklySpend = computed(() => safeDailySpend.value * 7)
 const purchaseDecision = computed(() => buildPurchaseDecision())
+const activeDebts = computed(() => debts.value.filter((debt) => debt.isActive))
+const totalDebtRemaining = computed(() => activeDebts.value.reduce((sum, debt) => sum + debt.remainingAmount, 0))
+const totalMinimumDebtPayments = computed(() => activeDebts.value.reduce((sum, debt) => sum + debt.minimumMonthlyPayment, 0))
+const totalExtraDebtPayments = computed(() => activeDebts.value.reduce((sum, debt) => sum + (debt.extraMonthlyPayment ?? 0), 0))
+const snowballDebtPlan = computed(() => calculateDebtPayoffPlan('snowball'))
+const avalancheDebtPlan = computed(() => calculateDebtPayoffPlan('avalanche'))
+const selectedDebtPayoffPlan = computed(() => (selectedDebtStrategy.value === 'snowball' ? snowballDebtPlan.value : avalancheDebtPlan.value))
+const recommendedDebtStrategy = computed<DebtPayoffStrategy>(() => avalancheDebtPlan.value.totalInterest < snowballDebtPlan.value.totalInterest ? 'avalanche' : 'snowball')
+const debtFreedomDate = computed(() => formatJalaliInputDate(addJalaliDays(currentJalaliDate, selectedDebtPayoffPlan.value.monthsToPayoff * 30)))
+const estimatedInterestSavings = computed(() => Math.max(0, snowballDebtPlan.value.totalInterest - avalancheDebtPlan.value.totalInterest))
+const nextDebtDue = computed(() =>
+  [...activeDebts.value]
+    .filter((debt) => debt.dueDay)
+    .sort((a, b) => (a.dueDay ?? 31) - (b.dueDay ?? 31))[0],
+)
+const activeCategorizationRules = computed(() =>
+  [...categorizationRules.value]
+    .filter((rule) => rule.isActive)
+    .sort((a, b) => a.priority - b.priority),
+)
+const suggestedCategorizationRules = computed(() => suggestCategorizationRules())
+const recentMonthlyIncome = computed(() => getRecentMonthlyIncome(incomeSettings.value.historyMonths))
+const irregularIncomeBudget = computed(() => calculateIrregularIncomeBudget(recentMonthlyIncome.value, incomeSettings.value))
+const averageMonthlyIncome = computed(() => irregularIncomeBudget.value.averageMonthlyIncome)
+const lowestRecentMonthlyIncome = computed(() => irregularIncomeBudget.value.lowestRecentMonthlyIncome)
+const highestRecentMonthlyIncome = computed(() => irregularIncomeBudget.value.highestRecentMonthlyIncome)
+const incomeVolatilityPercent = computed(() => irregularIncomeBudget.value.incomeVolatilityPercent)
+const recommendedBudgetBase = computed(() => irregularIncomeBudget.value.recommendedBudgetBase)
+const recommendedEssentialBudget = computed(() => irregularIncomeBudget.value.recommendedEssentialBudget)
+const recommendedSavingBudget = computed(() => irregularIncomeBudget.value.recommendedSavingBudget)
+const recommendedFlexibleBudget = computed(() => irregularIncomeBudget.value.recommendedFlexibleBudget)
+const badMonthReserveSuggestion = computed(() => irregularIncomeBudget.value.badMonthReserveSuggestion)
+const irregularIncomeWarnings = computed(() => irregularIncomeBudget.value.warnings.map(getIncomeWarningLabel))
+const financialHealthScore = computed(() =>
+  calculateFinancialHealthScore({
+    monthlyIncome: totalIncome.value || averageMonthlyIncome.value,
+    monthlyExpense: totalExpense.value,
+    monthlySavings: Math.max(balance.value, 0),
+    totalBudget: totalBudget.value,
+    overBudgetCategoryCount: categoryTotals.value.filter((item) => item.budget > 0 && item.spent > item.budget).length,
+    categoryCount: categoryTotals.value.filter((item) => item.budget > 0).length,
+    monthlyDebtPayments: totalMinimumDebtPayments.value + totalExtraDebtPayments.value + monthlyInstallmentDue.value,
+    projectedBalance: projectedEndOfMonthBalance.value,
+    nonEssentialExpense: nonEssentialExpense.value,
+    goalsSaved: totalGoalsSaved.value,
+  }, todayKey),
+)
+const financialHealthLevel = computed(() => financialHealthScore.value.level)
+const financialHealthSuggestions = computed(() => financialHealthScore.value.suggestions)
+const financialHealthWarnings = computed(() => financialHealthScore.value.warnings)
+const financialHealthStrengths = computed(() => financialHealthScore.value.strengths)
 
 const filteredTransactions = computed(() => {
   const normalizedQuery = query.value.trim()
@@ -924,6 +1109,9 @@ const dashboardCards = computed(() => [
   { label: 'پرداخت اعتبار', value: creditExpense.value, icon: '💳', hint: 'جمع خرج‌های اعتباری این ماه', className: 'card-pink' },
   { label: 'خرج امن امروز', value: safeDailySpend.value, icon: '🧭', hint: getRiskLabel(cashflowRiskLevel.value), className: 'card-cyan' },
   { label: 'هدف‌های مالی', value: totalGoalsSaved.value, icon: '🎯', hint: `${formatCompact(totalGoalsRemaining.value)} مانده`, className: 'card-violet' },
+  { label: 'بدهی‌ها', value: totalDebtRemaining.value, icon: '📉', hint: nextDebtDue.value ? `سررسید ${toPersianNumber(nextDebtDue.value.dueDay ?? '')}` : debtFreedomDate.value, className: 'card-blue' },
+  { label: 'سلامت مالی', value: financialHealthScore.value.totalScore, suffix: '/۱۰۰', icon: '🫀', hint: getFinancialHealthLevelLabel(financialHealthLevel.value), className: 'card-pink' },
+  ...(incomeVolatilityPercent.value >= 35 ? [{ label: 'درآمد نامنظم', value: recommendedBudgetBase.value, icon: '〽️', hint: `${toPersianNumber(incomeVolatilityPercent.value)}٪ نوسان`, className: 'card-cyan' }] : []),
 ])
 
 const widgets = computed(() => [
@@ -1256,7 +1444,7 @@ function saveTransaction() {
     return
   }
 
-  const payload: Transaction = {
+  let payload: Transaction = {
     id: editingId.value ?? Date.now(),
     type: formType.value,
     title: form.title,
@@ -1269,6 +1457,8 @@ function saveTransaction() {
     isLoan: formType.value === 'expense' ? form.isLoan : undefined,
     loanPerson: formType.value === 'expense' && form.isLoan ? form.loanPerson.trim() : undefined,
   }
+
+  payload = applyCategorizationRulesToTransaction(payload)
 
   if (editingId.value) {
     transactions.value = transactions.value.map((item) => (item.id === editingId.value ? payload : item))
@@ -1339,7 +1529,7 @@ async function acceptBankSuggestion(suggestion: BankNotificationSuggestion) {
       : 'other'
 
   const date = suggestion.postTime ? formatJalaliInputDate(toJalali(new Date(suggestion.postTime))) : todayKey
-  const payload: Transaction = {
+  const payload: Transaction = applyCategorizationRulesToTransaction({
     id: Date.now(),
     type: 'expense',
     title: suggestion.title || 'هزینه بلو بانک',
@@ -1350,7 +1540,10 @@ async function acceptBankSuggestion(suggestion: BankNotificationSuggestion) {
     paymentMethod: 'cash',
     isEssential: true,
     isLoan: false,
-  }
+    sourceType: 'bank-notification',
+    sourceId: suggestion.id,
+    sourceDate: date,
+  })
 
   transactions.value = [payload, ...transactions.value]
   bankSuggestions.value = bankSuggestions.value.filter((item) => item.id !== suggestion.id)
@@ -1987,6 +2180,313 @@ function createPurchaseTransaction() {
   pushToast('خرید به تراکنش تبدیل شد ✅')
 }
 
+function resetDebtForm() {
+  editingDebtId.value = null
+  Object.assign(debtForm, {
+    title: '',
+    type: 'loan',
+    principalAmount: 0,
+    remainingAmount: 0,
+    interestRateAnnual: 0,
+    minimumMonthlyPayment: 0,
+    extraMonthlyPayment: 0,
+    dueDay: currentJalaliDate.day,
+    startDate: todayKey,
+    targetPayoffDate: '',
+    linkedInstallmentId: '',
+    creditorName: '',
+    priority: 'medium',
+    isActive: true,
+    note: '',
+  })
+}
+
+function addDebt() {
+  const title = debtForm.title.trim()
+  const remainingAmount = Math.max(0, Number(debtForm.remainingAmount) || 0)
+  if (!title || !remainingAmount) return
+
+  const existing = editingDebtId.value ? debts.value.find((debt) => debt.id === editingDebtId.value) : undefined
+  const debt: BudgetyarDebt = {
+    id: existing?.id ?? String(Date.now()),
+    title,
+    type: debtForm.type,
+    principalAmount: Math.max(remainingAmount, Number(debtForm.principalAmount) || remainingAmount),
+    remainingAmount,
+    interestRateAnnual: Math.max(0, Number(debtForm.interestRateAnnual) || 0),
+    minimumMonthlyPayment: Math.max(0, Number(debtForm.minimumMonthlyPayment) || 0),
+    extraMonthlyPayment: Math.max(0, Number(debtForm.extraMonthlyPayment) || 0),
+    dueDay: Math.min(31, Math.max(1, Math.trunc(Number(debtForm.dueDay) || 1))),
+    startDate: debtForm.startDate ? normalizeJalaliDate(debtForm.startDate) : undefined,
+    targetPayoffDate: debtForm.targetPayoffDate ? normalizeJalaliDate(debtForm.targetPayoffDate) : undefined,
+    linkedInstallmentId: debtForm.linkedInstallmentId || undefined,
+    creditorName: debtForm.creditorName.trim(),
+    priority: debtForm.priority,
+    isActive: Boolean(debtForm.isActive),
+    note: debtForm.note.trim(),
+    createdAt: existing?.createdAt ?? todayKey,
+    updatedAt: todayKey,
+  }
+
+  debts.value = existing ? debts.value.map((item) => (item.id === existing.id ? debt : item)) : [debt, ...debts.value]
+  resetDebtForm()
+  pushToast(existing ? 'بدهی ویرایش شد ✅' : 'بدهی اضافه شد ✅')
+}
+
+function editDebt(debt: BudgetyarDebt) {
+  editingDebtId.value = debt.id
+  Object.assign(debtForm, {
+    title: debt.title,
+    type: debt.type,
+    principalAmount: debt.principalAmount,
+    remainingAmount: debt.remainingAmount,
+    interestRateAnnual: debt.interestRateAnnual ?? 0,
+    minimumMonthlyPayment: debt.minimumMonthlyPayment,
+    extraMonthlyPayment: debt.extraMonthlyPayment ?? 0,
+    dueDay: debt.dueDay ?? currentJalaliDate.day,
+    startDate: debt.startDate ?? todayKey,
+    targetPayoffDate: debt.targetPayoffDate ?? '',
+    linkedInstallmentId: debt.linkedInstallmentId ?? '',
+    creditorName: debt.creditorName ?? '',
+    priority: debt.priority,
+    isActive: debt.isActive,
+    note: debt.note ?? '',
+  })
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function updateDebt(id: string, patch: Partial<BudgetyarDebt>) {
+  debts.value = debts.value.map((debt) => (debt.id === id ? { ...debt, ...patch, updatedAt: todayKey } : debt))
+}
+
+function deleteDebt(id: string) {
+  debts.value = debts.value.filter((debt) => debt.id !== id)
+  if (editingDebtId.value === id) resetDebtForm()
+  pushToast('بدهی حذف شد')
+}
+
+function toggleDebt(id: string) {
+  const debt = debts.value.find((item) => item.id === id)
+  if (debt) updateDebt(id, { isActive: !debt.isActive })
+}
+
+function recordDebtPayment(debt: BudgetyarDebt, amount = 0) {
+  const rawAmount = amount || Number(window.prompt('مبلغ پرداخت بدهی') || 0)
+  const value = Math.max(0, rawAmount)
+  if (!value) return
+
+  updateDebt(debt.id, { remainingAmount: Math.max(0, debt.remainingAmount - value) })
+  transactions.value = [{
+    id: Date.now(),
+    type: 'expense',
+    title: `پرداخت بدهی: ${debt.title}`,
+    amount: value,
+    date: todayKey,
+    category: 'other',
+    description: debt.note,
+    paymentMethod: 'cash',
+    isEssential: true,
+    isLoan: false,
+    sourceType: 'manual',
+    sourceId: debt.id,
+    sourceDate: todayKey,
+  }, ...transactions.value]
+  pushToast('پرداخت بدهی ثبت شد ✅')
+}
+
+function calculateDebtPayoffPlan(strategy: DebtPayoffStrategy): DebtPayoffPlan {
+  return calculateAdvancedDebtPayoffPlan(activeDebts.value, strategy)
+}
+
+function resetCategorizationRuleForm() {
+  editingCategorizationRuleId.value = null
+  Object.assign(categorizationRuleForm, {
+    title: '',
+    isActive: true,
+    matchType: 'contains',
+    pattern: '',
+    minAmount: 0,
+    maxAmount: 0,
+    merchantName: '',
+    categoryId: 'other',
+    transactionType: '',
+    paymentMethod: '',
+    priority: 10,
+    applyToExisting: false,
+  })
+}
+
+function addCategorizationRule() {
+  const title = categorizationRuleForm.title.trim()
+  if (!title) return
+
+  const existing = editingCategorizationRuleId.value ? categorizationRules.value.find((rule) => rule.id === editingCategorizationRuleId.value) : undefined
+  const rule: BudgetyarCategorizationRule = {
+    id: existing?.id ?? String(Date.now()),
+    title,
+    isActive: Boolean(categorizationRuleForm.isActive),
+    matchType: categorizationRuleForm.matchType,
+    pattern: categorizationRuleForm.pattern.trim(),
+    minAmount: Math.max(0, Number(categorizationRuleForm.minAmount) || 0),
+    maxAmount: Math.max(0, Number(categorizationRuleForm.maxAmount) || 0),
+    merchantName: categorizationRuleForm.merchantName.trim(),
+    categoryId: categorizationRuleForm.categoryId,
+    transactionType: categorizationRuleForm.transactionType || undefined,
+    paymentMethod: categorizationRuleForm.paymentMethod || undefined,
+    priority: Math.max(1, Math.trunc(Number(categorizationRuleForm.priority) || 10)),
+    applyToExisting: Boolean(categorizationRuleForm.applyToExisting),
+    createdAt: existing?.createdAt ?? todayKey,
+    updatedAt: todayKey,
+  }
+
+  categorizationRules.value = existing ? categorizationRules.value.map((item) => (item.id === existing.id ? rule : item)) : [rule, ...categorizationRules.value]
+  if (rule.applyToExisting) applyCategorizationRulesToAllTransactions()
+  resetCategorizationRuleForm()
+  pushToast(existing ? 'قانون ویرایش شد ✅' : 'قانون دسته‌بندی اضافه شد ✅')
+}
+
+function editCategorizationRule(rule: BudgetyarCategorizationRule) {
+  editingCategorizationRuleId.value = rule.id
+  Object.assign(categorizationRuleForm, {
+    title: rule.title,
+    isActive: rule.isActive,
+    matchType: rule.matchType,
+    pattern: rule.pattern ?? '',
+    minAmount: rule.minAmount ?? 0,
+    maxAmount: rule.maxAmount ?? 0,
+    merchantName: rule.merchantName ?? '',
+    categoryId: rule.categoryId,
+    transactionType: rule.transactionType ?? '',
+    paymentMethod: rule.paymentMethod ?? '',
+    priority: rule.priority,
+    applyToExisting: rule.applyToExisting,
+  })
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function updateCategorizationRule(id: string, patch: Partial<BudgetyarCategorizationRule>) {
+  categorizationRules.value = categorizationRules.value.map((rule) => (rule.id === id ? { ...rule, ...patch, updatedAt: todayKey } : rule))
+}
+
+function deleteCategorizationRule(id: string) {
+  categorizationRules.value = categorizationRules.value.filter((rule) => rule.id !== id)
+  if (editingCategorizationRuleId.value === id) resetCategorizationRuleForm()
+  pushToast('قانون حذف شد')
+}
+
+function toggleCategorizationRule(id: string) {
+  const rule = categorizationRules.value.find((item) => item.id === id)
+  if (rule) updateCategorizationRule(id, { isActive: !rule.isActive })
+}
+
+function matchTransactionCategoryRule(transaction: Transaction) {
+  return activeCategorizationRules.value.find((rule) => matchCategorizationRule(rule, transaction))
+}
+
+function applyCategorizationRulesToTransaction(transaction: Transaction): Transaction {
+  const rule = matchTransactionCategoryRule(transaction)
+  if (!rule || transaction.type !== 'expense') return transaction
+
+  return {
+    ...transaction,
+    category: rule.categoryId,
+    autoCategorized: true,
+    categorizationRuleId: rule.id,
+    merchantName: transaction.merchantName ?? rule.merchantName,
+  }
+}
+
+function applyCategorizationRulesToAllTransactions() {
+  let changedCount = 0
+  transactions.value = transactions.value.map((transaction) => {
+    const updated = applyCategorizationRulesToTransaction(transaction)
+    if (updated !== transaction) changedCount += 1
+    return updated
+  })
+  pushToast(`${toPersianNumber(changedCount)} تراکنش به‌روزرسانی شد`)
+}
+
+function suggestCategorizationRules() {
+  const groups = new Map<string, { title: string; categoryId: string; count: number }>()
+  transactions.value
+    .filter((transaction) => transaction.type === 'expense' && transaction.category)
+    .forEach((transaction) => {
+      const token = transaction.merchantName || transaction.title.trim().split(/\s+/)[0]
+      if (!token || token.length < 3) return
+      const key = `${token}-${transaction.category}`
+      const current = groups.get(key) ?? { title: token, categoryId: transaction.category ?? 'other', count: 0 }
+      current.count += 1
+      groups.set(key, current)
+    })
+
+  return [...groups.values()]
+    .filter((item) => item.count >= 3 && !categorizationRules.value.some((rule) => rule.pattern === item.title || rule.merchantName === item.title))
+    .slice(0, 5)
+}
+
+function acceptSuggestedCategorizationRule(suggestion: { title: string; categoryId: string }) {
+  categorizationRules.value = [{
+    id: String(Date.now()),
+    title: `قانون ${suggestion.title}`,
+    isActive: true,
+    matchType: 'contains',
+    pattern: suggestion.title,
+    categoryId: suggestion.categoryId,
+    priority: 10,
+    applyToExisting: false,
+    createdAt: todayKey,
+    updatedAt: todayKey,
+  }, ...categorizationRules.value]
+  pushToast('پیشنهاد قانون پذیرفته شد ✅')
+}
+
+function bulkUpdateTransactionCategory(ids: number[], categoryId: string) {
+  transactions.value = transactions.value.map((transaction) => (ids.includes(transaction.id) ? { ...transaction, category: categoryId } : transaction))
+}
+
+function updateIncomeSettings(patch: Partial<BudgetyarIncomeSettings>) {
+  incomeSettings.value = { ...incomeSettings.value, ...patch, updatedAt: todayKey }
+}
+
+function applyRecommendedBudgetPlan() {
+  if (!window.confirm('بودجه‌های اصلی بر اساس پیشنهاد درآمد نامنظم به‌روزرسانی شوند؟')) return
+  const essentialKeys = ['food', 'transport', 'rent', 'bills', 'health', 'education']
+  const flexibleKeys = categories.value.filter((category) => !essentialKeys.includes(category.key)).map((category) => category.key)
+  const essentialShare = Math.round(recommendedEssentialBudget.value / Math.max(essentialKeys.length, 1))
+  const flexibleShare = Math.round(recommendedFlexibleBudget.value / Math.max(flexibleKeys.length, 1))
+
+  budgets.value = categories.value.map((category) => ({
+    category: category.key,
+    budget: essentialKeys.includes(category.key) ? essentialShare : flexibleShare,
+  }))
+  pushToast('بودجه پیشنهادی اعمال شد ✅')
+}
+
+function getRecentMonthlyIncome(count: 3 | 6 | 12) {
+  return Array.from({ length: count }, (_, index) => {
+    const date = addJalaliMonths(currentJalaliDate, -index)
+    const prefix = getJalaliMonthPrefix(date)
+    return transactions.value
+      .filter((transaction) => transaction.type === 'income' && normalizeJalaliDate(transaction.date).startsWith(prefix))
+      .reduce((sum, transaction) => sum + transaction.amount, 0)
+  })
+}
+
+function getIncomeWarningLabel(key: string) {
+  if (key === 'budget-percent-total') return 'جمع درصدهای ضروری، پس‌انداز و منعطف باید ۱۰۰ باشد.'
+  if (key === 'high-income-volatility') return 'نوسان درآمد بالاست؛ بودجه محافظه‌کارانه امن‌تر است.'
+
+  return key
+}
+
+function getFinancialHealthLevelLabel(level: FinancialHealthLevel) {
+  if (level === 'excellent') return 'عالی'
+  if (level === 'good') return 'خوب'
+  if (level === 'watch') return 'نیاز به توجه'
+
+  return 'پرخطر'
+}
+
 function getExportDateStamp() {
   return new Date().toISOString().slice(0, 10)
 }
@@ -2137,6 +2637,9 @@ function buildBackupJson() {
     installments: installments.value,
     goals: goals.value,
     recurringItems: recurringItems.value,
+    debts: debts.value,
+    categorizationRules: categorizationRules.value,
+    incomeSettings: incomeSettings.value,
     creditLimit: creditLimit.value,
     summary: {
       totalIncome: totalIncome.value,
@@ -2153,6 +2656,9 @@ function buildBackupJson() {
       totalGoalsSaved: totalGoalsSaved.value,
       monthlyRecurringIncomeTotal: monthlyRecurringIncomeTotal.value,
       monthlyRecurringExpenseTotal: monthlyRecurringExpenseTotal.value,
+      totalDebtRemaining: totalDebtRemaining.value,
+      financialHealthScore: financialHealthScore.value.totalScore,
+      recommendedBudgetBase: recommendedBudgetBase.value,
       balanceAfterCommitments: balanceAfterCommitments.value,
       balance: balance.value,
       totalBudget: totalBudget.value,
@@ -2258,6 +2764,56 @@ function restoreRecurringItems(value: unknown) {
   }))
 }
 
+function restoreDebts(value: unknown) {
+  if (!Array.isArray(value)) return []
+
+  return value.filter((item): item is BudgetyarDebt =>
+    isRecord(item) &&
+    typeof item.id === 'string' &&
+    typeof item.title === 'string' &&
+    typeof item.principalAmount === 'number' &&
+    typeof item.remainingAmount === 'number' &&
+    typeof item.minimumMonthlyPayment === 'number',
+  ).map((item) => ({
+    ...item,
+    type: item.type ?? 'other',
+    priority: item.priority ?? 'medium',
+    isActive: item.isActive !== false,
+    createdAt: typeof item.createdAt === 'string' ? item.createdAt : todayKey,
+    updatedAt: typeof item.updatedAt === 'string' ? item.updatedAt : todayKey,
+  }))
+}
+
+function restoreCategorizationRules(value: unknown) {
+  if (!Array.isArray(value)) return []
+
+  return value.filter((item): item is BudgetyarCategorizationRule =>
+    isRecord(item) &&
+    typeof item.id === 'string' &&
+    typeof item.title === 'string' &&
+    typeof item.categoryId === 'string' &&
+    typeof item.priority === 'number',
+  ).map((item) => ({
+    ...item,
+    isActive: item.isActive !== false,
+    matchType: item.matchType ?? 'contains',
+    applyToExisting: Boolean(item.applyToExisting),
+    createdAt: typeof item.createdAt === 'string' ? item.createdAt : todayKey,
+    updatedAt: typeof item.updatedAt === 'string' ? item.updatedAt : todayKey,
+  }))
+}
+
+function restoreIncomeSettings(value: unknown) {
+  if (!isRecord(value)) return { ...defaultIncomeSettings }
+
+  return {
+    ...defaultIncomeSettings,
+    ...value,
+    historyMonths: value.historyMonths === 6 || value.historyMonths === 12 ? value.historyMonths : 3,
+    updatedAt: typeof value.updatedAt === 'string' ? value.updatedAt : todayKey,
+  } as BudgetyarIncomeSettings
+}
+
 async function importBackup(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
@@ -2277,6 +2833,9 @@ async function importBackup(event: Event) {
     installments.value = restoreInstallments(backup.installments)
     goals.value = restoreGoals(backup.goals)
     recurringItems.value = restoreRecurringItems(backup.recurringItems)
+    debts.value = restoreDebts(backup.debts)
+    categorizationRules.value = restoreCategorizationRules(backup.categorizationRules)
+    incomeSettings.value = restoreIncomeSettings(backup.incomeSettings)
     creditLimit.value = Math.max(0, Number(backup.creditLimit ?? summary.creditLimit ?? 0) || 0)
     selectedCategory.value = 'همه'
     selectedType.value = 'همه'
@@ -2792,13 +3351,15 @@ function unbindMobileViewport() {
 export function useBudgetyar() {
   return {
     activeSection, isMobileMenuOpen, isMobileViewport, navItems, months, years, today, todayKey, currentMonthYear, currentJalaliDate, currentMonthLength,
-    categories, transactions, budgets, installments, goals, recurringItems, creditLimit, cashFlowMode, themeMode, cashflowForecastPeriod,
+    categories, transactions, budgets, installments, goals, recurringItems, debts, categorizationRules, incomeSettings, creditLimit, cashFlowMode, themeMode, cashflowForecastPeriod, selectedDebtStrategy,
     query, selectedMonth, selectedYear, selectedCategory, selectedType, dateRange, pickerDateRange,
     isModalOpen, formType, form, formAmountInWords, formDatePickerValue, editingId, toasts,
     categoryForm, installmentForm, editingInstallmentId, installmentAmountInWords, installmentStartDatePickerValue,
     goalForm, editingGoalId, goalTargetAmountInWords, goalSavedAmountInWords, goalTargetDatePickerValue,
     recurringForm, editingRecurringItemId, recurringAmountInWords, recurringStartDatePickerValue, recurringEndDatePickerValue,
     purchaseForm, purchaseAmountInWords, purchaseDatePickerValue, purchaseDecision,
+    debtForm, editingDebtId, debtPrincipalAmountInWords, debtRemainingAmountInWords, debtMinimumPaymentInWords, debtStartDatePickerValue, debtTargetPayoffDatePickerValue,
+    categorizationRuleForm, editingCategorizationRuleId, ruleMinAmountInWords, ruleMaxAmountInWords,
     installPrompt, isStandalone, isAndroidNative, isNotificationsLoading, bankApps, bankSuggestions, selectedBankPackage, bankNotificationStatus,
     expenseShareCanvas, categoryBarCanvas, trendLineCanvas, statsExpenseMixCanvas, statsBudgetUsageCanvas, statsDailyExpenseCanvas, statsWeeklyFlowCanvas, statsCashFlowCanvas,
     currentMonthTransactions, currentWeekTransactions, expenseTransactions, incomeTransactions, weeklyExpenseTransactions, weeklyIncomeTransactions,
@@ -2809,12 +3370,19 @@ export function useBudgetyar() {
     activeGoals, archivedGoals, totalGoalsTarget, totalGoalsSaved, totalGoalsRemaining, nearestGoal,
     activeRecurringItems, recurringSummaries, upcomingRecurringItems, dueRecurringItems, overdueRecurringItems, monthlyRecurringIncomeTotal, monthlyRecurringExpenseTotal, monthlySubscriptionsTotal,
     cashflowForecastDays, projectedEndOfMonthBalance, lowestProjectedBalance, cashflowRiskLevel, cashflowWarnings, safeDailySpend, safeWeeklySpend,
+    activeDebts, totalDebtRemaining, totalMinimumDebtPayments, totalExtraDebtPayments, snowballDebtPlan, avalancheDebtPlan, selectedDebtPayoffPlan, recommendedDebtStrategy, debtFreedomDate, estimatedInterestSavings, nextDebtDue,
+    activeCategorizationRules, suggestedCategorizationRules,
+    recentMonthlyIncome, averageMonthlyIncome, lowestRecentMonthlyIncome, highestRecentMonthlyIncome, incomeVolatilityPercent, recommendedBudgetBase, recommendedEssentialBudget, recommendedSavingBudget, recommendedFlexibleBudget, badMonthReserveSuggestion, irregularIncomeWarnings,
+    financialHealthScore, financialHealthLevel, financialHealthSuggestions, financialHealthWarnings, financialHealthStrengths,
     filteredTransactions, dailyTrend, hasExpenseData, expenseShareChartData, categoryBarChartData, trendLineChartData, dailyExpensePoints, weeklyFlowPoints, budgetAnalysisItems, statsExpenseMixChartData, statsBudgetUsageChartData, statsDailyExpenseChartData, statsWeeklyFlowChartData, statsCashFlowChartData,
     summaryLines, insights, dashboardCards, widgets, statsItems,
-    getCategory, normalizeDigits, normalizeJalaliDate, getJalaliInputDay, getTrendDays, getPreviousMonthPrefix, addJalaliMonths, getInstallmentDueDate, getInstallmentStatus, getInstallmentStatusLabel, getCurrentWeekRange, getWeekdayLabel, getJalaliMonthPrefix, getCurrentJalaliDate, formatJalaliInputDate, formatDisplayJalaliDate, jalaliInputToIso, isoToJalaliInput, toPersianNumber, parseMoneyInput, formatMoneyInput, formatMoneyWords, formatMoney, formatCompact, progressPercent, getChangePercent, formatPercentHint, formatChangeSentence, getRiskLabel,
+    getCategory, normalizeDigits, normalizeJalaliDate, getJalaliInputDay, getTrendDays, getPreviousMonthPrefix, addJalaliMonths, getInstallmentDueDate, getInstallmentStatus, getInstallmentStatusLabel, getCurrentWeekRange, getWeekdayLabel, getJalaliMonthPrefix, getCurrentJalaliDate, formatJalaliInputDate, formatDisplayJalaliDate, jalaliInputToIso, isoToJalaliInput, toPersianNumber, parseMoneyInput, formatMoneyInput, formatMoneyWords, formatMoney, formatCompact, progressPercent, getChangePercent, formatPercentHint, formatChangeSentence, getRiskLabel, getFinancialHealthLevelLabel,
     selectSection, openModal, editTransaction, saveTransaction, removeTransaction, refreshBankNotifications, openNotificationAccessSettings, updateSelectedBankPackage, acceptBankSuggestion, dismissBankSuggestion, formatSuggestionDate, updateMoneyInput, updateCreditLimit, updateBudget, addCategory, deleteCategory, addInstallmentPlan, editInstallmentPlan, cancelInstallmentEdit, payInstallment, removeInstallmentPlan,
     addGoal, editGoal, updateGoal, deleteGoal, archiveGoal, addGoalContribution, withdrawFromGoal, getGoalProgress, getGoalRemainingAmount, getGoalSuggestedMonthlySaving, getGoalSuggestedWeeklySaving,
     addRecurringItem, editRecurringItem, updateRecurringItem, deleteRecurringItem, toggleRecurringItem, getRecurringNextDueDate, markRecurringItemPaid, skipRecurringOccurrence, createTransactionFromRecurringItem, getRecurringStatusLabel, createPurchaseTransaction, setThemeMode,
+    addDebt, editDebt, updateDebt, deleteDebt, toggleDebt, recordDebtPayment, calculateDebtPayoffPlan,
+    addCategorizationRule, editCategorizationRule, updateCategorizationRule, deleteCategorizationRule, toggleCategorizationRule, matchTransactionCategoryRule, applyCategorizationRulesToTransaction, applyCategorizationRulesToAllTransactions, suggestCategorizationRules, acceptSuggestedCategorizationRule, bulkUpdateTransactionCategory,
+    updateIncomeSettings, applyRecommendedBudgetPlan,
     getTransactionCategoryLabel, getPaymentMethodLabel, getNecessityLabel, buildCsvReport, buildExcelReport, buildBackupJson, importBackup, createExportFile, saveBlobToDevice, exportReport, installApp, pushToast,
     createCharts, syncCharts, scheduleChartSync, destroyCharts,
   }
@@ -2848,6 +3416,9 @@ export function startBudgetyar() {
     const savedThemeMode = localStorage.getItem(THEME_STORAGE_KEY)
     const savedGoals = localStorage.getItem(GOALS_STORAGE_KEY)
     const savedRecurringItems = localStorage.getItem(RECURRING_ITEMS_STORAGE_KEY)
+    const savedDebts = localStorage.getItem(DEBTS_STORAGE_KEY)
+    const savedCategorizationRules = localStorage.getItem(CATEGORIZATION_RULES_STORAGE_KEY)
+    const savedIncomeSettings = localStorage.getItem(INCOME_SETTINGS_STORAGE_KEY)
   
     if (savedTransactions) {
       try {
@@ -2901,6 +3472,30 @@ export function startBudgetyar() {
         recurringItems.value = restoreRecurringItems(JSON.parse(savedRecurringItems))
       } catch {
         localStorage.removeItem(RECURRING_ITEMS_STORAGE_KEY)
+      }
+    }
+
+    if (savedDebts) {
+      try {
+        debts.value = restoreDebts(JSON.parse(savedDebts))
+      } catch {
+        localStorage.removeItem(DEBTS_STORAGE_KEY)
+      }
+    }
+
+    if (savedCategorizationRules) {
+      try {
+        categorizationRules.value = restoreCategorizationRules(JSON.parse(savedCategorizationRules))
+      } catch {
+        localStorage.removeItem(CATEGORIZATION_RULES_STORAGE_KEY)
+      }
+    }
+
+    if (savedIncomeSettings) {
+      try {
+        incomeSettings.value = restoreIncomeSettings(JSON.parse(savedIncomeSettings))
+      } catch {
+        localStorage.removeItem(INCOME_SETTINGS_STORAGE_KEY)
       }
     }
 
@@ -2991,6 +3586,30 @@ export function startBudgetyar() {
     recurringItems,
     (value) => {
       localStorage.setItem(RECURRING_ITEMS_STORAGE_KEY, JSON.stringify(value))
+    },
+    { deep: true },
+  )
+
+  watch(
+    debts,
+    (value) => {
+      localStorage.setItem(DEBTS_STORAGE_KEY, JSON.stringify(value))
+    },
+    { deep: true },
+  )
+
+  watch(
+    categorizationRules,
+    (value) => {
+      localStorage.setItem(CATEGORIZATION_RULES_STORAGE_KEY, JSON.stringify(value))
+    },
+    { deep: true },
+  )
+
+  watch(
+    incomeSettings,
+    (value) => {
+      localStorage.setItem(INCOME_SETTINGS_STORAGE_KEY, JSON.stringify(value))
     },
     { deep: true },
   )

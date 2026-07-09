@@ -8,10 +8,31 @@ const {
   formAmountInWords,
   formDatePickerValue,
   categories,
+  getCategory,
+  matchTransactionCategoryRule,
   formatMoneyInput,
   updateMoneyInput,
   saveTransaction,
 } = budgetyar
+
+const suggestedRule = computed(() => {
+  if (formType.value !== 'expense' || !form.title || !form.amount) return undefined
+
+  return matchTransactionCategoryRule({
+    id: 0,
+    type: formType.value,
+    title: form.title,
+    amount: Number(form.amount),
+    date: form.date,
+    category: form.category,
+    description: form.description,
+    paymentMethod: form.paymentMethod,
+  })
+})
+
+function applySuggestedCategory() {
+  if (suggestedRule.value) form.category = suggestedRule.value.categoryId
+}
 </script>
 
 <template>
@@ -39,6 +60,10 @@ const {
             <option v-for="category in categories" :key="category.key" :value="category.key">{{ category.icon }} {{ category.label }}</option>
           </select>
         </label>
+        <div v-if="suggestedRule && suggestedRule.categoryId !== form.category" class="rule-suggestion">
+          <span>دسته پیشنهادی: {{ getCategory(suggestedRule.categoryId).label }}</span>
+          <button class="soft-button" type="button" @click="applySuggestedCategory">اعمال</button>
+        </div>
         <div v-if="formType === 'expense'" class="form-inline-grid">
           <label>روش پرداخت
             <select v-model="form.paymentMethod">
