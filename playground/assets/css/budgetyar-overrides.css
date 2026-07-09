@@ -130,7 +130,133 @@
   padding: 6px 10px;
 }
 
+.planning-form {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.planning-card-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.goal-item .progress {
+  height: 9px;
+}
+
+.planning-inline {
+  margin-top: 16px;
+}
+
+.planning-details {
+  background: rgba(255, 255, 255, .07);
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 16px;
+  margin-top: 14px;
+  padding: 12px;
+}
+
+.planning-details summary {
+  color: #e2e8f0;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.cashflow-timeline {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cashflow-timeline span {
+  align-items: center;
+  background: rgba(255, 255, 255, .08);
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 12px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 110px minmax(0, 1fr) auto;
+  min-width: 0;
+  padding: 8px 10px;
+}
+
+.cashflow-timeline b,
+.cashflow-timeline em,
+.cashflow-timeline strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cashflow-timeline em {
+  color: #94a3b8;
+  font-style: normal;
+}
+
+.cashflow-timeline strong {
+  color: #67e8f9;
+}
+
+.cashflow-timeline span.watch {
+  border-color: rgba(250, 204, 21, .38);
+}
+
+.cashflow-timeline span.danger {
+  border-color: rgba(248, 113, 113, .5);
+}
+
+.cashflow-timeline span.danger strong {
+  color: #fca5a5;
+}
+
+.decision-result {
+  background: rgba(255, 255, 255, .07);
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 18px;
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 14px;
+}
+
+.decision-result.safe {
+  border-color: rgba(52, 211, 153, .34);
+}
+
+.decision-result.caution {
+  border-color: rgba(250, 204, 21, .38);
+}
+
+.decision-result.risky {
+  border-color: rgba(248, 113, 113, .5);
+}
+
+.planning-warnings {
+  margin-top: 14px;
+}
+
+.weekly-category-list button {
+  min-height: 32px;
+  padding: 6px 9px;
+}
+
+input[type="color"] {
+  min-height: 42px;
+  padding: 6px;
+}
+
 @media (max-width: 760px) {
+  .planning-form,
+  .planning-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cashflow-timeline span {
+    grid-template-columns: 1fr;
+  }
+
+  .purchase-form {
+    margin-top: 10px;
+  }
+}
   td:nth-child(6)::before { content: 'جزئیات'; }
   td:nth-child(7)::before { content: 'عملیات'; }
 
@@ -211,7 +337,6 @@
   .installment-edit-banner {
     padding: 7px 9px;
   }
-}
 
 @media (min-width: 1181px) {
   .filters {

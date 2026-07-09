@@ -9,6 +9,20 @@ import {
 } from 'chart.js'
 import { Capacitor, registerPlugin } from '@capacitor/core'
 import { addJalaliDays, getJalaliMonthLength, parseJalaliInput, toGregorian, toJalali } from '../../src/utils/jalali'
+import {
+  buildCashflowTimeline,
+  getCashflowRiskLevel,
+  getPurchaseDecision,
+  goalProgressPercent,
+  goalRemainingAmount,
+  suggestedMonthlySaving,
+  suggestedWeeklySaving,
+  getRecurringNextDueDate as getPlanningRecurringNextDueDate,
+  type CashflowForecastDay,
+  type CashflowRiskLevel,
+  type PurchaseDecisionResult,
+  type RecurringFrequency,
+} from '../../src/utils/budgetyarPlanning'
 
 Chart.register(...registerables)
 const BankNotifications = registerPlugin<BankNotificationsPlugin>('BankNotifications')
@@ -17,6 +31,9 @@ export type TransactionType = 'income' | 'expense'
 export type PaymentMethod = 'cash' | 'credit'
 export type CashFlowMode = 'regular' | 'afterCredit' | 'afterCommitments'
 export type ThemeMode = 'dark' | 'light'
+export type GoalPriority = 'low' | 'medium' | 'high'
+export type RecurringItemType = 'income' | 'expense'
+export type CashflowForecastPeriod = 'untilEndOfMonth' | 'next30Days' | 'next90Days'
 
 export type CategoryKey = string
 export type ExportFormat = 'PDF' | 'Excel' | 'CSV' | 'JSON'
@@ -40,6 +57,9 @@ export interface Transaction {
   isEssential?: boolean
   isLoan?: boolean
   loanPerson?: string
+  sourceType?: 'manual' | 'recurring' | 'installment' | 'bank-notification'
+  sourceId?: string
+  sourceDate?: string
 }
 
 export interface BudgetGoal {
@@ -58,6 +78,43 @@ export interface InstallmentPlan {
   paidCount: number
   description?: string
   paymentMethod: PaymentMethod
+}
+
+export interface BudgetyarGoal {
+  id: string
+  title: string
+  targetAmount: number
+  savedAmount: number
+  targetDate?: string
+  categoryId?: string
+  priority: GoalPriority
+  icon?: string
+  color?: string
+  note?: string
+  isArchived: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface BudgetyarRecurringItem {
+  id: string
+  title: string
+  type: RecurringItemType
+  amount: number
+  categoryId?: string
+  frequency: RecurringFrequency
+  startDate: string
+  endDate?: string
+  dueDay?: number
+  paymentMethod?: PaymentMethod
+  isSubscription: boolean
+  isActive: boolean
+  reminderDaysBefore: number
+  lastAppliedDate?: string
+  skippedDates?: string[]
+  note?: string
+  createdAt: string
+  updatedAt: string
 }
 
 interface BankAppOption {
@@ -162,6 +219,8 @@ const BUDGETS_STORAGE_KEY = 'budgetyar-budgets-v1'
 const CREDIT_STORAGE_KEY = 'budgetyar-credit-limit-v1'
 const INSTALLMENTS_STORAGE_KEY = 'budgetyar-installments-v1'
 const THEME_STORAGE_KEY = 'budgetyar-theme-v1'
+const GOALS_STORAGE_KEY = 'budgetyar-goals-v1'
+const RECURRING_ITEMS_STORAGE_KEY = 'budgetyar-recurring-items-v1'
 const navItems = ['داشبورد', 'درآمدها', 'هزینه‌ها', 'بودجه‌ها', 'قسط‌ها', 'گزارش‌ها', 'آمار', 'اعلان‌ها', 'تنظیمات']
 const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند']
 const currentJalaliDate = getCurrentJalaliDate()
@@ -240,7 +299,12 @@ const categoryForm = reactive({
   budget: 1000000,
 })
 const installments = ref<InstallmentPlan[]>([])
+const goals = ref<BudgetyarGoal[]>([])
+const recurringItems = ref<BudgetyarRecurringItem[]>([])
 const editingInstallmentId = ref<number | null>(null)
+const editingGoalId = ref<string | null>(null)
+const editingRecurringItemId = ref<string | null>(null)
+const cashflowForecastPeriod = ref<CashflowForecastPeriod>('untilEndOfMonth')
 const installmentForm = reactive({
   title: '',
   amount: 0,
@@ -251,11 +315,73 @@ const installmentForm = reactive({
   description: '',
   paymentMethod: 'cash' as PaymentMethod,
 })
+const goalForm = reactive({
+  title: '',
+  targetAmount: 0,
+  savedAmount: 0,
+  targetDate: '',
+  categoryId: '',
+  priority: 'medium' as GoalPriority,
+  icon: '🎯',
+  color: '#22d3ee',
+  note: '',
+})
+const recurringForm = reactive({
+  title: '',
+  type: 'expense' as RecurringItemType,
+  amount: 0,
+  categoryId: 'other' as CategoryKey,
+  frequency: 'monthly' as RecurringFrequency,
+  startDate: todayKey,
+  endDate: '',
+  dueDay: currentJalaliDate.day,
+  paymentMethod: 'cash' as PaymentMethod,
+  isSubscription: false,
+  isActive: true,
+  reminderDaysBefore: 3,
+  note: '',
+})
+const purchaseForm = reactive({
+  amount: 0,
+  categoryId: 'other' as CategoryKey,
+  date: todayKey,
+  isEssential: false,
+  paymentMethod: 'cash' as PaymentMethod,
+  note: '',
+})
 const installmentAmountInWords = computed(() => formatMoneyWords(installmentForm.amount))
+const goalTargetAmountInWords = computed(() => formatMoneyWords(goalForm.targetAmount))
+const goalSavedAmountInWords = computed(() => formatMoneyWords(goalForm.savedAmount))
+const recurringAmountInWords = computed(() => formatMoneyWords(recurringForm.amount))
+const purchaseAmountInWords = computed(() => formatMoneyWords(purchaseForm.amount))
 const installmentStartDatePickerValue = computed({
   get: () => jalaliInputToIso(installmentForm.startDate),
   set: (value: string | null) => {
     installmentForm.startDate = value ? isoToJalaliInput(value) : ''
+  },
+})
+const goalTargetDatePickerValue = computed({
+  get: () => (goalForm.targetDate ? jalaliInputToIso(goalForm.targetDate) : null),
+  set: (value: string | null) => {
+    goalForm.targetDate = value ? isoToJalaliInput(value) : ''
+  },
+})
+const recurringStartDatePickerValue = computed({
+  get: () => jalaliInputToIso(recurringForm.startDate),
+  set: (value: string | null) => {
+    recurringForm.startDate = value ? isoToJalaliInput(value) : ''
+  },
+})
+const recurringEndDatePickerValue = computed({
+  get: () => (recurringForm.endDate ? jalaliInputToIso(recurringForm.endDate) : null),
+  set: (value: string | null) => {
+    recurringForm.endDate = value ? isoToJalaliInput(value) : ''
+  },
+})
+const purchaseDatePickerValue = computed({
+  get: () => jalaliInputToIso(purchaseForm.date),
+  set: (value: string | null) => {
+    purchaseForm.date = value ? isoToJalaliInput(value) : todayKey
   },
 })
 const installPrompt = ref<InstallPromptEvent | null>(null)
@@ -420,6 +546,72 @@ const commitmentInstallmentDue = computed(() =>
     .reduce((sum, item) => sum + item.amount, 0),
 )
 const balanceAfterCommitments = computed(() => cashBeforeCreditPayment.value - creditExpense.value - commitmentInstallmentDue.value)
+const activeGoals = computed(() => goals.value.filter((goal) => !goal.isArchived))
+const archivedGoals = computed(() => goals.value.filter((goal) => goal.isArchived))
+const totalGoalsTarget = computed(() => activeGoals.value.reduce((sum, goal) => sum + goal.targetAmount, 0))
+const totalGoalsSaved = computed(() => activeGoals.value.reduce((sum, goal) => sum + goal.savedAmount, 0))
+const totalGoalsRemaining = computed(() => activeGoals.value.reduce((sum, goal) => sum + getGoalRemainingAmount(goal), 0))
+const nearestGoal = computed(() =>
+  [...activeGoals.value]
+    .sort((a, b) => getGoalProgress(b) - getGoalProgress(a) || (a.targetDate || '9999/99/99').localeCompare(b.targetDate || '9999/99/99'))[0],
+)
+const activeRecurringItems = computed(() => recurringItems.value.filter((item) => item.isActive))
+const recurringSummaries = computed(() =>
+  recurringItems.value
+    .map((item) => {
+      const nextDueDate = getRecurringNextDueDate(item)
+      const status = getRecurringStatus(item)
+
+      return {
+        ...item,
+        nextDueDate,
+        status,
+        statusLabel: getRecurringStatusLabel(status),
+      }
+    })
+    .sort((a, b) => {
+      if (!a.nextDueDate) return 1
+      if (!b.nextDueDate) return -1
+      return a.nextDueDate.localeCompare(b.nextDueDate)
+    }),
+)
+const dueRecurringItems = computed(() => recurringSummaries.value.filter((item) => item.status === 'due'))
+const overdueRecurringItems = computed(() => recurringSummaries.value.filter((item) => item.status === 'overdue'))
+const upcomingRecurringItems = computed(() => recurringSummaries.value.filter((item) => item.status === 'upcoming').slice(0, 5))
+const monthlyRecurringIncomeTotal = computed(() => activeRecurringItems.value.filter((item) => item.type === 'income').reduce((sum, item) => sum + getMonthlyRecurringAmount(item), 0))
+const monthlyRecurringExpenseTotal = computed(() => activeRecurringItems.value.filter((item) => item.type === 'expense').reduce((sum, item) => sum + getMonthlyRecurringAmount(item), 0))
+const monthlySubscriptionsTotal = computed(() => activeRecurringItems.value.filter((item) => item.type === 'expense' && item.isSubscription).reduce((sum, item) => sum + getMonthlyRecurringAmount(item), 0))
+const cashflowForecastDays = computed<CashflowForecastDay[]>(() =>
+  buildCashflowTimeline({
+    startDate: todayKey,
+    days: getForecastDayCount(),
+    openingBalance: balanceAfterCreditPayment.value,
+    events: getCashflowEvents(),
+    lowBalanceThreshold: Math.max(weeklyBudgetAllowance.value, 1),
+  }),
+)
+const projectedEndOfMonthBalance = computed(() => cashflowForecastDays.value.at(-1)?.projectedBalance ?? balanceAfterCreditPayment.value)
+const lowestProjectedBalance = computed(() => cashflowForecastDays.value.reduce((lowest, day) => Math.min(lowest, day.projectedBalance), balanceAfterCreditPayment.value))
+const cashflowRiskLevel = computed<CashflowRiskLevel>(() => getCashflowRiskLevel(cashflowForecastDays.value, creditExpense.value > creditLimit.value && creditLimit.value > 0))
+const cashflowWarnings = computed(() => {
+  const warnings: string[] = []
+  if (lowestProjectedBalance.value < 0) warnings.push('احتمال کمبود نقدینگی تا پایان دوره وجود دارد.')
+  if (overdueInstallments.value.length) warnings.push('قسط عقب‌افتاده داری.')
+  if (dueRecurringItems.value.length || overdueRecurringItems.value.length) warnings.push('پرداخت تکراری نزدیک سررسید است.')
+  if (weeklyBudgetAnalysis.value.length) warnings.push('فشار بودجه‌ای در چند دسته دیده می‌شود.')
+
+  return warnings
+})
+const safeDailySpend = computed(() => {
+  const remainingDays = Math.max(cashflowForecastDays.value.length, 1)
+  const knownExpense = cashflowForecastDays.value.reduce((sum, day) => sum + day.recurringExpense + day.installmentExpense, 0)
+  const goalReserve = Math.round(activeGoals.value.reduce((sum, goal) => sum + getGoalSuggestedWeeklySaving(goal), 0) / 7)
+  const available = Math.max(0, balanceAfterCreditPayment.value - knownExpense - goalReserve)
+
+  return Math.floor(available / remainingDays)
+})
+const safeWeeklySpend = computed(() => safeDailySpend.value * 7)
+const purchaseDecision = computed(() => buildPurchaseDecision())
 
 const filteredTransactions = computed(() => {
   const normalizedQuery = query.value.trim()
@@ -730,6 +922,8 @@ const dashboardCards = computed(() => [
   { label: 'هزینه ماه', value: totalExpense.value, icon: '💸', hint: formatPercentHint(expenseChangePercent.value, 'ماه قبل'), className: 'card-violet' },
   { label: 'مانده واقعی', value: balanceAfterCommitments.value, icon: '💵', hint: 'بعد از اعتبار و قسط‌های سررسید', className: 'card-blue' },
   { label: 'پرداخت اعتبار', value: creditExpense.value, icon: '💳', hint: 'جمع خرج‌های اعتباری این ماه', className: 'card-pink' },
+  { label: 'خرج امن امروز', value: safeDailySpend.value, icon: '🧭', hint: getRiskLabel(cashflowRiskLevel.value), className: 'card-cyan' },
+  { label: 'هدف‌های مالی', value: totalGoalsSaved.value, icon: '🎯', hint: `${formatCompact(totalGoalsRemaining.value)} مانده`, className: 'card-violet' },
 ])
 
 const widgets = computed(() => [
@@ -738,6 +932,7 @@ const widgets = computed(() => [
   { label: 'درآمد امروز', value: formatMoney(todayIncome.value), icon: '💰' },
   { label: 'اعتبار مانده', value: formatMoney(creditRemaining.value), icon: '💳' },
   { label: 'قسط ماه', value: formatMoney(monthlyInstallmentDue.value), icon: '🧾' },
+  { label: 'سررسید نزدیک', value: toPersianNumber(dueRecurringItems.value.length + overdueRecurringItems.value.length + upcomingRecurringItems.value.length), icon: '⏱' },
 ])
 
 const statsItems = computed(() => [
@@ -1312,6 +1507,9 @@ function payInstallment(plan: InstallmentPlan) {
     paymentMethod: plan.paymentMethod,
     isEssential: true,
     isLoan: false,
+    sourceType: 'installment',
+    sourceId: String(plan.id),
+    sourceDate: dueDate,
   }
 
   transactions.value = [transaction, ...transactions.value]
@@ -1325,6 +1523,468 @@ function removeInstallmentPlan(id: number) {
   installments.value = installments.value.filter((item) => item.id !== id)
   if (editingInstallmentId.value === id) resetInstallmentForm()
   pushToast('قسط حذف شد')
+}
+
+function resetGoalForm() {
+  editingGoalId.value = null
+  Object.assign(goalForm, {
+    title: '',
+    targetAmount: 0,
+    savedAmount: 0,
+    targetDate: '',
+    categoryId: '',
+    priority: 'medium',
+    icon: '🎯',
+    color: '#22d3ee',
+    note: '',
+  })
+}
+
+function addGoal() {
+  const title = goalForm.title.trim()
+  const targetAmount = Math.max(0, Number(goalForm.targetAmount) || 0)
+  if (!title || !targetAmount) return
+
+  const existing = editingGoalId.value ? goals.value.find((goal) => goal.id === editingGoalId.value) : undefined
+  const goal: BudgetyarGoal = {
+    id: existing?.id ?? String(Date.now()),
+    title,
+    targetAmount,
+    savedAmount: Math.min(targetAmount, Math.max(0, Number(goalForm.savedAmount) || 0)),
+    targetDate: goalForm.targetDate ? normalizeJalaliDate(goalForm.targetDate) : undefined,
+    categoryId: goalForm.categoryId || undefined,
+    priority: goalForm.priority,
+    icon: goalForm.icon.trim() || '🎯',
+    color: goalForm.color || '#22d3ee',
+    note: goalForm.note.trim(),
+    isArchived: existing?.isArchived ?? false,
+    createdAt: existing?.createdAt ?? todayKey,
+    updatedAt: todayKey,
+  }
+
+  goals.value = existing ? goals.value.map((item) => (item.id === existing.id ? goal : item)) : [goal, ...goals.value]
+  resetGoalForm()
+  pushToast(existing ? 'هدف ویرایش شد ✅' : 'هدف مالی اضافه شد ✅')
+}
+
+function editGoal(goal: BudgetyarGoal) {
+  editingGoalId.value = goal.id
+  Object.assign(goalForm, {
+    title: goal.title,
+    targetAmount: goal.targetAmount,
+    savedAmount: goal.savedAmount,
+    targetDate: goal.targetDate ?? '',
+    categoryId: goal.categoryId ?? '',
+    priority: goal.priority,
+    icon: goal.icon ?? '🎯',
+    color: goal.color ?? '#22d3ee',
+    note: goal.note ?? '',
+  })
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function updateGoal(id: string, patch: Partial<BudgetyarGoal>) {
+  goals.value = goals.value.map((goal) => (goal.id === id ? { ...goal, ...patch, updatedAt: todayKey } : goal))
+}
+
+function deleteGoal(id: string) {
+  goals.value = goals.value.filter((goal) => goal.id !== id)
+  if (editingGoalId.value === id) resetGoalForm()
+  pushToast('هدف حذف شد')
+}
+
+function archiveGoal(id: string) {
+  const goal = goals.value.find((item) => item.id === id)
+  updateGoal(id, { isArchived: !goal?.isArchived })
+  pushToast(goal?.isArchived ? 'هدف فعال شد' : 'هدف بایگانی شد')
+}
+
+function addGoalContribution(goal: BudgetyarGoal, amount = 0) {
+  const rawAmount = amount || Number(window.prompt('مبلغ واریز به هدف') || 0)
+  const value = Math.max(0, rawAmount)
+  if (!value) return
+
+  updateGoal(goal.id, { savedAmount: Math.min(goal.targetAmount, goal.savedAmount + value) })
+  pushToast('پس‌انداز هدف بیشتر شد ✅')
+}
+
+function withdrawFromGoal(goal: BudgetyarGoal, amount = 0) {
+  const rawAmount = amount || Number(window.prompt('مبلغ برداشت از هدف') || 0)
+  const value = Math.max(0, rawAmount)
+  if (!value) return
+
+  updateGoal(goal.id, { savedAmount: Math.max(0, goal.savedAmount - value) })
+  pushToast('برداشت از هدف ثبت شد')
+}
+
+function getGoalProgress(goal: BudgetyarGoal) {
+  return goalProgressPercent(goal)
+}
+
+function getGoalRemainingAmount(goal: BudgetyarGoal) {
+  return goalRemainingAmount(goal)
+}
+
+function getGoalSuggestedMonthlySaving(goal: BudgetyarGoal) {
+  return suggestedMonthlySaving(goal, todayKey)
+}
+
+function getGoalSuggestedWeeklySaving(goal: BudgetyarGoal) {
+  return suggestedWeeklySaving(goal, todayKey)
+}
+
+function resetRecurringForm() {
+  editingRecurringItemId.value = null
+  Object.assign(recurringForm, {
+    title: '',
+    type: 'expense',
+    amount: 0,
+    categoryId: 'other',
+    frequency: 'monthly',
+    startDate: todayKey,
+    endDate: '',
+    dueDay: currentJalaliDate.day,
+    paymentMethod: 'cash',
+    isSubscription: false,
+    isActive: true,
+    reminderDaysBefore: 3,
+    note: '',
+  })
+}
+
+function addRecurringItem() {
+  const title = recurringForm.title.trim()
+  const amount = Math.max(0, Number(recurringForm.amount) || 0)
+  if (!title || !amount || !recurringForm.startDate) return
+
+  const existing = editingRecurringItemId.value ? recurringItems.value.find((item) => item.id === editingRecurringItemId.value) : undefined
+  const item: BudgetyarRecurringItem = {
+    id: existing?.id ?? String(Date.now()),
+    title,
+    type: recurringForm.type,
+    amount,
+    categoryId: recurringForm.type === 'expense' ? recurringForm.categoryId : undefined,
+    frequency: recurringForm.frequency,
+    startDate: normalizeJalaliDate(recurringForm.startDate),
+    endDate: recurringForm.endDate ? normalizeJalaliDate(recurringForm.endDate) : undefined,
+    dueDay: recurringForm.frequency === 'monthly' ? Math.min(31, Math.max(1, Math.trunc(Number(recurringForm.dueDay) || 1))) : undefined,
+    paymentMethod: recurringForm.type === 'expense' ? recurringForm.paymentMethod : undefined,
+    isSubscription: Boolean(recurringForm.isSubscription),
+    isActive: Boolean(recurringForm.isActive),
+    reminderDaysBefore: Math.max(0, Math.trunc(Number(recurringForm.reminderDaysBefore) || 0)),
+    lastAppliedDate: existing?.lastAppliedDate,
+    skippedDates: existing?.skippedDates ?? [],
+    note: recurringForm.note.trim(),
+    createdAt: existing?.createdAt ?? todayKey,
+    updatedAt: todayKey,
+  }
+
+  recurringItems.value = existing ? recurringItems.value.map((entry) => (entry.id === existing.id ? item : entry)) : [item, ...recurringItems.value]
+  resetRecurringForm()
+  pushToast(existing ? 'پرداخت تکراری ویرایش شد ✅' : 'پرداخت تکراری اضافه شد ✅')
+}
+
+function editRecurringItem(item: BudgetyarRecurringItem) {
+  editingRecurringItemId.value = item.id
+  Object.assign(recurringForm, {
+    title: item.title,
+    type: item.type,
+    amount: item.amount,
+    categoryId: item.categoryId ?? 'other',
+    frequency: item.frequency,
+    startDate: item.startDate,
+    endDate: item.endDate ?? '',
+    dueDay: item.dueDay ?? currentJalaliDate.day,
+    paymentMethod: item.paymentMethod ?? 'cash',
+    isSubscription: item.isSubscription,
+    isActive: item.isActive,
+    reminderDaysBefore: item.reminderDaysBefore,
+    note: item.note ?? '',
+  })
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function updateRecurringItem(id: string, patch: Partial<BudgetyarRecurringItem>) {
+  recurringItems.value = recurringItems.value.map((item) => (item.id === id ? { ...item, ...patch, updatedAt: todayKey } : item))
+}
+
+function deleteRecurringItem(id: string) {
+  recurringItems.value = recurringItems.value.filter((item) => item.id !== id)
+  if (editingRecurringItemId.value === id) resetRecurringForm()
+  pushToast('آیتم تکراری حذف شد')
+}
+
+function toggleRecurringItem(id: string) {
+  const item = recurringItems.value.find((entry) => entry.id === id)
+  if (item) updateRecurringItem(id, { isActive: !item.isActive })
+}
+
+function getRecurringNextDueDate(item: BudgetyarRecurringItem) {
+  if (!item.isActive) return ''
+
+  let cursor = getPlanningRecurringNextDueDate({ ...item, lastAppliedDate: undefined }, item.startDate)
+
+  for (let guard = 0; guard < 240 && cursor; guard += 1) {
+    if (item.endDate && cursor > item.endDate) return ''
+    const isHandled = item.lastAppliedDate === cursor || item.skippedDates?.includes(cursor)
+    if (!isHandled && cursor <= todayKey) return cursor
+    if (cursor > todayKey) return cursor
+    cursor = getNextRecurringDateAfter(item, cursor)
+  }
+
+  return ''
+}
+
+function markRecurringItemPaid(item: BudgetyarRecurringItem, dueDate = getRecurringNextDueDate(item)) {
+  if (!dueDate || transactions.value.some((transaction) => transaction.sourceType === 'recurring' && transaction.sourceId === item.id && transaction.sourceDate === dueDate)) {
+    pushToast('این نوبت قبلا ثبت شده است')
+    return
+  }
+
+  transactions.value = [createTransactionFromRecurringItem(item, dueDate), ...transactions.value]
+  updateRecurringItem(item.id, { lastAppliedDate: dueDate })
+  pushToast('نوبت تکراری به تراکنش تبدیل شد ✅')
+}
+
+function skipRecurringOccurrence(item: BudgetyarRecurringItem, dueDate = getRecurringNextDueDate(item)) {
+  if (!dueDate) return
+
+  updateRecurringItem(item.id, { skippedDates: [...new Set([...(item.skippedDates ?? []), dueDate])] })
+  pushToast('این نوبت رد شد')
+}
+
+function createTransactionFromRecurringItem(item: BudgetyarRecurringItem, dueDate = getRecurringNextDueDate(item)): Transaction {
+  return {
+    id: Date.now(),
+    type: item.type,
+    title: item.title,
+    amount: item.amount,
+    date: dueDate || todayKey,
+    category: item.type === 'expense' ? item.categoryId ?? 'other' : undefined,
+    description: item.note,
+    paymentMethod: item.type === 'expense' ? item.paymentMethod ?? 'cash' : undefined,
+    isEssential: item.type === 'expense' ? true : undefined,
+    isLoan: item.type === 'expense' ? false : undefined,
+    sourceType: 'recurring',
+    sourceId: item.id,
+    sourceDate: dueDate || todayKey,
+  }
+}
+
+function getRecurringStatus(item: BudgetyarRecurringItem) {
+  const nextDue = getRecurringNextDueDate(item)
+  if (!item.isActive) return 'inactive'
+  if (!nextDue) return 'done'
+  if (nextDue < todayKey) return 'overdue'
+  if (nextDue === todayKey) return 'due'
+  if (getJalaliDateDistance(todayKey, nextDue) <= item.reminderDaysBefore) return 'upcoming'
+
+  return 'active'
+}
+
+function getRecurringStatusLabel(status: string) {
+  const labels: Record<string, string> = {
+    inactive: 'غیرفعال',
+    done: 'تمام‌شده',
+    overdue: 'عقب‌افتاده',
+    due: 'امروز',
+    upcoming: 'نزدیک',
+    active: 'فعال',
+  }
+
+  return labels[status] ?? 'فعال'
+}
+
+function getMonthlyRecurringAmount(item: BudgetyarRecurringItem) {
+  if (item.frequency === 'daily') return item.amount * 30
+  if (item.frequency === 'weekly') return item.amount * 4
+  if (item.frequency === 'yearly') return Math.round(item.amount / 12)
+
+  return item.amount
+}
+
+function getForecastDayCount() {
+  if (cashflowForecastPeriod.value === 'next30Days') return 30
+  if (cashflowForecastPeriod.value === 'next90Days') return 90
+
+  return Math.max(1, getJalaliDateDistance(todayKey, currentMonthEndKey) + 1)
+}
+
+function getCashflowEvents() {
+  const events: Array<{ date: string; amount: number; kind: 'income' | 'expense'; source?: 'recurring' | 'installment' | 'budget' }> = []
+  const endDate = formatJalaliInputDate(addJalaliDays(currentJalaliDate, getForecastDayCount() - 1))
+
+  activeInstallmentSummaries.value.forEach((item) => {
+    if (item.nextDueDate >= todayKey && item.nextDueDate <= endDate) {
+      events.push({ date: item.nextDueDate, amount: item.amount, kind: 'expense', source: 'installment' })
+    }
+  })
+
+  activeRecurringItems.value.forEach((item) => {
+    getRecurringOccurrences(item, todayKey, endDate).forEach((date) => {
+      events.push({ date, amount: item.amount, kind: item.type, source: 'recurring' })
+    })
+  })
+
+  const remainingBudget = Math.max(totalBudget.value - totalExpense.value, 0)
+  const dailyPlannedExpense = Math.floor(remainingBudget / Math.max(getForecastDayCount(), 1))
+  if (dailyPlannedExpense > 0) {
+    for (let index = 0; index < getForecastDayCount(); index += 1) {
+      events.push({
+        date: formatJalaliInputDate(addJalaliDays(currentJalaliDate, index)),
+        amount: dailyPlannedExpense,
+        kind: 'expense',
+        source: 'budget',
+      })
+    }
+  }
+
+  return events
+}
+
+function getRecurringOccurrences(item: BudgetyarRecurringItem, startDate: string, endDate: string) {
+  const occurrences: string[] = []
+  let cursor = getPlanningRecurringNextDueDate({ ...item, lastAppliedDate: undefined }, startDate)
+
+  for (let guard = 0; guard < 150 && cursor && cursor <= endDate; guard += 1) {
+    if ((!item.endDate || cursor <= item.endDate) && !item.skippedDates?.includes(cursor)) occurrences.push(cursor)
+    cursor = getNextRecurringDateAfter(item, cursor)
+  }
+
+  return occurrences
+}
+
+function getNextRecurringDateAfter(item: BudgetyarRecurringItem, date: string) {
+  const parsed = parseJalaliInput(date)
+  if (!parsed) return ''
+  if (item.frequency === 'daily') return formatJalaliInputDate(addJalaliDays(parsed, 1))
+  if (item.frequency === 'weekly') return formatJalaliInputDate(addJalaliDays(parsed, 7))
+  if (item.frequency === 'yearly') {
+    const nextYear = parsed.year + 1
+    return formatJalaliInputDate({ year: nextYear, month: parsed.month, day: Math.min(parsed.day, getJalaliMonthLength(nextYear, parsed.month)) })
+  }
+
+  const nextMonth = addJalaliMonths(parsed, 1)
+  return formatJalaliInputDate({ ...nextMonth, day: Math.min(item.dueDay ?? parsed.day, getJalaliMonthLength(nextMonth.year, nextMonth.month)) })
+}
+
+function getJalaliDateDistance(startDate: string, endDate: string) {
+  const start = parseJalaliInput(startDate)
+  const end = parseJalaliInput(endDate)
+  if (!start || !end) return 0
+
+  const startIso = toGregorian(start.year, start.month, start.day)
+  const endIso = toGregorian(end.year, end.month, end.day)
+
+  return Math.ceil((Date.parse(`${endIso}T00:00:00.000Z`) - Date.parse(`${startIso}T00:00:00.000Z`)) / 86400000)
+}
+
+function buildPurchaseDecision() {
+  const category = categoryTotals.value.find((item) => item.key === purchaseForm.categoryId)
+  const weeklyCategory = weeklyCategoryBudgets.value.find((item) => item.key === purchaseForm.categoryId)
+  const amount = Math.max(0, Number(purchaseForm.amount) || 0)
+  const categoryBudget = category?.budget ?? 0
+  const categorySpent = category?.spent ?? 0
+  const weeklyBudget = weeklyCategory?.weeklyBudget ?? weeklyBudgetAllowance.value
+  const weeklySpent = weeklyExpenseTransactions.value.filter((item) => item.category === purchaseForm.categoryId).reduce((sum, item) => sum + item.amount, 0)
+  const beforeBalance = projectedEndOfMonthBalance.value
+  const decision = getPurchaseDecision({
+    amount,
+    categoryBudget,
+    categorySpent,
+    weeklyBudget,
+    weeklySpent,
+    projectedBalance: beforeBalance,
+    safeDailySpend: safeDailySpend.value,
+    creditLimit: creditLimit.value,
+    creditUsed: creditExpense.value,
+    paymentMethod: purchaseForm.paymentMethod,
+    isEssential: purchaseForm.isEssential,
+    nonEssentialSpending: nonEssentialExpense.value,
+    highPriorityGoalRemaining: activeGoals.value.filter((goal) => goal.priority === 'high').reduce((sum, goal) => sum + getGoalRemainingAmount(goal), 0),
+    hasNearDueObligation: upcomingInstallments.value.length > 0 || upcomingRecurringItems.value.length > 0 || dueRecurringItems.value.length > 0,
+  })
+  const afterBalance = beforeBalance - (purchaseForm.paymentMethod === 'cash' ? amount : 0)
+
+  return {
+    ...decision,
+    title: decision.level === 'safe' ? 'امن' : decision.level === 'caution' ? 'با احتیاط' : 'پرریسک',
+    summary: getPurchaseDecisionSummary(decision.level),
+    budgetImpact: {
+      categoryBudget,
+      categorySpent,
+      categoryRemainingBefore: Math.max(categoryBudget - categorySpent, 0),
+      categoryRemainingAfter: Math.max(categoryBudget - categorySpent - amount, 0),
+      monthlyBudgetImpactPercent: Math.round((amount / Math.max(totalBudget.value, 1)) * 100),
+      weeklyBudgetImpactPercent: Math.round((amount / Math.max(weeklyBudget, 1)) * 100),
+    },
+    cashflowImpact: {
+      projectedBalanceBefore: beforeBalance,
+      projectedBalanceAfter: afterBalance,
+      safeDailySpendBefore: safeDailySpend.value,
+      safeDailySpendAfter: Math.max(0, Math.floor(afterBalance / Math.max(cashflowForecastDays.value.length, 1))),
+    },
+    creditImpact: purchaseForm.paymentMethod === 'credit'
+      ? {
+          creditLimit: creditLimit.value,
+          creditUsedBefore: creditExpense.value,
+          creditUsedAfter: creditExpense.value + amount,
+          creditRemainingAfter: Math.max(creditLimit.value - creditExpense.value - amount, 0),
+        }
+      : undefined,
+    goalImpact: {
+      delayedGoals: activeGoals.value
+        .filter((goal) => goal.priority === 'high' && amount > getGoalSuggestedWeeklySaving(goal))
+        .slice(0, 3)
+        .map((goal) => ({
+          goalId: goal.id,
+          title: goal.title,
+          estimatedDelayDays: Math.ceil(amount / Math.max(getGoalSuggestedWeeklySaving(goal), 1)) * 7,
+        })),
+    },
+    suggestions: getPurchaseSuggestionTexts(decision.suggestions),
+  }
+}
+
+function getPurchaseDecisionSummary(level: PurchaseDecisionResult['level']) {
+  if (level === 'safe') return 'این خرید امن به نظر می‌رسد.'
+  if (level === 'caution') return 'این خرید قابل انجام است، اما فشار بودجه‌ای ایجاد می‌کند.'
+
+  return 'این خرید فعلا پرریسک است.'
+}
+
+function getPurchaseSuggestionTexts(suggestions: string[]) {
+  const labels: Record<string, string> = {
+    'reduce-amount': 'مبلغ را کاهش بده.',
+    'delay-purchase': 'خرید را چند روز عقب بینداز.',
+    'protect-cashflow': 'قبل از خرید، مانده نقدی پایان ماه را بررسی کن.',
+    'prefer-cash': 'بهتر است با پول نقد بخری نه اعتبار.',
+    'wait-72-hours': 'اگر ضروری نیست ۷۲ ساعت صبر کن.',
+    'protect-goals': 'برای هدف‌های مهم، مبلغی را دست‌نخورده نگه دار.',
+    'check-due-payments': 'سررسیدهای نزدیک را قبل از خرید پرداخت کن.',
+  }
+
+  return suggestions.map((item) => labels[item]).filter(Boolean)
+}
+
+function createPurchaseTransaction() {
+  if (!purchaseForm.amount) return
+
+  transactions.value = [{
+    id: Date.now(),
+    type: 'expense',
+    title: purchaseForm.note.trim() || 'خرید برنامه‌ریزی‌شده',
+    amount: Math.max(0, Number(purchaseForm.amount) || 0),
+    date: normalizeJalaliDate(purchaseForm.date),
+    category: purchaseForm.categoryId,
+    description: purchaseForm.note,
+    paymentMethod: purchaseForm.paymentMethod,
+    isEssential: purchaseForm.isEssential,
+    isLoan: false,
+    sourceType: 'manual',
+  }, ...transactions.value]
+  Object.assign(purchaseForm, { amount: 0, categoryId: 'other', date: todayKey, isEssential: false, paymentMethod: 'cash', note: '' })
+  pushToast('خرید به تراکنش تبدیل شد ✅')
 }
 
 function getExportDateStamp() {
@@ -1348,6 +2008,13 @@ function getPaymentMethodLabel(item: Transaction) {
   if (item.type === 'income') return '-'
 
   return item.paymentMethod === 'credit' ? 'اعتباری' : 'نقدی'
+}
+
+function getRiskLabel(level: CashflowRiskLevel) {
+  if (level === 'safe') return 'امن'
+  if (level === 'watch') return 'نیاز به توجه'
+
+  return 'پرریسک'
 }
 
 function getNecessityLabel(item: Transaction) {
@@ -1468,6 +2135,8 @@ function buildBackupJson() {
     categories: categories.value,
     budgets: budgets.value,
     installments: installments.value,
+    goals: goals.value,
+    recurringItems: recurringItems.value,
     creditLimit: creditLimit.value,
     summary: {
       totalIncome: totalIncome.value,
@@ -1480,6 +2149,10 @@ function buildBackupJson() {
       loanedExpense: loanedExpense.value,
       monthlyInstallmentDue: monthlyInstallmentDue.value,
       commitmentInstallmentDue: commitmentInstallmentDue.value,
+      totalGoalsTarget: totalGoalsTarget.value,
+      totalGoalsSaved: totalGoalsSaved.value,
+      monthlyRecurringIncomeTotal: monthlyRecurringIncomeTotal.value,
+      monthlyRecurringExpenseTotal: monthlyRecurringExpenseTotal.value,
       balanceAfterCommitments: balanceAfterCommitments.value,
       balance: balance.value,
       totalBudget: totalBudget.value,
@@ -1545,6 +2218,46 @@ function restoreInstallments(value: unknown) {
   )
 }
 
+function restoreGoals(value: unknown) {
+  if (!Array.isArray(value)) return []
+
+  return value.filter((item): item is BudgetyarGoal =>
+    isRecord(item) &&
+    typeof item.id === 'string' &&
+    typeof item.title === 'string' &&
+    typeof item.targetAmount === 'number' &&
+    typeof item.savedAmount === 'number' &&
+    (item.priority === 'low' || item.priority === 'medium' || item.priority === 'high'),
+  ).map((item) => ({
+    ...item,
+    isArchived: Boolean(item.isArchived),
+    createdAt: typeof item.createdAt === 'string' ? item.createdAt : todayKey,
+    updatedAt: typeof item.updatedAt === 'string' ? item.updatedAt : todayKey,
+  }))
+}
+
+function restoreRecurringItems(value: unknown) {
+  if (!Array.isArray(value)) return []
+
+  return value.filter((item): item is BudgetyarRecurringItem =>
+    isRecord(item) &&
+    typeof item.id === 'string' &&
+    typeof item.title === 'string' &&
+    (item.type === 'income' || item.type === 'expense') &&
+    typeof item.amount === 'number' &&
+    (item.frequency === 'daily' || item.frequency === 'weekly' || item.frequency === 'monthly' || item.frequency === 'yearly') &&
+    typeof item.startDate === 'string',
+  ).map((item) => ({
+    ...item,
+    isSubscription: Boolean(item.isSubscription),
+    isActive: item.isActive !== false,
+    reminderDaysBefore: Math.max(0, Number(item.reminderDaysBefore) || 0),
+    skippedDates: Array.isArray(item.skippedDates) ? item.skippedDates.filter((date): date is string => typeof date === 'string') : [],
+    createdAt: typeof item.createdAt === 'string' ? item.createdAt : todayKey,
+    updatedAt: typeof item.updatedAt === 'string' ? item.updatedAt : todayKey,
+  }))
+}
+
 async function importBackup(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
@@ -1562,6 +2275,8 @@ async function importBackup(event: Event) {
     categories.value = restoreCategories(backup.categories)
     budgets.value = restoreBudgets(backup.budgets)
     installments.value = restoreInstallments(backup.installments)
+    goals.value = restoreGoals(backup.goals)
+    recurringItems.value = restoreRecurringItems(backup.recurringItems)
     creditLimit.value = Math.max(0, Number(backup.creditLimit ?? summary.creditLimit ?? 0) || 0)
     selectedCategory.value = 'همه'
     selectedType.value = 'همه'
@@ -2077,10 +2792,13 @@ function unbindMobileViewport() {
 export function useBudgetyar() {
   return {
     activeSection, isMobileMenuOpen, isMobileViewport, navItems, months, years, today, todayKey, currentMonthYear, currentJalaliDate, currentMonthLength,
-    categories, transactions, budgets, installments, creditLimit, cashFlowMode, themeMode,
+    categories, transactions, budgets, installments, goals, recurringItems, creditLimit, cashFlowMode, themeMode, cashflowForecastPeriod,
     query, selectedMonth, selectedYear, selectedCategory, selectedType, dateRange, pickerDateRange,
     isModalOpen, formType, form, formAmountInWords, formDatePickerValue, editingId, toasts,
     categoryForm, installmentForm, editingInstallmentId, installmentAmountInWords, installmentStartDatePickerValue,
+    goalForm, editingGoalId, goalTargetAmountInWords, goalSavedAmountInWords, goalTargetDatePickerValue,
+    recurringForm, editingRecurringItemId, recurringAmountInWords, recurringStartDatePickerValue, recurringEndDatePickerValue,
+    purchaseForm, purchaseAmountInWords, purchaseDatePickerValue, purchaseDecision,
     installPrompt, isStandalone, isAndroidNative, isNotificationsLoading, bankApps, bankSuggestions, selectedBankPackage, bankNotificationStatus,
     expenseShareCanvas, categoryBarCanvas, trendLineCanvas, statsExpenseMixCanvas, statsBudgetUsageCanvas, statsDailyExpenseCanvas, statsWeeklyFlowCanvas, statsCashFlowCanvas,
     currentMonthTransactions, currentWeekTransactions, expenseTransactions, incomeTransactions, weeklyExpenseTransactions, weeklyIncomeTransactions,
@@ -2088,10 +2806,15 @@ export function useBudgetyar() {
     loanedExpense, essentialExpense, nonEssentialExpense, weeklyIncome, weeklyExpense, weeklyCreditExpense, weeklyBalance, totalBudget, weeklyBudgetAllowance, balance, budgetUsage, savingsPercent,
     categoryTotals, weeklyCategoryBudgets, weeklyBudgetAnalysis, sortedCategoryTotals, visibleCategoryTotals, safeMaxCategory, highestExpense, lowestExpense, todayExpense, todayIncome, averageDailyExpense, latestExpenses, latestLoans,
     installmentSummaries, activeInstallmentSummaries, overdueInstallments, upcomingInstallments, dueInstallmentsThisMonth, monthlyInstallmentDue, commitmentInstallmentDue,
+    activeGoals, archivedGoals, totalGoalsTarget, totalGoalsSaved, totalGoalsRemaining, nearestGoal,
+    activeRecurringItems, recurringSummaries, upcomingRecurringItems, dueRecurringItems, overdueRecurringItems, monthlyRecurringIncomeTotal, monthlyRecurringExpenseTotal, monthlySubscriptionsTotal,
+    cashflowForecastDays, projectedEndOfMonthBalance, lowestProjectedBalance, cashflowRiskLevel, cashflowWarnings, safeDailySpend, safeWeeklySpend,
     filteredTransactions, dailyTrend, hasExpenseData, expenseShareChartData, categoryBarChartData, trendLineChartData, dailyExpensePoints, weeklyFlowPoints, budgetAnalysisItems, statsExpenseMixChartData, statsBudgetUsageChartData, statsDailyExpenseChartData, statsWeeklyFlowChartData, statsCashFlowChartData,
     summaryLines, insights, dashboardCards, widgets, statsItems,
-    getCategory, normalizeDigits, normalizeJalaliDate, getJalaliInputDay, getTrendDays, getPreviousMonthPrefix, addJalaliMonths, getInstallmentDueDate, getInstallmentStatus, getInstallmentStatusLabel, getCurrentWeekRange, getWeekdayLabel, getJalaliMonthPrefix, getCurrentJalaliDate, formatJalaliInputDate, formatDisplayJalaliDate, jalaliInputToIso, isoToJalaliInput, toPersianNumber, parseMoneyInput, formatMoneyInput, formatMoneyWords, formatMoney, formatCompact, progressPercent, getChangePercent, formatPercentHint, formatChangeSentence,
-    selectSection, openModal, editTransaction, saveTransaction, removeTransaction, refreshBankNotifications, openNotificationAccessSettings, updateSelectedBankPackage, acceptBankSuggestion, dismissBankSuggestion, formatSuggestionDate, updateMoneyInput, updateCreditLimit, updateBudget, addCategory, deleteCategory, addInstallmentPlan, editInstallmentPlan, cancelInstallmentEdit, payInstallment, removeInstallmentPlan, setThemeMode,
+    getCategory, normalizeDigits, normalizeJalaliDate, getJalaliInputDay, getTrendDays, getPreviousMonthPrefix, addJalaliMonths, getInstallmentDueDate, getInstallmentStatus, getInstallmentStatusLabel, getCurrentWeekRange, getWeekdayLabel, getJalaliMonthPrefix, getCurrentJalaliDate, formatJalaliInputDate, formatDisplayJalaliDate, jalaliInputToIso, isoToJalaliInput, toPersianNumber, parseMoneyInput, formatMoneyInput, formatMoneyWords, formatMoney, formatCompact, progressPercent, getChangePercent, formatPercentHint, formatChangeSentence, getRiskLabel,
+    selectSection, openModal, editTransaction, saveTransaction, removeTransaction, refreshBankNotifications, openNotificationAccessSettings, updateSelectedBankPackage, acceptBankSuggestion, dismissBankSuggestion, formatSuggestionDate, updateMoneyInput, updateCreditLimit, updateBudget, addCategory, deleteCategory, addInstallmentPlan, editInstallmentPlan, cancelInstallmentEdit, payInstallment, removeInstallmentPlan,
+    addGoal, editGoal, updateGoal, deleteGoal, archiveGoal, addGoalContribution, withdrawFromGoal, getGoalProgress, getGoalRemainingAmount, getGoalSuggestedMonthlySaving, getGoalSuggestedWeeklySaving,
+    addRecurringItem, editRecurringItem, updateRecurringItem, deleteRecurringItem, toggleRecurringItem, getRecurringNextDueDate, markRecurringItemPaid, skipRecurringOccurrence, createTransactionFromRecurringItem, getRecurringStatusLabel, createPurchaseTransaction, setThemeMode,
     getTransactionCategoryLabel, getPaymentMethodLabel, getNecessityLabel, buildCsvReport, buildExcelReport, buildBackupJson, importBackup, createExportFile, saveBlobToDevice, exportReport, installApp, pushToast,
     createCharts, syncCharts, scheduleChartSync, destroyCharts,
   }
@@ -2123,6 +2846,8 @@ export function startBudgetyar() {
     const savedCreditLimit = localStorage.getItem(CREDIT_STORAGE_KEY)
     const savedInstallments = localStorage.getItem(INSTALLMENTS_STORAGE_KEY)
     const savedThemeMode = localStorage.getItem(THEME_STORAGE_KEY)
+    const savedGoals = localStorage.getItem(GOALS_STORAGE_KEY)
+    const savedRecurringItems = localStorage.getItem(RECURRING_ITEMS_STORAGE_KEY)
   
     if (savedTransactions) {
       try {
@@ -2160,6 +2885,22 @@ export function startBudgetyar() {
         installments.value = JSON.parse(savedInstallments) as InstallmentPlan[]
       } catch {
         localStorage.removeItem(INSTALLMENTS_STORAGE_KEY)
+      }
+    }
+
+    if (savedGoals) {
+      try {
+        goals.value = restoreGoals(JSON.parse(savedGoals))
+      } catch {
+        localStorage.removeItem(GOALS_STORAGE_KEY)
+      }
+    }
+
+    if (savedRecurringItems) {
+      try {
+        recurringItems.value = restoreRecurringItems(JSON.parse(savedRecurringItems))
+      } catch {
+        localStorage.removeItem(RECURRING_ITEMS_STORAGE_KEY)
       }
     }
 
@@ -2234,6 +2975,22 @@ export function startBudgetyar() {
     installments,
     (value) => {
       localStorage.setItem(INSTALLMENTS_STORAGE_KEY, JSON.stringify(value))
+    },
+    { deep: true },
+  )
+
+  watch(
+    goals,
+    (value) => {
+      localStorage.setItem(GOALS_STORAGE_KEY, JSON.stringify(value))
+    },
+    { deep: true },
+  )
+
+  watch(
+    recurringItems,
+    (value) => {
+      localStorage.setItem(RECURRING_ITEMS_STORAGE_KEY, JSON.stringify(value))
     },
     { deep: true },
   )
