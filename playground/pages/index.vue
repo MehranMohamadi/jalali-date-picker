@@ -11,8 +11,6 @@ const {
   hasExpenseData,
   isMobileViewport,
   expenseShareCanvas,
-  categoryBarCanvas,
-  trendLineCanvas,
   getCategory,
   formatMoney,
   formatCompact,
@@ -20,6 +18,11 @@ const {
   scheduleChartSync,
   destroyCharts,
 } = budgetyar
+
+const primaryWidgets = computed(() => widgets.value.slice(0, 4))
+const primaryCards = computed(() => dashboardCards.value.slice(0, 4))
+const highlightedBudgets = computed(() => weeklyCategoryBudgets.value.slice(0, 8))
+const visibleInstallments = computed(() => [...overdueInstallments.value, ...upcomingInstallments.value].slice(0, 3))
 
 function cardValue(card: { value: number; suffix?: string }) {
   return card.suffix ? `${toPersianNumber(card.value)}${card.suffix}` : formatMoney(card.value)
@@ -30,126 +33,108 @@ onBeforeUnmount(destroyCharts)
 </script>
 
 <template>
-  <section class="widgets-grid">
-    <article v-for="widget in widgets" :key="widget.label" class="mini-card glass-panel">
-      <small>{{ widget.label }}</small>
-      <strong>{{ widget.value }}</strong>
-    </article>
+  <section class="dashboard-hero glass-panel">
+    <div>
+      <small>‏نمای امروز</small>
+      <h1>‏بودجه‌یار</h1>
+    </div>
+    <div class="dashboard-quick-strip">
+      <span v-for="widget in primaryWidgets" :key="widget.label">
+        <i aria-hidden="true">{{ widget.icon }}</i>
+        <b>{{ widget.value }}</b>
+        <small>{{ widget.label }}</small>
+      </span>
+    </div>
   </section>
 
-  <section class="cards-grid">
+  <section class="dashboard-metrics">
     <MetricCard
-      v-for="card in dashboardCards"
+      v-for="card in primaryCards"
       :key="card.label"
       :label="card.label"
       :value="cardValue(card)"
+      :icon="card.icon"
+      :hint="card.hint"
       :class-name="card.className"
     />
   </section>
 
-  <section class="recent-expenses-card glass-panel">
-    <div class="section-title compact">
-      <div>
-        <h2>سه خرج آخر</h2>
-      </div>
-    </div>
-    <div v-if="latestExpenses.length" class="recent-expenses-list">
-      <div v-for="expense in latestExpenses" :key="expense.id" class="recent-expense-row">
+  <section class="dashboard-focus-grid">
+    <article class="chart-card dashboard-spend-card glass-panel">
+      <div class="section-title compact">
         <div>
-          <strong>
-            {{ expense.title }}
-            <i v-if="expense.isEssential === false" class="nonessential-mark" title="غیرضروری" aria-label="غیرضروری">⚠️</i>
-          </strong>
-          <span>{{ getCategory(expense.category).label }} · {{ expense.date }}</span>
-        </div>
-        <b>{{ formatCompact(expense.amount) }}</b>
-      </div>
-    </div>
-    <p v-else class="empty-inline">هنوز خرجی ثبت نشده</p>
-  </section>
-
-  <section v-if="upcomingInstallments.length || overdueInstallments.length" class="installment-alert-card glass-panel">
-    <div class="weekly-category-head">
-      <strong>قسط‌های نزدیک</strong>
-      <small>{{ toPersianNumber(overdueInstallments.length) }} عقب‌افتاده</small>
-    </div>
-    <div class="installment-alert-list">
-      <span v-for="item in [...overdueInstallments, ...upcomingInstallments].slice(0, 4)" :key="item.id">
-        <b>{{ item.title }}</b>
-        <em>{{ item.nextDueDate }} · {{ formatCompact(item.amount) }}</em>
-      </span>
-    </div>
-  </section>
-
-  <section v-if="!isMobileViewport" class="dashboard-grid">
-    <article class="chart-card glass-panel">
-      <div class="section-title">
-        <div>
-          <h2>سهم دسته‌های هزینه</h2>
-          <p>نمایش سهم هر دسته از هزینه‌ها</p>
+          <h2>‏ترکیب هزینه‌ها</h2>
+          <p>‏بیشترین سهم‌های خرج این ماه</p>
         </div>
       </div>
-      <div class="pie-wrap">
+
+      <div v-if="!isMobileViewport" class="pie-wrap compact">
         <div class="chart-canvas pie-chart" :class="{ empty: !hasExpenseData }">
-          <canvas ref="expenseShareCanvas" aria-label="نمودار دایره‌ای هزینه‌ها" role="img" />
-          <span v-if="!hasExpenseData">بدون داده</span>
+          <canvas ref="expenseShareCanvas" aria-label="‏نمودار سهم هزینه‌ها" role="img" />
+          <span v-if="!hasExpenseData">‏بدون داده</span>
         </div>
-        <div class="legend">
-          <span v-for="item in visibleCategoryTotals.slice(0, 7)" :key="item.key">
+        <div class="legend compact">
+          <span v-for="item in visibleCategoryTotals.slice(0, 5)" :key="item.key">
             <i :style="{ background: item.color }" />
             {{ item.icon }} {{ item.label }} · {{ formatCompact(item.spent) }}
           </span>
-          <span v-if="!hasExpenseData">بعد از ثبت هزینه، سهم دسته‌ها نمایش داده می‌شود.</span>
+          <span v-if="!hasExpenseData">‏بعد از ثبت هزینه، سهم دسته‌ها اینجا دیده می‌شود.</span>
         </div>
       </div>
+
+      <div v-else-if="hasExpenseData" class="mobile-category-list">
+        <span v-for="item in visibleCategoryTotals.slice(0, 5)" :key="item.key">
+          <b><i :style="{ background: item.color }" /> {{ item.icon }} {{ item.label }}</b>
+          <em>{{ formatCompact(item.spent) }}</em>
+        </span>
+      </div>
+      <p v-else class="empty-inline">‏هنوز هزینه‌ای ثبت نشده</p>
     </article>
 
-    <article class="chart-card glass-panel">
-      <div class="section-title">
-        <div>
-          <h2>مقایسه هزینه دسته‌ها</h2>
-          <p>نمودار ستونی بودجه مصرف‌شده</p>
+    <div class="dashboard-side-stack">
+      <section class="recent-expenses-card glass-panel">
+        <div class="section-title compact">
+          <div>
+            <h2>‏آخرین خرج‌ها</h2>
+          </div>
         </div>
-      </div>
-      <div class="chart-canvas bar-chart">
-        <canvas ref="categoryBarCanvas" aria-label="نمودار ستونی دسته‌های هزینه" role="img" />
-      </div>
-    </article>
+        <div v-if="latestExpenses.length" class="recent-expenses-list">
+          <div v-for="expense in latestExpenses.slice(0, 3)" :key="expense.id" class="recent-expense-row">
+            <div>
+              <strong>
+                {{ expense.title }}
+                <i v-if="expense.isEssential === false" class="nonessential-mark" title="غیرضروری" aria-label="غیرضروری">!</i>
+              </strong>
+              <span>{{ getCategory(expense.category).label }} · {{ expense.date }}</span>
+            </div>
+            <b>{{ formatCompact(expense.amount) }}</b>
+          </div>
+        </div>
+        <p v-else class="empty-inline">‏هنوز خرجی ثبت نشده</p>
+      </section>
 
-    <article class="chart-card glass-panel wide">
-      <div class="section-title">
-        <div>
-          <h2>روند خرج کردن و باقی مانده بودجه</h2>
-          <p>نمودار خطی و ناحیه‌ای در طول ماه</p>
+      <section v-if="visibleInstallments.length" class="installment-alert-card glass-panel compact">
+        <div class="weekly-category-head">
+          <strong>‏قسط‌های نزدیک</strong>
+          <small>{{ toPersianNumber(overdueInstallments.length) }} عقب‌افتاده</small>
         </div>
-      </div>
-      <div class="chart-canvas line-chart">
-        <canvas ref="trendLineCanvas" aria-label="نمودار روند ماهانه" role="img" />
-      </div>
-    </article>
+        <div class="installment-alert-list compact">
+          <span v-for="item in visibleInstallments" :key="item.id">
+            <b>{{ item.title }}</b>
+            <em>{{ item.nextDueDate }} · {{ formatCompact(item.amount) }}</em>
+          </span>
+        </div>
+      </section>
+    </div>
   </section>
 
-  <section v-else class="mobile-chart-summary glass-panel">
+  <section class="weekly-category-budget glass-panel compact">
     <div class="weekly-category-head">
-      <strong>سهم دسته‌های هزینه</strong>
-      <small>خلاصه سبک موبایل</small>
+      <strong>‏بودجه هفتگی بخش‌ها</strong>
+      <small>‏نمای کوتاه</small>
     </div>
-    <div v-if="hasExpenseData" class="mobile-category-list">
-      <span v-for="item in visibleCategoryTotals.slice(0, 6)" :key="item.key">
-        <b><i :style="{ background: item.color }" /> {{ item.icon }} {{ item.label }}</b>
-        <em>{{ formatCompact(item.spent) }}</em>
-      </span>
-    </div>
-    <p v-else class="empty-inline">هنوز هزینه‌ای ثبت نشده</p>
-  </section>
-
-  <section class="weekly-category-budget glass-panel">
-    <div class="weekly-category-head">
-      <strong>بودجه هفتگی بخش‌ها</strong>
-      <small>برای هر هفته</small>
-    </div>
-    <div class="weekly-category-list">
-      <span v-for="item in weeklyCategoryBudgets" :key="item.key">
+    <div class="weekly-category-list compact">
+      <span v-for="item in highlightedBudgets" :key="item.key">
         <b>{{ item.icon }} {{ item.label }}</b>
         <em>{{ formatCompact(item.weeklyBudget) }}</em>
       </span>

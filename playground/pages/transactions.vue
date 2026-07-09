@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Pencil, Trash2 } from 'lucide-vue-next'
+
 const budgetyar = useBudgetyar()
 const {
   query,
@@ -15,7 +17,6 @@ const {
   getCategory,
   getPaymentMethodLabel,
   formatMoney,
-  openModal,
   editTransaction,
   removeTransaction,
 } = budgetyar
@@ -41,12 +42,8 @@ function showMoreTransactions() {
   <section class="glass-panel table-card" data-section="تراکنش‌ها">
     <div class="section-title">
       <div>
-        <h2>تراکنش‌ها</h2>
-        <p>درآمد و هزینه‌ها در یک صفحه، با فیلتر زنده</p>
-      </div>
-      <div class="hero-actions">
-        <button class="soft-button" type="button" @click="openModal('income')">ثبت درآمد</button>
-        <button class="primary-button" type="button" @click="openModal('expense')">ثبت هزینه</button>
+        <h2>‏تراکنش‌ها</h2>
+        <p>‏مرور سریع درآمد و هزینه‌ها با فیلترهای زنده</p>
       </div>
     </div>
 
@@ -103,9 +100,13 @@ function showMoreTransactions() {
               </div>
               <span v-else>-</span>
             </td>
-            <td class="actions">
-              <button type="button" @click="editTransaction(item)">ویرایش</button>
-              <button type="button" @click="removeTransaction(item.id)">حذف</button>
+            <td class="actions transaction-actions">
+              <button class="icon-action" type="button" aria-label="‏ویرایش تراکنش" title="ویرایش" @click="editTransaction(item)">
+                <Pencil :size="16" aria-hidden="true" />
+              </button>
+              <button class="icon-action danger" type="button" aria-label="‏حذف تراکنش" title="حذف" @click="removeTransaction(item.id)">
+                <Trash2 :size="16" aria-hidden="true" />
+              </button>
             </td>
           </tr>
         </tbody>
@@ -119,8 +120,8 @@ function showMoreTransactions() {
 
     <EmptyState
       v-else
-      title="هنوز تراکنشی ثبت نشده است."
-      text="با دکمه ثبت هزینه یا ثبت درآمد، اولین مورد را اضافه کنید."
+      title="‏هنوز تراکنشی ثبت نشده است."
+      text="‏از دکمه ثبت سریع، اولین درآمد یا هزینه را اضافه کنید."
     />
   </section>
 </template>

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Check, Pencil, Plus, Trash2, X } from 'lucide-vue-next'
+
 const budgetyar = useBudgetyar()
 const {
   installmentForm,
@@ -34,7 +36,10 @@ const {
     <form class="installment-form" @submit.prevent="addInstallmentPlan">
       <div v-if="editingInstallmentId" class="installment-edit-banner">
         <strong>ویرایش قسط</strong>
-        <button class="soft-button" type="button" @click="cancelInstallmentEdit">لغو</button>
+        <button class="soft-button" type="button" @click="cancelInstallmentEdit">
+          <X :size="16" aria-hidden="true" />
+          <span>لغو</span>
+        </button>
       </div>
       <label>
         <span>عنوان</span>
@@ -80,7 +85,11 @@ const {
         <span>توضیحات</span>
         <textarea v-model="installmentForm.description" rows="2" placeholder="اختیاری" />
       </label>
-      <button class="primary-button" type="submit">{{ editingInstallmentId ? 'ذخیره ویرایش' : 'افزودن قسط' }}</button>
+      <button class="primary-button" type="submit">
+        <Plus v-if="!editingInstallmentId" :size="17" aria-hidden="true" />
+        <Check v-else :size="17" aria-hidden="true" />
+        <span>{{ editingInstallmentId ? 'ذخیره ویرایش' : 'افزودن قسط' }}</span>
+      </button>
     </form>
 
     <div v-if="installmentSummaries.length" class="installments-grid">
@@ -102,9 +111,18 @@ const {
         </div>
         <p v-if="item.description">{{ item.description }}</p>
         <div class="installment-actions">
-          <button class="primary-button" type="button" :disabled="item.status === 'completed'" @click="payInstallment(item)">پرداخت شد</button>
-          <button class="soft-button" type="button" @click="editInstallmentPlan(item)">ویرایش</button>
-          <button class="soft-button" type="button" @click="removeInstallmentPlan(item.id)">حذف</button>
+          <button class="primary-button" type="button" :disabled="item.status === 'completed'" @click="payInstallment(item)">
+            <Check :size="16" aria-hidden="true" />
+            <span>پرداخت شد</span>
+          </button>
+          <button class="soft-button" type="button" @click="editInstallmentPlan(item)">
+            <Pencil :size="16" aria-hidden="true" />
+            <span>ویرایش</span>
+          </button>
+          <button class="soft-button" type="button" @click="removeInstallmentPlan(item.id)">
+            <Trash2 :size="16" aria-hidden="true" />
+            <span>حذف</span>
+          </button>
         </div>
       </article>
     </div>

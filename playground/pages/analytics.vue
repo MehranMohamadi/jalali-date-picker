@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Download, FileSpreadsheet, Printer } from 'lucide-vue-next'
+
 const budgetyar = useBudgetyar()
 const {
   weeklyBudgetAnalysis,
@@ -42,9 +44,18 @@ onBeforeUnmount(destroyCharts)
           <p>گزارش ماهانه و هشدارهای مهم</p>
         </div>
         <div class="export-actions">
-          <button type="button" @click="exportReport('PDF')">چاپی</button>
-          <button type="button" @click="exportReport('Excel')">Excel</button>
-          <button type="button" @click="exportReport('CSV')">CSV</button>
+          <button type="button" @click="exportReport('PDF')">
+            <Printer :size="16" aria-hidden="true" />
+            <span>چاپی</span>
+          </button>
+          <button type="button" @click="exportReport('Excel')">
+            <FileSpreadsheet :size="16" aria-hidden="true" />
+            <span>Excel</span>
+          </button>
+          <button type="button" @click="exportReport('CSV')">
+            <Download :size="16" aria-hidden="true" />
+            <span>CSV</span>
+          </button>
         </div>
       </div>
 

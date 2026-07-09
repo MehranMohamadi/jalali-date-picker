@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Download, Smartphone } from 'lucide-vue-next'
+
 const budgetyar = useBudgetyar()
 const {
   creditLimit,
@@ -49,8 +51,14 @@ function updateThemeMode(event: Event) {
       <label class="backup-import">بازیابی بکاپ
         <input type="file" accept="application/json,.json" @change="importBackup" />
       </label>
-      <button class="primary-button pwa-install" type="button" @click="exportReport('JSON')">ذخیره بکاپ در فایل‌ها</button>
-      <button v-if="!isStandalone" class="primary-button pwa-install" type="button" @click="installApp">نصب نسخه PWA</button>
+      <button class="primary-button pwa-install" type="button" @click="exportReport('JSON')">
+        <Download :size="18" aria-hidden="true" />
+        <span>ذخیره بکاپ در فایل‌ها</span>
+      </button>
+      <button v-if="!isStandalone" class="primary-button pwa-install" type="button" @click="installApp">
+        <Smartphone :size="18" aria-hidden="true" />
+        <span>نصب نسخه PWA</span>
+      </button>
     </div>
   </section>
 </template>

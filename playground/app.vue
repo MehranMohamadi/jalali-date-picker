@@ -2,6 +2,23 @@
 import '@fontsource-variable/vazirmatn'
 import './assets/css/budgetyar.css'
 import './assets/css/budgetyar-overrides.css'
+import {
+  Bell,
+  ChartNoAxesCombined,
+  CircleDollarSign,
+  ClipboardList,
+  CreditCard,
+  Landmark,
+  LayoutDashboard,
+  ListChecks,
+  Plus,
+  ReceiptText,
+  Repeat2,
+  Settings,
+  ShieldCheck,
+  Target,
+  WalletCards,
+} from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,50 +36,35 @@ const {
 } = budgetyar
 
 const navItems = [
-  { label: 'داشبورد', path: '/' },
-  { label: 'تراکنش‌ها', path: '/transactions' },
-  { label: 'بودجه‌ها', path: '/budgets' },
-  { label: 'قسط‌ها', path: '/installments' },
-  { label: 'هدف‌ها', path: '/goals' },
-  { label: 'تکراری‌ها', path: '/recurring' },
-  { label: 'برنامه‌ریزی', path: '/planning' },
-  { label: 'بدهی‌ها', path: '/debts' },
-  { label: 'قوانین', path: '/rules' },
-  { label: 'درآمد', path: '/income-planning' },
-  { label: 'سلامت مالی', path: '/health' },
-  { label: 'تحلیل‌ها', path: '/analytics' },
-  { label: 'اعلان‌ها', path: '/notifications' },
-  { label: 'تنظیمات', path: '/settings' },
+  { label: '‏داشبورد', path: '/', group: '‏نمای کلی', icon: LayoutDashboard },
+  { label: '‏تراکنش‌ها', path: '/transactions', group: '‏نمای کلی', icon: ReceiptText },
+  { label: '‏بودجه‌ها', path: '/budgets', group: '‏برنامه‌ریزی', icon: WalletCards },
+  { label: '‏قسط‌ها', path: '/installments', group: '‏برنامه‌ریزی', icon: CreditCard },
+  { label: '‏هدف‌ها', path: '/goals', group: '‏برنامه‌ریزی', icon: Target },
+  { label: '‏تکراری‌ها', path: '/recurring', group: '‏برنامه‌ریزی', icon: Repeat2 },
+  { label: '‏برنامه‌ریزی', path: '/planning', group: '‏تحلیل و کنترل', icon: ClipboardList },
+  { label: '‏بدهی‌ها', path: '/debts', group: '‏تحلیل و کنترل', icon: Landmark },
+  { label: '‏قوانین', path: '/rules', group: '‏تحلیل و کنترل', icon: ListChecks },
+  { label: '‏درآمد', path: '/income-planning', group: '‏تحلیل و کنترل', icon: CircleDollarSign },
+  { label: '‏سلامت مالی', path: '/health', group: '‏تحلیل و کنترل', icon: ShieldCheck },
+  { label: '‏تحلیل‌ها', path: '/analytics', group: '‏گزارش و تنظیمات', icon: ChartNoAxesCombined },
+  { label: '‏اعلان‌ها', path: '/notifications', group: '‏گزارش و تنظیمات', icon: Bell },
+  { label: '‏تنظیمات', path: '/settings', group: '‏گزارش و تنظیمات', icon: Settings },
 ]
 
-const routeSectionMap: Record<string, string> = {
-  '/': 'داشبورد',
-  '/transactions': 'تراکنش‌ها',
-  '/budgets': 'بودجه‌ها',
-  '/installments': 'قسط‌ها',
-  '/goals': 'هدف‌ها',
-  '/recurring': 'تکراری‌ها',
-  '/planning': 'برنامه‌ریزی',
-  '/debts': 'بدهی‌ها',
-  '/rules': 'قوانین',
-  '/income-planning': 'درآمد',
-  '/health': 'سلامت مالی',
-  '/analytics': 'آمار',
-  '/notifications': 'اعلان‌ها',
-  '/settings': 'تنظیمات',
-}
+const routeSectionMap: Record<string, string> = Object.fromEntries(navItems.map((item) => [item.path, item.label]))
 
 const activePath = computed(() => {
   const path = route.path.replace(/\/$/, '') || '/'
   return navItems.some((item) => item.path === path) ? path : '/'
 })
 
-const activeTitle = computed(() => navItems.find((item) => item.path === activePath.value)?.label ?? 'داشبورد')
+const activeTitle = computed(() => navItems.find((item) => item.path === activePath.value)?.label ?? '‏داشبورد')
 
 watch(
   () => route.path,
   () => {
-    activeSection.value = routeSectionMap[activePath.value] ?? 'داشبورد'
+    activeSection.value = routeSectionMap[activePath.value] ?? '‏داشبورد'
     isMobileMenuOpen.value = false
     destroyCharts()
     nextTick(scheduleChartSync)
@@ -78,7 +80,12 @@ function quickAdd() {
 
 <template>
   <main dir="rtl" class="app-shell" :class="{ 'mobile-perf': isMobileViewport }">
-    <MobileTopbar :title="activeTitle" :open="isMobileMenuOpen" @open-menu="isMobileMenuOpen = true" />
+    <MobileTopbar
+      :title="activeTitle"
+      :open="isMobileMenuOpen"
+      @open-menu="isMobileMenuOpen = true"
+      @quick-add="quickAdd"
+    />
     <div v-if="isMobileMenuOpen" class="mobile-menu-backdrop" @click="isMobileMenuOpen = false" />
 
     <AppSidebar
@@ -92,7 +99,10 @@ function quickAdd() {
       <NuxtPage />
     </section>
 
-    <button class="fab" type="button" aria-label="ثبت سریع" @click="quickAdd">＋</button>
+    <button class="fab" type="button" aria-label="‏ثبت سریع" @click="quickAdd">
+      <Plus :size="24" aria-hidden="true" />
+      <span>‏ثبت هزینه</span>
+    </button>
     <TransactionModal />
     <ToastStack :toasts="toasts" />
   </main>

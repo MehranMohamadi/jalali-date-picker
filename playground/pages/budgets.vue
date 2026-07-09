@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Plus, Trash2 } from 'lucide-vue-next'
+
 const budgetyar = useBudgetyar()
 const {
   categoryForm,
@@ -40,14 +42,20 @@ const {
           @input="updateMoneyInput(categoryForm, 'budget', $event)"
         />
       </label>
-      <button class="primary-button" type="submit">افزودن دسته</button>
+      <button class="primary-button" type="submit">
+        <Plus :size="17" aria-hidden="true" />
+        <span>افزودن دسته</span>
+      </button>
     </form>
 
     <div class="budget-grid">
       <article v-for="item in categoryTotals" :key="item.key" class="budget-item">
         <div>
           <strong>{{ item.icon }} {{ item.label }}</strong>
-          <button v-if="item.key !== 'other'" class="delete-category" type="button" @click="deleteCategory(item.key)">حذف</button>
+          <button v-if="item.key !== 'other'" class="delete-category" type="button" aria-label="حذف دسته" @click="deleteCategory(item.key)">
+            <Trash2 :size="15" aria-hidden="true" />
+            <span>حذف</span>
+          </button>
         </div>
         <span>بودجه: {{ formatMoney(item.budget) }}</span>
         <label class="budget-edit">

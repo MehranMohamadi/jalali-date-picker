@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import { ArrowDownCircle, ArrowUpCircle, Check, Sparkles, X } from 'lucide-vue-next'
+
 const budgetyar = useBudgetyar()
 const {
   isModalOpen,
-  editingId,
   formType,
   form,
   formAmountInWords,
@@ -39,63 +40,89 @@ function applySuggestedCategory() {
   <Transition name="modal">
     <div v-if="isModalOpen" class="modal-backdrop" @click.self="isModalOpen = false">
       <form class="modal transaction-modal glass-panel" @submit.prevent="saveTransaction">
-        <div class="section-title">
-          <div>
-            <h2>{{ editingId ? 'ویرایش تراکنش' : 'ثبت تراکنش' }}</h2>
+        <div class="transaction-modal__header compact">
+          <div class="transaction-type-switch" role="group" aria-label="‏نوع تراکنش">
+            <button type="button" :class="{ active: formType === 'expense' }" @click="formType = 'expense'">
+              <ArrowDownCircle :size="17" aria-hidden="true" />
+              <span>‏هزینه</span>
+            </button>
+            <button type="button" :class="{ active: formType === 'income' }" @click="formType = 'income'">
+              <ArrowUpCircle :size="17" aria-hidden="true" />
+              <span>‏درآمد</span>
+            </button>
           </div>
-          <button class="close" type="button" @click="isModalOpen = false">×</button>
+          <button class="close" type="button" aria-label="‏بستن" @click="isModalOpen = false">
+            <X :size="18" aria-hidden="true" />
+          </button>
         </div>
-        <div class="segmented">
-          <button type="button" :class="{ active: formType === 'expense' }" @click="formType = 'expense'">ثبت هزینه</button>
-          <button type="button" :class="{ active: formType === 'income' }" @click="formType = 'income'">ثبت درآمد</button>
-        </div>
-        <label class="amount-field">
-          مبلغ
-          <input :value="formatMoneyInput(form.amount)" type="text" inputmode="numeric" required @input="updateMoneyInput(form, 'amount', $event)" />
+
+        <label class="amount-field transaction-amount">
+          <input
+            :value="formatMoneyInput(form.amount)"
+            type="text"
+            inputmode="numeric"
+            placeholder="‏مبلغ"
+            aria-label="‏مبلغ"
+            required
+            @input="updateMoneyInput(form, 'amount', $event)"
+          />
           <small v-if="formAmountInWords" class="amount-in-words">{{ formAmountInWords }}</small>
         </label>
-        <label>عنوان <input v-model="form.title" type="text" required /></label>
-        <label v-if="formType === 'expense'">دسته بندی
-          <select v-model="form.category">
+
+        <div class="transaction-fields">
+          <input v-model="form.title" type="text" placeholder="‏عنوان" aria-label="‏عنوان" required />
+
+          <select v-if="formType === 'expense'" v-model="form.category" aria-label="‏دسته">
             <option v-for="category in categories" :key="category.key" :value="category.key">{{ category.icon }} {{ category.label }}</option>
           </select>
-        </label>
-        <div v-if="suggestedRule && suggestedRule.categoryId !== form.category" class="rule-suggestion">
-          <span>دسته پیشنهادی: {{ getCategory(suggestedRule.categoryId).label }}</span>
-          <button class="soft-button" type="button" @click="applySuggestedCategory">اعمال</button>
-        </div>
-        <div v-if="formType === 'expense'" class="form-inline-grid">
-          <label>روش پرداخت
-            <select v-model="form.paymentMethod">
-              <option value="cash">نقدی</option>
-              <option value="credit">اعتباری</option>
-            </select>
-          </label>
-          <label>نوع خرید
-            <select v-model="form.isEssential">
-              <option :value="true">ضروری</option>
-              <option :value="false">غیرضروری</option>
-            </select>
-          </label>
-        </div>
-        <label v-if="formType === 'expense'" class="check-row">
-          <input v-model="form.isLoan" type="checkbox" />
-          پولی که قرض دادم
-        </label>
-        <label v-if="formType === 'expense' && form.isLoan">نام شخص
-          <input v-model="form.loanPerson" type="text" placeholder="مثلا علی" />
-        </label>
-        <label>تاریخ
+
           <JalaliDatePicker
             v-model="formDatePickerValue"
             class="date-picker-field"
-            placeholder="انتخاب تاریخ"
+            placeholder="‏انتخاب تاریخ"
             :clearable="false"
             popover-class="date-picker-popover"
           />
-        </label>
-        <label>توضیحات <textarea v-model="form.description" rows="2" placeholder="اختیاری" /></label>
-        <button class="primary-button full" type="submit">{{ formType === 'expense' ? 'ثبت هزینه' : 'ثبت درآمد' }}</button>
+
+          <div v-if="formType === 'expense'" class="form-inline-grid">
+            <select v-model="form.paymentMethod" aria-label="‏روش پرداخت">
+              <option value="cash">‏نقدی</option>
+              <option value="credit">‏اعتباری</option>
+            </select>
+            <select v-model="form.isEssential" aria-label="‏نوع خرید">
+              <option :value="true">‏ضروری</option>
+              <option :value="false">‏غیرضروری</option>
+            </select>
+          </div>
+
+          <label v-if="formType === 'expense'" class="check-row compact-check">
+            <input v-model="form.isLoan" type="checkbox" />
+            <span>‏پولی که قرض دادم</span>
+          </label>
+
+          <input
+            v-if="formType === 'expense' && form.isLoan"
+            v-model="form.loanPerson"
+            type="text"
+            placeholder="‏نام شخص"
+            aria-label="‏نام شخص"
+          />
+
+          <textarea v-model="form.description" rows="1" placeholder="‏توضیحات اختیاری" aria-label="‏توضیحات" />
+        </div>
+
+        <div v-if="suggestedRule && suggestedRule.categoryId !== form.category" class="rule-suggestion">
+          <span>
+            <Sparkles :size="16" aria-hidden="true" />
+            ‏دسته پیشنهادی: {{ getCategory(suggestedRule.categoryId).label }}
+          </span>
+          <button class="soft-button" type="button" @click="applySuggestedCategory">‏اعمال</button>
+        </div>
+
+        <button class="primary-button transaction-submit" type="submit">
+          <Check :size="18" aria-hidden="true" />
+          <span>{{ formType === 'expense' ? '‏ثبت هزینه' : '‏ثبت درآمد' }}</span>
+        </button>
       </form>
     </div>
   </Transition>

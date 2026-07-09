@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Plus } from 'lucide-vue-next'
+
 const budgetyar = useBudgetyar()
 const {
   cashflowForecastPeriod,
@@ -136,7 +138,10 @@ const visibleTimeline = computed(() =>
         <div v-if="purchaseDecision.suggestions.length" class="insights">
           <span v-for="suggestion in purchaseDecision.suggestions" :key="suggestion">{{ suggestion }}</span>
         </div>
-        <button class="primary-button full" type="button" :disabled="!purchaseForm.amount" @click="createPurchaseTransaction">ثبت این خرید به عنوان تراکنش</button>
+        <button class="primary-button full" type="button" :disabled="!purchaseForm.amount" @click="createPurchaseTransaction">
+          <Plus :size="17" aria-hidden="true" />
+          <span>ثبت این خرید به عنوان تراکنش</span>
+        </button>
       </div>
     </section>
   </section>
