@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Plus, Trash2 } from 'lucide-vue-next'
+import { Plus, Trash2, X } from 'lucide-vue-next'
 
 const budgetyar = useBudgetyar()
 const {
@@ -51,6 +51,10 @@ const availableSuggestedCategories = computed(() => {
   return suggestedCategories.filter((suggestion) => !existingLabels.has(suggestion.label.toLocaleLowerCase('fa')))
 })
 
+const existingCategoryLabels = computed(() => new Set(categories.value.map((category) => category.label.trim().toLocaleLowerCase('fa'))))
+
+const isSuggestedCategoriesOpen = ref(false)
+
 function addSuggestedCategory(suggestion: (typeof suggestedCategories)[number]) {
   Object.assign(categoryForm, {
     label: suggestion.label,
@@ -94,26 +98,45 @@ function addSuggestedCategory(suggestion: (typeof suggestedCategories)[number]) 
       </button>
     </form>
 
-    <section v-if="availableSuggestedCategories.length" class="suggested-categories" aria-labelledby="suggested-categories-title">
+    <div class="suggested-categories-trigger">
       <div>
-        <strong id="suggested-categories-title">دسته‌های پیشنهادی</strong>
-        <small>برای افزودن، روی دسته موردنظر بزنید.</small>
+        <strong>دسته‌های پیشنهادی</strong>
+        <small>{{ availableSuggestedCategories.length }} پیشنهاد آماده‌ی افزودن</small>
       </div>
-      <div class="suggested-category-list">
-        <button
-          v-for="suggestion in availableSuggestedCategories"
-          :key="suggestion.label"
-          class="suggested-category-chip"
-          type="button"
-          :aria-label="`افزودن دسته ${suggestion.label}`"
-          @click="addSuggestedCategory(suggestion)"
-        >
-          <span>{{ suggestion.icon }}</span>
-          <b>{{ suggestion.label }}</b>
-          <Plus :size="14" aria-hidden="true" />
-        </button>
-      </div>
-    </section>
+      <button class="soft-button" type="button" @click="isSuggestedCategoriesOpen = true">
+        <Plus :size="16" aria-hidden="true" />
+        <span>مشاهده پیشنهادها</span>
+      </button>
+    </div>
+
+    <div v-if="isSuggestedCategoriesOpen" class="modal-backdrop" @click.self="isSuggestedCategoriesOpen = false">
+      <section class="modal glass-panel suggested-categories-modal" role="dialog" aria-modal="true" aria-labelledby="suggested-categories-title">
+        <div class="section-title compact">
+          <div>
+            <h2 id="suggested-categories-title">دسته‌های پیشنهادی</h2>
+            <p>برای افزودن، روی دسته‌ی موردنظر بزنید.</p>
+          </div>
+          <button class="icon-button" type="button" aria-label="بستن" @click="isSuggestedCategoriesOpen = false">
+            <X :size="18" aria-hidden="true" />
+          </button>
+        </div>
+        <div class="suggested-category-list">
+          <button
+            v-for="suggestion in suggestedCategories"
+            :key="suggestion.label"
+            class="suggested-category-chip"
+            type="button"
+            :disabled="existingCategoryLabels.has(suggestion.label.toLocaleLowerCase('fa'))"
+            :aria-label="`افزودن دسته ${suggestion.label}`"
+            @click="addSuggestedCategory(suggestion)"
+          >
+            <span>{{ suggestion.icon }}</span>
+            <b>{{ suggestion.label }}</b>
+            <Plus :size="14" aria-hidden="true" />
+          </button>
+        </div>
+      </section>
+    </div>
 
     <div class="budget-grid">
       <article v-for="item in categoryTotals" :key="item.key" class="budget-item">
