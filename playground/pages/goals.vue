@@ -5,6 +5,8 @@ const {
   editingGoalId,
   goalTargetAmountInWords,
   goalSavedAmountInWords,
+  formatGoalAmount,
+  getGoalUnitLabel,
   goalTargetDatePickerValue,
   activeGoals,
   archivedGoals,
@@ -50,6 +52,15 @@ const {
       <div v-if="editingGoalId" class="installment-edit-banner">
         <strong>ویرایش هدف</strong>
       </div>
+      <label>
+        <span>واحد هدف</span>
+        <select v-model="goalForm.unit">
+          <option value="irr">تومان</option>
+          <option value="goldGram">گرم طلا</option>
+          <option value="silverGram">گرم نقره</option>
+          <option value="usd">دلار</option>
+        </select>
+      </label>
       <label>
         <span>عنوان هدف</span>
         <input v-model="goalForm.title" type="text" placeholder="مثلا صندوق اضطراری" required />
@@ -111,6 +122,7 @@ const {
           <i :style="{ width: `${getGoalProgress(goal)}%`, background: goal.color }" />
         </div>
         <div class="installment-meta">
+          <span class="goal-unit-summary">واحد: {{ getGoalUnitLabel(goal.unit) }} · هدف {{ formatGoalAmount(goal.targetAmount, goal.unit) }} · ذخیره {{ formatGoalAmount(goal.savedAmount, goal.unit) }}</span>
           <span>{{ formatMoney(goal.savedAmount) }} از {{ formatMoney(goal.targetAmount) }}</span>
           <span>مانده: {{ formatMoney(getGoalRemainingAmount(goal)) }}</span>
           <span>ماهیانه پیشنهادی: {{ formatCompact(getGoalSuggestedMonthlySaving(goal)) }}</span>

@@ -43,6 +43,7 @@ export type PaymentMethod = 'cash' | 'credit'
 export type CashFlowMode = 'regular' | 'afterCredit' | 'afterCommitments'
 export type ThemeMode = 'dark' | 'light'
 export type GoalPriority = 'low' | 'medium' | 'high'
+export type GoalUnit = 'irr' | 'goldGram' | 'silverGram' | 'usd'
 export type RecurringItemType = 'income' | 'expense'
 export type CashflowForecastPeriod = 'untilEndOfMonth' | 'next30Days' | 'next90Days'
 export type BudgetyarDebtType = 'loan' | 'credit' | 'personal' | 'installment' | 'other'
@@ -100,6 +101,7 @@ export interface BudgetyarGoal {
   title: string
   targetAmount: number
   savedAmount: number
+  unit?: GoalUnit
   targetDate?: string
   categoryId?: string
   priority: GoalPriority
@@ -463,6 +465,7 @@ const goalForm = reactive({
   title: '',
   targetAmount: 0,
   savedAmount: 0,
+  unit: 'irr' as GoalUnit,
   targetDate: '',
   categoryId: '',
   priority: 'medium' as GoalPriority,
@@ -1806,6 +1809,7 @@ function resetGoalForm() {
     title: '',
     targetAmount: 0,
     savedAmount: 0,
+    unit: 'irr',
     targetDate: '',
     categoryId: '',
     priority: 'medium',
@@ -1826,6 +1830,7 @@ function addGoal() {
     title,
     targetAmount,
     savedAmount: Math.min(targetAmount, Math.max(0, Number(goalForm.savedAmount) || 0)),
+    unit: goalForm.unit,
     targetDate: goalForm.targetDate ? normalizeJalaliDate(goalForm.targetDate) : undefined,
     categoryId: goalForm.categoryId || undefined,
     priority: goalForm.priority,
@@ -1848,6 +1853,7 @@ function editGoal(goal: BudgetyarGoal) {
     title: goal.title,
     targetAmount: goal.targetAmount,
     savedAmount: goal.savedAmount,
+    unit: goal.unit ?? 'irr',
     targetDate: goal.targetDate ?? '',
     categoryId: goal.categoryId ?? '',
     priority: goal.priority,
@@ -1894,6 +1900,14 @@ function withdrawFromGoal(goal: BudgetyarGoal, amount = 0) {
 
 function getGoalProgress(goal: BudgetyarGoal) {
   return goalProgressPercent(goal)
+}
+
+function getGoalUnitLabel(unit: GoalUnit = 'irr') {
+  return unit === 'goldGram' ? 'گرم طلا' : unit === 'silverGram' ? 'گرم نقره' : unit === 'usd' ? 'دلار' : 'تومان'
+}
+
+function formatGoalAmount(amount: number, unit: GoalUnit = 'irr') {
+  return unit === 'irr' ? formatMoney(amount) : `${toPersianNumber(amount)} ${getGoalUnitLabel(unit)}`
 }
 
 function getGoalRemainingAmount(goal: BudgetyarGoal) {
@@ -2829,6 +2843,7 @@ function restoreGoals(value: unknown) {
     (item.priority === 'low' || item.priority === 'medium' || item.priority === 'high'),
   ).map((item) => ({
     ...item,
+    unit: item.unit === 'goldGram' || item.unit === 'silverGram' || item.unit === 'usd' ? item.unit : 'irr',
     isArchived: Boolean(item.isArchived),
     createdAt: typeof item.createdAt === 'string' ? item.createdAt : todayKey,
     updatedAt: typeof item.updatedAt === 'string' ? item.updatedAt : todayKey,
@@ -3523,7 +3538,7 @@ export function useBudgetyar() {
     summaryLines, insights, dashboardCards, widgets, statsItems,
     getCategory, normalizeDigits, normalizeJalaliDate, getJalaliInputDay, getTrendDays, getPreviousMonthPrefix, addJalaliMonths, getInstallmentDueDate, getInstallmentStatus, getInstallmentStatusLabel, getCurrentWeekRange, getWeekdayLabel, getJalaliMonthPrefix, getCurrentJalaliDate, formatJalaliInputDate, formatDisplayJalaliDate, jalaliInputToIso, isoToJalaliInput, toPersianNumber, parseMoneyInput, formatMoneyInput, formatMoneyWords, formatMoney, formatCompact, progressPercent, getChangePercent, formatPercentHint, formatChangeSentence, getRiskLabel, getFinancialHealthLevelLabel,
     selectSection, openModal, editTransaction, saveTransaction, removeTransaction, refreshBankNotifications, openNotificationAccessSettings, updateSelectedBankPackage, acceptBankSuggestion, dismissBankSuggestion, formatSuggestionDate, updateMoneyInput, updateCreditLimit, updateBudget, addCategory, deleteCategory, addInstallmentPlan, editInstallmentPlan, cancelInstallmentEdit, payInstallment, removeInstallmentPlan,
-    addGoal, editGoal, updateGoal, deleteGoal, archiveGoal, addGoalContribution, withdrawFromGoal, getGoalProgress, getGoalRemainingAmount, getGoalSuggestedMonthlySaving, getGoalSuggestedWeeklySaving,
+    addGoal, editGoal, updateGoal, deleteGoal, archiveGoal, addGoalContribution, withdrawFromGoal, getGoalProgress, getGoalRemainingAmount, getGoalSuggestedMonthlySaving, getGoalSuggestedWeeklySaving, getGoalUnitLabel, formatGoalAmount,
     addRecurringItem, editRecurringItem, updateRecurringItem, deleteRecurringItem, toggleRecurringItem, getRecurringNextDueDate, markRecurringItemPaid, skipRecurringOccurrence, createTransactionFromRecurringItem, getRecurringStatusLabel, createPurchaseTransaction, setThemeMode,
     addDebt, editDebt, updateDebt, deleteDebt, toggleDebt, recordDebtPayment, calculateDebtPayoffPlan,
     addCategorizationRule, editCategorizationRule, updateCategorizationRule, deleteCategorizationRule, toggleCategorizationRule, matchTransactionCategoryRule, applyCategorizationRulesToTransaction, applyCategorizationRulesToAllTransactions, suggestCategorizationRules, acceptSuggestedCategorizationRule, bulkUpdateTransactionCategory,

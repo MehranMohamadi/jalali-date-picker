@@ -25,6 +25,7 @@
     "build": "unbuild",
     "build:app": "nuxi generate playground",
     "build:vercel": "node scripts/vercel-build.mjs",
+    "version:patch": "node scripts/bump-version.mjs",
     "dev": "nuxi dev playground",
     "preview:app": "nuxi preview playground/.output",
     "test": "vitest run",

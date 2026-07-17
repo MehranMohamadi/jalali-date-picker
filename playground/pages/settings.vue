@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Download, Smartphone } from 'lucide-vue-next'
+import { APP_VERSION } from '../version'
 
 const budgetyar = useBudgetyar()
 const {
@@ -30,7 +31,7 @@ function updateThemeMode(event: Event) {
         <p>اعتبار، بکاپ و نگهداری داده‌ها</p>
       </div>
     </div>
-    <div class="settings-grid">
+    <div class="settings-grid settings-general-grid">
       <label>سقف اعتبار
         <input :value="formatMoneyInput(creditLimit)" type="text" inputmode="numeric" @input="updateCreditLimit" />
       </label>
@@ -59,6 +60,7 @@ function updateThemeMode(event: Event) {
         <Smartphone :size="18" aria-hidden="true" />
         <span>نصب نسخه PWA</span>
       </button>
+      <div class="app-version">نسخه برنامه: <strong>{{ APP_VERSION }}</strong></div>
     </div>
   </section>
 </template>

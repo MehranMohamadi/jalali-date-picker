@@ -27,6 +27,10 @@ const {
   toggleDebt,
   recordDebtPayment,
   toPersianNumber,
+  creditLimit,
+  creditExpense,
+  creditRemaining,
+  updateCreditLimit,
 } = budgetyar
 </script>
 
@@ -44,6 +48,14 @@ const {
       <span><small>حداقل ماهانه</small><strong>{{ formatMoney(totalMinimumDebtPayments) }}</strong></span>
       <span><small>پرداخت اضافه</small><strong>{{ formatMoney(totalExtraDebtPayments) }}</strong></span>
       <span><small>آزادی تقریبی</small><strong>{{ debtFreedomDate }}</strong></span>
+    </div>
+
+    <div class="credit-settings-inline">
+      <label>سقف اعتبار
+        <input :value="formatMoneyInput(creditLimit)" type="text" inputmode="numeric" @input="updateCreditLimit" />
+      </label>
+      <span><small>مصرف اعتبار این ماه</small><strong>{{ formatMoney(creditExpense) }}</strong></span>
+      <span><small>اعتبار باقی‌مانده</small><strong>{{ formatMoney(creditRemaining) }}</strong></span>
     </div>
 
     <form class="installment-form planning-form" @submit.prevent="addDebt">

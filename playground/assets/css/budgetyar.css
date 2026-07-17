@@ -1540,6 +1540,104 @@ th {
   color: #fca5a5;
 }
 
+.health-explanation {
+  color: var(--muted);
+  display: block;
+  line-height: 1.8;
+  margin-top: 10px;
+}
+
+.health-details {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.health-detail {
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+}
+
+.health-detail small,
+.health-detail span {
+  color: var(--muted);
+  font-size: .75rem;
+}
+
+.health-detail strong {
+  font-size: 1.05rem;
+}
+
+.health-detail.positive strong { color: #5eead4; }
+.health-detail.warning strong { color: #fcd34d; }
+.health-detail.danger strong { color: #fca5a5; }
+
+.health-budget-note {
+  background: rgba(34, 211, 238, .07);
+  border: 1px solid rgba(34, 211, 238, .18);
+  border-radius: 10px;
+  color: var(--muted);
+  line-height: 1.8;
+  margin: 14px 0 0;
+  padding: 10px 12px;
+}
+
+.app-version {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  font-size: .8rem;
+  gap: 6px;
+  grid-column: 1 / -1;
+}
+
+.settings-general-grid > label:nth-child(-n + 3) {
+  display: none;
+}
+
+.app-version strong { color: #67e8f9; }
+
+.credit-settings-inline {
+  align-items: end;
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1.4fr repeat(2, 1fr);
+  margin: 14px 0;
+  padding: 12px;
+}
+
+.credit-settings-inline label,
+.credit-settings-inline span {
+  display: grid;
+  gap: 5px;
+}
+
+.credit-settings-inline small { color: var(--muted); }
+.credit-settings-inline strong { color: #67e8f9; }
+
+@media (max-width: 760px) {
+  .credit-settings-inline { grid-template-columns: 1fr; }
+}
+
+.goal-unit-summary {
+  color: #67e8f9;
+  flex-basis: 100%;
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .health-details {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 760px) {
   .planning-action-grid {
     grid-template-columns: 1fr;
