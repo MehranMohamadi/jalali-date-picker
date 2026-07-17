@@ -14,6 +14,8 @@ const {
   statsDailyExpenseCanvas,
   statsWeeklyFlowCanvas,
   statsCashFlowCanvas,
+  statsEssentialCanvas,
+  statsPaymentMethodCanvas,
   cashFlowMode,
   totalExpense,
   creditExpense,
@@ -173,6 +175,30 @@ onBeforeUnmount(destroyCharts)
           </div>
           <div class="chart-canvas stats-cash-chart">
             <canvas ref="statsCashFlowCanvas" aria-label="نمودار جریان پول" role="img" />
+          </div>
+        </section>
+
+        <section class="stats-chart-panel">
+          <div class="section-title compact">
+            <div>
+              <h2>ضروری یا غیرضروری</h2>
+              <p>سهم هزینه‌های ضروری از مخارج این ماه</p>
+            </div>
+          </div>
+          <div class="chart-canvas stats-polar-chart">
+            <canvas ref="statsEssentialCanvas" aria-label="نمودار هزینه‌های ضروری و غیرضروری" role="img" />
+          </div>
+        </section>
+
+        <section class="stats-chart-panel">
+          <div class="section-title compact">
+            <div>
+              <h2>روش پرداخت</h2>
+              <p>مقایسه‌ی هزینه‌های نقدی و اعتباری</p>
+            </div>
+          </div>
+          <div class="chart-canvas stats-cash-chart">
+            <canvas ref="statsPaymentMethodCanvas" aria-label="نمودار روش پرداخت هزینه‌ها" role="img" />
           </div>
         </section>
       </div>

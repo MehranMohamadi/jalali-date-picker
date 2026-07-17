@@ -713,7 +713,7 @@ textarea {
 
 .installment-alert-list,
 .weekly-category-list {
-  grid-template-columns: repeat(auto-fit, minmax(142px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .installment-alert-list span,
@@ -740,6 +740,18 @@ textarea {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.installment-alert-list span {
+  align-items: flex-start;
+}
+
+.installment-alert-list b {
+  flex: 1 1 auto;
+  line-height: 1.45;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .installment-alert-list em,
@@ -1392,6 +1404,98 @@ th {
 
 .planning-inline {
   margin-top: 14px;
+}
+
+.planning-action-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.planning-action-grid > .planning-inline {
+  margin-top: 14px;
+}
+
+.planning-goals-panel .section-title > strong {
+  color: #5eead4;
+  font-size: 1rem;
+}
+
+.planning-list {
+  display: grid;
+  gap: 10px;
+}
+
+.planning-list-item {
+  background: rgba(15, 23, 42, .24);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+}
+
+.planning-list-title,
+.compact-item {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.planning-list-title b,
+.compact-item b {
+  color: #67e8f9;
+}
+
+.planning-list-item small {
+  color: var(--muted);
+}
+
+.progress-track {
+  background: rgba(148, 163, 184, .16);
+  border-radius: 999px;
+  height: 7px;
+  overflow: hidden;
+}
+
+.progress-track i {
+  border-radius: inherit;
+  display: block;
+  height: 100%;
+  transition: width .3s ease;
+}
+
+.compact-item {
+  display: flex;
+  gap: 10px;
+}
+
+.compact-item > span {
+  display: grid;
+  gap: 3px;
+}
+
+.compact-item small {
+  color: var(--muted);
+  font-size: .72rem;
+}
+
+.compact-item.overdue {
+  border-color: rgba(248, 113, 113, .48);
+}
+
+.compact-item.overdue b {
+  color: #fca5a5;
+}
+
+@media (max-width: 760px) {
+  .planning-action-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .installment-alert-list {
+    grid-template-columns: 1fr;
+  }
 }
 
 .planning-details summary {

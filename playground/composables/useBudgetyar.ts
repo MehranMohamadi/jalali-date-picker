@@ -315,10 +315,33 @@ const defaultCategorizationRuleTemplates = [
   { id: 'snapfood', title: 'اسنپ‌فود', pattern: 'اسنپ‌فود', preferredCategory: 'رستوران و غذای بیرون', fallbackCategory: 'food' },
   { id: 'restaurant', title: 'رستوران', pattern: 'رستوران', preferredCategory: 'رستوران و غذای بیرون', fallbackCategory: 'food' },
   { id: 'cafe', title: 'کافه', pattern: 'کافه', preferredCategory: 'کافه و قهوه', fallbackCategory: 'food' },
+  { id: 'coffee', title: 'قهوه', pattern: 'قهوه', preferredCategory: 'کافه و قهوه', fallbackCategory: 'food' },
+  { id: 'tea', title: 'چای', pattern: 'چای', preferredCategory: 'خواربار و سوپرمارکت', fallbackCategory: 'food' },
+  { id: 'water', title: 'آب معدنی', pattern: 'آب', preferredCategory: 'خواربار و سوپرمارکت', fallbackCategory: 'food' },
+  { id: 'soda', title: 'نوشابه', pattern: 'نوشابه', preferredCategory: 'خواربار و سوپرمارکت', fallbackCategory: 'food' },
+  { id: 'juice', title: 'آبمیوه و نوشیدنی', pattern: 'آبمیوه', preferredCategory: 'خواربار و سوپرمارکت', fallbackCategory: 'food' },
+  { id: 'milk', title: 'شیر و لبنیات', pattern: 'شیر', preferredCategory: 'خواربار و سوپرمارکت', fallbackCategory: 'food' },
+  { id: 'bread', title: 'نان', pattern: 'نان', preferredCategory: 'خواربار و سوپرمارکت', fallbackCategory: 'food' },
+  { id: 'rice', title: 'برنج و حبوبات', pattern: 'برنج', preferredCategory: 'خواربار و سوپرمارکت', fallbackCategory: 'food' },
+  { id: 'meat', title: 'گوشت و مرغ', pattern: 'گوشت', preferredCategory: 'خواربار و سوپرمارکت', fallbackCategory: 'food' },
+  { id: 'fruit', title: 'میوه و سبزی', pattern: 'میوه', preferredCategory: 'خواربار و سوپرمارکت', fallbackCategory: 'food' },
+  { id: 'fastfood', title: 'فست‌فود', pattern: 'فست', preferredCategory: 'رستوران و غذای بیرون', fallbackCategory: 'food' },
+  { id: 'pizza', title: 'پیتزا', pattern: 'پیتزا', preferredCategory: 'رستوران و غذای بیرون', fallbackCategory: 'food' },
+  { id: 'kebab', title: 'کباب', pattern: 'کباب', preferredCategory: 'رستوران و غذای بیرون', fallbackCategory: 'food' },
+  { id: 'sandwich', title: 'ساندویچ', pattern: 'ساندویچ', preferredCategory: 'رستوران و غذای بیرون', fallbackCategory: 'food' },
+  { id: 'sweet', title: 'شیرینی و کیک', pattern: 'شیرینی', preferredCategory: 'رستوران و غذای بیرون', fallbackCategory: 'food' },
+  { id: 'supermarket', title: 'سوپرمارکت', pattern: 'سوپر', preferredCategory: 'خواربار و سوپرمارکت', fallbackCategory: 'food' },
   { id: 'internet', title: 'اینترنت', pattern: 'اینترنت', preferredCategory: 'اینترنت و تلفن', fallbackCategory: 'bills' },
+  { id: 'wifi', title: 'وای‌فای و مودم', pattern: 'وای‌فای', preferredCategory: 'اینترنت و تلفن', fallbackCategory: 'bills' },
+  { id: 'modem', title: 'مودم', pattern: 'مودم', preferredCategory: 'تکنولوژی', fallbackCategory: 'other' },
+  { id: 'charge', title: 'شارژ سیم‌کارت', pattern: 'شارژ', preferredCategory: 'اینترنت و تلفن', fallbackCategory: 'bills' },
   { id: 'mci', title: 'همراه اول', pattern: 'همراه اول', preferredCategory: 'اینترنت و تلفن', fallbackCategory: 'bills' },
   { id: 'irancell', title: 'ایرانسل', pattern: 'ایرانسل', preferredCategory: 'اینترنت و تلفن', fallbackCategory: 'bills' },
+  { id: 'rightel', title: 'رایتل', pattern: 'رایتل', preferredCategory: 'اینترنت و تلفن', fallbackCategory: 'bills' },
   { id: 'utilities', title: 'قبض خدماتی', pattern: 'قبض', preferredCategory: 'آب، برق و گاز', fallbackCategory: 'bills' },
+  { id: 'electricity', title: 'برق', pattern: 'برق', preferredCategory: 'آب، برق و گاز', fallbackCategory: 'bills' },
+  { id: 'gas', title: 'گاز', pattern: 'گاز', preferredCategory: 'آب، برق و گاز', fallbackCategory: 'bills' },
+  { id: 'water-bill', title: 'آب و فاضلاب', pattern: 'فاضلاب', preferredCategory: 'آب، برق و گاز', fallbackCategory: 'bills' },
   { id: 'rent', title: 'اجاره خانه', pattern: 'اجاره', preferredCategory: 'اجاره', fallbackCategory: 'rent' },
   { id: 'home-repair', title: 'تعمیرات خانه', pattern: 'تعمیرات', preferredCategory: 'خانه و تعمیرات', fallbackCategory: 'rent' },
   { id: 'pharmacy', title: 'داروخانه', pattern: 'داروخانه', preferredCategory: 'دارو و دندان‌پزشکی', fallbackCategory: 'health' },
@@ -373,6 +396,8 @@ const statsBudgetUsageCanvas = ref<HTMLCanvasElement | null>(null)
 const statsDailyExpenseCanvas = ref<HTMLCanvasElement | null>(null)
 const statsWeeklyFlowCanvas = ref<HTMLCanvasElement | null>(null)
 const statsCashFlowCanvas = ref<HTMLCanvasElement | null>(null)
+const statsEssentialCanvas = ref<HTMLCanvasElement | null>(null)
+const statsPaymentMethodCanvas = ref<HTMLCanvasElement | null>(null)
 const expenseShareChart = shallowRef<Chart<'doughnut'> | null>(null)
 const categoryBarChart = shallowRef<Chart<'bar'> | null>(null)
 const trendLineChart = shallowRef<Chart<'line'> | null>(null)
@@ -381,6 +406,8 @@ const statsBudgetUsageChart = shallowRef<Chart<'bar'> | null>(null)
 const statsDailyExpenseChart = shallowRef<Chart<'line'> | null>(null)
 const statsWeeklyFlowChart = shallowRef<Chart<'bar'> | null>(null)
 const statsCashFlowChart = shallowRef<Chart<'bar'> | null>(null)
+const statsEssentialChart = shallowRef<Chart<'doughnut'> | null>(null)
+const statsPaymentMethodChart = shallowRef<Chart<'bar'> | null>(null)
 let chartSyncFrame: number | null = null
 let mobileViewportQuery: MediaQueryList | null = null
 let mobileViewportListener: ((event: MediaQueryListEvent) => void) | null = null
@@ -1109,6 +1136,32 @@ const statsCashFlowChartData = computed<ChartData<'bar'>>(() => {
         borderSkipped: false,
       },
     ],
+  }
+})
+
+const statsEssentialChartData = computed<ChartData<'doughnut'>>(() => ({
+  labels: ['ضروری', 'غیرضروری'],
+  datasets: [{
+    data: [essentialExpense.value, nonEssentialExpense.value],
+    backgroundColor: ['#34d399', '#fb7185'],
+    borderColor: 'rgba(15, 23, 42, .78)',
+    borderWidth: 2,
+    hoverOffset: 8,
+  }],
+}))
+
+const statsPaymentMethodChartData = computed<ChartData<'bar'>>(() => {
+  const cash = expenseTransactions.value.filter((item) => item.paymentMethod !== 'credit').reduce((sum, item) => sum + item.amount, 0)
+  const credit = expenseTransactions.value.filter((item) => item.paymentMethod === 'credit').reduce((sum, item) => sum + item.amount, 0)
+  return {
+    labels: ['نقدی / کارت', 'اعتباری'],
+    datasets: [{
+      label: 'هزینه',
+      data: [cash, credit],
+      backgroundColor: ['#60a5fa', '#a78bfa'],
+      borderRadius: 10,
+      borderSkipped: false,
+    }],
   }
 })
 
@@ -3302,11 +3355,28 @@ function createCharts() {
       options: cashFlowOptions(),
     })
   }
+
+  if (!statsEssentialChart.value && statsEssentialCanvas.value) {
+    statsEssentialChart.value = new Chart(statsEssentialCanvas.value, {
+      type: 'doughnut',
+      data: statsEssentialChartData.value,
+      options: doughnutOptions(),
+    })
+  }
+
+  if (!statsPaymentMethodChart.value && statsPaymentMethodCanvas.value) {
+    statsPaymentMethodChart.value = new Chart(statsPaymentMethodCanvas.value, {
+      type: 'bar',
+      data: statsPaymentMethodChartData.value,
+      options: cashFlowOptions(),
+    })
+  }
 }
 
 function syncCharts() {
-  if (activeSection.value !== 'داشبورد' && activeSection.value !== 'آمار') return
-
+  // Each page owns its canvas refs. Create/update only the charts whose
+  // canvases are currently mounted; section labels may change independently
+  // from the chart lifecycle.
   createCharts()
 
   if (expenseShareChart.value) {
@@ -3348,6 +3418,16 @@ function syncCharts() {
     statsCashFlowChart.value.data = statsCashFlowChartData.value
     statsCashFlowChart.value.update('none')
   }
+
+  if (statsEssentialChart.value) {
+    statsEssentialChart.value.data = statsEssentialChartData.value
+    statsEssentialChart.value.update('none')
+  }
+
+  if (statsPaymentMethodChart.value) {
+    statsPaymentMethodChart.value.data = statsPaymentMethodChartData.value
+    statsPaymentMethodChart.value.update('none')
+  }
 }
 
 function scheduleChartSync() {
@@ -3377,6 +3457,8 @@ function destroyCharts() {
   statsDailyExpenseChart.value?.destroy()
   statsWeeklyFlowChart.value?.destroy()
   statsCashFlowChart.value?.destroy()
+  statsEssentialChart.value?.destroy()
+  statsPaymentMethodChart.value?.destroy()
   expenseShareChart.value = null
   categoryBarChart.value = null
   trendLineChart.value = null
@@ -3385,6 +3467,8 @@ function destroyCharts() {
   statsDailyExpenseChart.value = null
   statsWeeklyFlowChart.value = null
   statsCashFlowChart.value = null
+  statsEssentialChart.value = null
+  statsPaymentMethodChart.value = null
 }
 
 function bindMobileViewport() {
@@ -3422,7 +3506,7 @@ export function useBudgetyar() {
     debtForm, editingDebtId, debtPrincipalAmountInWords, debtRemainingAmountInWords, debtMinimumPaymentInWords, debtStartDatePickerValue, debtTargetPayoffDatePickerValue,
     categorizationRuleForm, editingCategorizationRuleId, ruleMinAmountInWords, ruleMaxAmountInWords,
     installPrompt, isStandalone, isAndroidNative, isNotificationsLoading, bankApps, bankSuggestions, selectedBankPackage, bankNotificationStatus,
-    expenseShareCanvas, categoryBarCanvas, trendLineCanvas, statsExpenseMixCanvas, statsBudgetUsageCanvas, statsDailyExpenseCanvas, statsWeeklyFlowCanvas, statsCashFlowCanvas,
+    expenseShareCanvas, categoryBarCanvas, trendLineCanvas, statsExpenseMixCanvas, statsBudgetUsageCanvas, statsDailyExpenseCanvas, statsWeeklyFlowCanvas, statsCashFlowCanvas, statsEssentialCanvas, statsPaymentMethodCanvas,
     currentMonthTransactions, currentWeekTransactions, expenseTransactions, incomeTransactions, weeklyExpenseTransactions, weeklyIncomeTransactions,
     totalIncome, totalExpense, creditExpense, creditRemaining, cashExpense, cashBeforeCreditPayment, balanceAfterCreditPayment, balanceAfterCommitments,
     loanedExpense, essentialExpense, nonEssentialExpense, weeklyIncome, weeklyExpense, weeklyCreditExpense, weeklyBalance, totalBudget, weeklyBudgetAllowance, balance, budgetUsage, savingsPercent,
@@ -3435,7 +3519,7 @@ export function useBudgetyar() {
     activeCategorizationRules, suggestedCategorizationRules,
     recentMonthlyIncome, averageMonthlyIncome, lowestRecentMonthlyIncome, highestRecentMonthlyIncome, incomeVolatilityPercent, recommendedBudgetBase, recommendedEssentialBudget, recommendedSavingBudget, recommendedFlexibleBudget, badMonthReserveSuggestion, irregularIncomeWarnings,
     financialHealthScore, financialHealthLevel, financialHealthSuggestions, financialHealthWarnings, financialHealthStrengths,
-    filteredTransactions, dailyTrend, hasExpenseData, expenseShareChartData, categoryBarChartData, trendLineChartData, dailyExpensePoints, weeklyFlowPoints, budgetAnalysisItems, statsExpenseMixChartData, statsBudgetUsageChartData, statsDailyExpenseChartData, statsWeeklyFlowChartData, statsCashFlowChartData,
+    filteredTransactions, dailyTrend, hasExpenseData, expenseShareChartData, categoryBarChartData, trendLineChartData, dailyExpensePoints, weeklyFlowPoints, budgetAnalysisItems, statsExpenseMixChartData, statsBudgetUsageChartData, statsDailyExpenseChartData, statsWeeklyFlowChartData, statsCashFlowChartData, statsEssentialChartData, statsPaymentMethodChartData,
     summaryLines, insights, dashboardCards, widgets, statsItems,
     getCategory, normalizeDigits, normalizeJalaliDate, getJalaliInputDay, getTrendDays, getPreviousMonthPrefix, addJalaliMonths, getInstallmentDueDate, getInstallmentStatus, getInstallmentStatusLabel, getCurrentWeekRange, getWeekdayLabel, getJalaliMonthPrefix, getCurrentJalaliDate, formatJalaliInputDate, formatDisplayJalaliDate, jalaliInputToIso, isoToJalaliInput, toPersianNumber, parseMoneyInput, formatMoneyInput, formatMoneyWords, formatMoney, formatCompact, progressPercent, getChangePercent, formatPercentHint, formatChangeSentence, getRiskLabel, getFinancialHealthLevelLabel,
     selectSection, openModal, editTransaction, saveTransaction, removeTransaction, refreshBankNotifications, openNotificationAccessSettings, updateSelectedBankPackage, acceptBankSuggestion, dismissBankSuggestion, formatSuggestionDate, updateMoneyInput, updateCreditLimit, updateBudget, addCategory, deleteCategory, addInstallmentPlan, editInstallmentPlan, cancelInstallmentEdit, payInstallment, removeInstallmentPlan,
@@ -3699,6 +3783,8 @@ export function startBudgetyar() {
       statsDailyExpenseChartData,
       statsWeeklyFlowChartData,
       statsCashFlowChartData,
+      statsEssentialChartData,
+      statsPaymentMethodChartData,
     ],
     () => {
       nextTick(scheduleChartSync)
@@ -3706,14 +3792,9 @@ export function startBudgetyar() {
     { deep: true },
   )
   
-  watch(activeSection, (section) => {
-    if (section === 'داشبورد' || section === 'آمار') {
-      destroyCharts()
-      nextTick(scheduleChartSync)
-      return
-    }
-  
+  watch(activeSection, () => {
     destroyCharts()
+    nextTick(scheduleChartSync)
   })
 }
 

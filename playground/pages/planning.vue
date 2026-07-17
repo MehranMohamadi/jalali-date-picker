@@ -24,12 +24,25 @@ const {
   createPurchaseTransaction,
   getCategory,
   getRiskLabel,
+  activeGoals,
+  totalGoalsRemaining,
+  upcomingInstallments,
+  overdueInstallments,
+  upcomingRecurringItems,
+  getGoalProgress,
+  getGoalSuggestedWeeklySaving,
 } = budgetyar
 
 const visibleTimeline = computed(() =>
   cashflowForecastDays.value
     .filter((day) => day.income || day.expense || day.warnings.length)
     .slice(0, 12),
+)
+
+const nearInstallments = computed(() =>
+  [...overdueInstallments.value, ...upcomingInstallments.value]
+    .filter((item, index, items) => items.findIndex((candidate) => candidate.id === item.id) === index)
+    .slice(0, 5),
 )
 </script>
 
@@ -71,6 +84,44 @@ const visibleTimeline = computed(() =>
 
     <div v-if="cashflowWarnings.length" class="insights planning-warnings">
       <span v-for="warning in cashflowWarnings" :key="warning">{{ warning }}</span>
+    </div>
+
+    <div class="planning-action-grid">
+      <section class="glass-panel planning-inline planning-goals-panel">
+        <div class="section-title compact">
+          <div>
+            <h2>مسیر هدف‌ها</h2>
+            <p>این هفته برای نزدیک‌شدن به هدف‌ها چقدر کنار بگذارید</p>
+          </div>
+          <strong>{{ formatMoney(totalGoalsRemaining) }}</strong>
+        </div>
+        <div v-if="activeGoals.length" class="planning-list">
+          <div v-for="goal in activeGoals.slice(0, 4)" :key="goal.id" class="planning-list-item">
+            <div class="planning-list-title"><span>{{ goal.icon }} {{ goal.title }}</span><b>{{ toPersianNumber(getGoalProgress(goal)) }}٪</b></div>
+            <div class="progress-track"><i :style="{ width: `${Math.min(100, getGoalProgress(goal))}%`, background: goal.color }" /></div>
+            <small>پیشنهاد هفتگی: {{ formatMoney(getGoalSuggestedWeeklySaving(goal)) }}</small>
+          </div>
+        </div>
+        <p v-else class="empty-inline">هنوز هدف فعالی ثبت نشده است.</p>
+      </section>
+
+      <section class="glass-panel planning-inline">
+        <div class="section-title compact">
+          <div>
+            <h2>تعهدات پیش‌رو</h2>
+            <p>پرداخت‌هایی که باید در برنامه‌ی نزدیک دیده شوند</p>
+          </div>
+        </div>
+        <div class="planning-list">
+          <span v-for="item in nearInstallments" :key="`installment-${item.id}`" class="planning-list-item compact-item" :class="{ overdue: item.status === 'overdue' }">
+            <span>🧾 {{ item.title }}<small>{{ item.statusLabel }} · {{ item.nextDueDate }}</small></span><b>{{ formatMoney(item.amount) }}</b>
+          </span>
+          <span v-for="item in upcomingRecurringItems" :key="`recurring-${item.id}`" class="planning-list-item compact-item">
+            <span>🔁 {{ item.title }}</span><b>{{ formatMoney(item.amount) }}</b>
+          </span>
+          <p v-if="!nearInstallments.length && !upcomingRecurringItems.length" class="empty-inline">تعهد نزدیکی ثبت نشده است.</p>
+        </div>
+      </section>
     </div>
 
     <section class="glass-panel reports-card planning-inline">

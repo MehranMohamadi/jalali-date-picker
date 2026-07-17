@@ -32,13 +32,20 @@ self.addEventListener('fetch', (event) => {
 
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const copy = response.clone()
-          caches.open(CACHE_NAME).then((cache) => cache.put('/', copy))
-          return response
-        })
-        .catch(() => caches.match('/').then((cached) => cached || caches.match('/offline.html'))),
+      caches.match('/').then((cached) => {
+        const refresh = fetch(request)
+          .then((response) => {
+            if (response.ok) {
+              const copy = response.clone()
+              caches.open(CACHE_NAME).then((cache) => cache.put('/', copy))
+            }
+            return response
+          })
+          .catch(() => cached || caches.match('/offline.html'))
+
+        // Return the local app shell first; refresh the cache in the background.
+        return cached || refresh
+      }),
     )
     return
   }
