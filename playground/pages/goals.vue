@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { RefreshCw } from 'lucide-vue-next'
 const budgetyar = useBudgetyar()
 const {
   goalForm,
@@ -29,6 +30,10 @@ const {
   getGoalSuggestedMonthlySaving,
   getGoalSuggestedWeeklySaving,
   getCategory,
+  marketRates,
+  marketRatesLoading,
+  marketRatesError,
+  refreshMarketRates,
 } = budgetyar
 </script>
 
@@ -40,6 +45,22 @@ const {
         <p>پس‌انداز، پاکت‌ها و مسیر رسیدن به هدف</p>
       </div>
     </div>
+
+    <section class="market-rates-card planning-inline">
+      <div>
+        <strong>قیمت روز بازار</strong>
+        <small>برای برآورد ارزش هدف‌های طلا، نقره و دلار</small>
+      </div>
+      <div v-if="marketRates" class="market-rates-list">
+        <span>دلار <b>{{ formatMoney(marketRates.usd) }}</b></span>
+        <span>طلای ۱۸ <b>{{ formatMoney(marketRates.gold18) }}</b></span>
+      </div>
+      <button class="soft-button" type="button" :disabled="marketRatesLoading" @click="refreshMarketRates">
+        <RefreshCw :size="16" :class="{ spinning: marketRatesLoading }" aria-hidden="true" />
+        <span>{{ marketRatesLoading ? 'در حال دریافت…' : 'به‌روزرسانی قیمت‌ها' }}</span>
+      </button>
+      <small v-if="marketRatesError" class="market-rates-error">{{ marketRatesError }}</small>
+    </section>
 
     <div class="report-grid">
       <span><small>هدف کل</small><strong>{{ formatMoney(totalGoalsTarget) }}</strong></span>

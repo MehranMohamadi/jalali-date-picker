@@ -440,6 +440,9 @@ const categoryForm = reactive({
 })
 const installments = ref<InstallmentPlan[]>([])
 const goals = ref<BudgetyarGoal[]>([])
+const marketRates = ref<{ usd: number; gold18: number; updatedAt: string } | null>(null)
+const marketRatesLoading = ref(false)
+const marketRatesError = ref('')
 const recurringItems = ref<BudgetyarRecurringItem[]>([])
 const debts = ref<BudgetyarDebt[]>([])
 const categorizationRules = ref<BudgetyarCategorizationRule[]>([])
@@ -1920,6 +1923,35 @@ function getGoalSuggestedMonthlySaving(goal: BudgetyarGoal) {
 
 function getGoalSuggestedWeeklySaving(goal: BudgetyarGoal) {
   return suggestedWeeklySaving(goal, todayKey)
+}
+
+async function refreshMarketRates() {
+  if (marketRatesLoading.value) return
+  const config = useRuntimeConfig()
+  if (!config.public.brsApiKey) {
+    marketRatesError.value = 'کلید API در تنظیمات محیطی ثبت نشده است.'
+    return
+  }
+  marketRatesLoading.value = true
+  marketRatesError.value = ''
+  try {
+    const response = await $fetch<any>(`https://api.brsapi.ir/Market/Gold_Currency.php?key=${encodeURIComponent(config.public.brsApiKey)}`)
+    const rows = Array.isArray(response)
+      ? response
+      : [
+          ...(Array.isArray(response.gold) ? response.gold : []),
+          ...(Array.isArray(response.currency) ? response.currency : []),
+          ...(Array.isArray(response.data) ? response.data : []),
+          ...(Array.isArray(response.result) ? response.result : []),
+        ]
+    const find = (symbols: string[]) => Number(rows.find((item: any) => symbols.includes(String(item.symbol).toUpperCase()))?.price ?? 0)
+    marketRates.value = { usd: find(['USD', 'IR_USD']), gold18: find(['IR_GOLD_18K', 'GOLD_18K', 'IR_GOLD_18']), updatedAt: new Date().toISOString() }
+    localStorage.setItem('budgetyar-market-rates-v1', JSON.stringify(marketRates.value))
+  } catch {
+    marketRatesError.value = 'دریافت قیمت‌ها انجام نشد؛ آخرین نرخ ذخیره‌شده را بررسی کن.'
+  } finally {
+    marketRatesLoading.value = false
+  }
 }
 
 function resetRecurringForm() {
@@ -3511,7 +3543,7 @@ function unbindMobileViewport() {
 export function useBudgetyar() {
   return {
     activeSection, isMobileMenuOpen, isMobileViewport, navItems, months, years, today, todayKey, currentMonthYear, currentJalaliDate, currentMonthLength,
-    categories, transactions, budgets, installments, goals, recurringItems, debts, categorizationRules, incomeSettings, creditLimit, cashFlowMode, themeMode, cashflowForecastPeriod, selectedDebtStrategy,
+    categories, transactions, budgets, installments, goals, recurringItems, debts, categorizationRules, incomeSettings, creditLimit, cashFlowMode, themeMode, cashflowForecastPeriod, selectedDebtStrategy, marketRates, marketRatesLoading, marketRatesError,
     query, selectedMonth, selectedYear, selectedCategory, selectedType, dateRange, pickerDateRange,
     isModalOpen, formType, form, formAmountInWords, formDatePickerValue, editingId, toasts,
     categoryForm, installmentForm, editingInstallmentId, installmentAmountInWords, installmentStartDatePickerValue,
@@ -3539,7 +3571,7 @@ export function useBudgetyar() {
     getCategory, normalizeDigits, normalizeJalaliDate, getJalaliInputDay, getTrendDays, getPreviousMonthPrefix, addJalaliMonths, getInstallmentDueDate, getInstallmentStatus, getInstallmentStatusLabel, getCurrentWeekRange, getWeekdayLabel, getJalaliMonthPrefix, getCurrentJalaliDate, formatJalaliInputDate, formatDisplayJalaliDate, jalaliInputToIso, isoToJalaliInput, toPersianNumber, parseMoneyInput, formatMoneyInput, formatMoneyWords, formatMoney, formatCompact, progressPercent, getChangePercent, formatPercentHint, formatChangeSentence, getRiskLabel, getFinancialHealthLevelLabel,
     selectSection, openModal, editTransaction, saveTransaction, removeTransaction, refreshBankNotifications, openNotificationAccessSettings, updateSelectedBankPackage, acceptBankSuggestion, dismissBankSuggestion, formatSuggestionDate, updateMoneyInput, updateCreditLimit, updateBudget, addCategory, deleteCategory, addInstallmentPlan, editInstallmentPlan, cancelInstallmentEdit, payInstallment, removeInstallmentPlan,
     addGoal, editGoal, updateGoal, deleteGoal, archiveGoal, addGoalContribution, withdrawFromGoal, getGoalProgress, getGoalRemainingAmount, getGoalSuggestedMonthlySaving, getGoalSuggestedWeeklySaving, getGoalUnitLabel, formatGoalAmount,
-    addRecurringItem, editRecurringItem, updateRecurringItem, deleteRecurringItem, toggleRecurringItem, getRecurringNextDueDate, markRecurringItemPaid, skipRecurringOccurrence, createTransactionFromRecurringItem, getRecurringStatusLabel, createPurchaseTransaction, setThemeMode,
+    addRecurringItem, editRecurringItem, updateRecurringItem, deleteRecurringItem, toggleRecurringItem, getRecurringNextDueDate, markRecurringItemPaid, skipRecurringOccurrence, createTransactionFromRecurringItem, getRecurringStatusLabel, createPurchaseTransaction, setThemeMode, refreshMarketRates,
     addDebt, editDebt, updateDebt, deleteDebt, toggleDebt, recordDebtPayment, calculateDebtPayoffPlan,
     addCategorizationRule, editCategorizationRule, updateCategorizationRule, deleteCategorizationRule, toggleCategorizationRule, matchTransactionCategoryRule, applyCategorizationRulesToTransaction, applyCategorizationRulesToAllTransactions, suggestCategorizationRules, acceptSuggestedCategorizationRule, bulkUpdateTransactionCategory,
     updateIncomeSettings, applyRecommendedBudgetPlan,
@@ -3579,6 +3611,10 @@ export function startBudgetyar() {
     const savedDebts = localStorage.getItem(DEBTS_STORAGE_KEY)
     const savedCategorizationRules = localStorage.getItem(CATEGORIZATION_RULES_STORAGE_KEY)
     const savedIncomeSettings = localStorage.getItem(INCOME_SETTINGS_STORAGE_KEY)
+    const savedMarketRates = localStorage.getItem('budgetyar-market-rates-v1')
+    if (savedMarketRates) {
+      try { marketRates.value = JSON.parse(savedMarketRates) } catch { localStorage.removeItem('budgetyar-market-rates-v1') }
+    }
   
     if (savedTransactions) {
       try {

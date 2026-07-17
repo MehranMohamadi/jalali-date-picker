@@ -1622,8 +1622,29 @@ th {
 .credit-settings-inline small { color: var(--muted); }
 .credit-settings-inline strong { color: #67e8f9; }
 
+.market-rates-card {
+  align-items: center;
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1.1fr 2fr auto;
+  padding: 12px;
+}
+
+.market-rates-card > div:first-child { display: grid; gap: 4px; }
+.market-rates-card small { color: var(--muted); }
+.market-rates-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.market-rates-list span { background: rgba(34, 211, 238, .08); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; }
+.market-rates-list b { color: #67e8f9; margin-inline-start: 5px; }
+.market-rates-error { color: #fca5a5; grid-column: 1 / -1; }
+.spinning { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
 @media (max-width: 760px) {
   .credit-settings-inline { grid-template-columns: 1fr; }
+  .market-rates-card { grid-template-columns: 1fr; }
 }
 
 .goal-unit-summary {

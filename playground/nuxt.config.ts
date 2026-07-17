@@ -1,4 +1,9 @@
 export default defineNuxtConfig({
+  runtimeConfig: {
+    public: {
+      brsApiKey: process.env.NUXT_PUBLIC_BRS_API_KEY || process.env.BRS_API_KEY || '',
+    },
+  },
   compatibilityDate: '2026-06-28',
   experimental: {
     appManifest: false,
