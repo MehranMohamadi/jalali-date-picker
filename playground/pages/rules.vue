@@ -5,7 +5,6 @@ const {
   editingCategorizationRuleId,
   categorizationRules,
   activeCategorizationRules,
-  suggestedCategorizationRules,
   categories,
   ruleMinAmountInWords,
   ruleMaxAmountInWords,
@@ -16,9 +15,10 @@ const {
   deleteCategorizationRule,
   toggleCategorizationRule,
   applyCategorizationRulesToAllTransactions,
-  acceptSuggestedCategorizationRule,
   getCategory,
 } = budgetyar
+
+const defaultRuleCount = computed(() => categorizationRules.value.filter((rule) => rule.id.startsWith('preset-')).length)
 
 function matchTypeLabel(value: string) {
   const labels: Record<string, string> = {
@@ -32,6 +32,7 @@ function matchTypeLabel(value: string) {
   }
   return labels[value] ?? value
 }
+
 </script>
 
 <template>
@@ -47,7 +48,7 @@ function matchTypeLabel(value: string) {
     <div class="report-grid">
       <span><small>کل قوانین</small><strong>{{ categorizationRules.length }}</strong></span>
       <span><small>فعال</small><strong>{{ activeCategorizationRules.length }}</strong></span>
-      <span><small>پیشنهاد</small><strong>{{ suggestedCategorizationRules.length }}</strong></span>
+      <span><small>پیش‌فرض</small><strong>{{ defaultRuleCount }}</strong></span>
       <span><small>اولویت بعدی</small><strong>{{ categorizationRuleForm.priority }}</strong></span>
     </div>
 
@@ -105,17 +106,6 @@ function matchTypeLabel(value: string) {
       <label class="check-row"><input v-model="categorizationRuleForm.applyToExisting" type="checkbox" /><span>بعد از ذخیره روی قبلی‌ها اعمال شود</span></label>
       <button class="primary-button" type="submit">{{ editingCategorizationRuleId ? 'ذخیره' : 'افزودن قانون' }}</button>
     </form>
-
-    <section v-if="suggestedCategorizationRules.length" class="weekly-category-budget glass-panel planning-inline">
-      <div class="weekly-category-head"><strong>پیشنهادها</strong><small>از تراکنش‌های تکراری</small></div>
-      <div class="weekly-category-list">
-        <span v-for="suggestion in suggestedCategorizationRules" :key="`${suggestion.title}-${suggestion.categoryId}`">
-          <b>{{ suggestion.title }}</b>
-          <em>{{ getCategory(suggestion.categoryId).label }}</em>
-          <button class="primary-button" type="button" @click="acceptSuggestedCategorizationRule(suggestion)">قبول</button>
-        </span>
-      </div>
-    </section>
 
     <div v-if="categorizationRules.length" class="installments-grid planning-card-grid">
       <article v-for="rule in categorizationRules" :key="rule.id" class="installment-item">

@@ -290,6 +290,7 @@ const GOALS_STORAGE_KEY = 'budgetyar-goals-v1'
 const RECURRING_ITEMS_STORAGE_KEY = 'budgetyar-recurring-items-v1'
 const DEBTS_STORAGE_KEY = 'budgetyar-debts-v1'
 const CATEGORIZATION_RULES_STORAGE_KEY = 'budgetyar-categorization-rules-v1'
+const DELETED_DEFAULT_CATEGORIZATION_RULES_STORAGE_KEY = 'budgetyar-deleted-default-categorization-rules-v1'
 const INCOME_SETTINGS_STORAGE_KEY = 'budgetyar-income-settings-v1'
 const navItems = ['داشبورد', 'درآمدها', 'هزینه‌ها', 'بودجه‌ها', 'قسط‌ها', 'گزارش‌ها', 'آمار', 'اعلان‌ها', 'تنظیمات']
 const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند']
@@ -304,6 +305,36 @@ const currentWeekStartKey = formatJalaliInputDate(currentWeekRange.start)
 const currentWeekEndKey = formatJalaliInputDate(currentWeekRange.end)
 const currentMonthYear = `${months[currentJalaliDate.month - 1]} ${toPersianNumber(currentJalaliDate.year)}`
 const years = [currentJalaliDate.year - 1, currentJalaliDate.year, currentJalaliDate.year + 1].map(toPersianNumber)
+const defaultCategorizationRuleTemplates = [
+  { id: 'snap', title: 'اسنپ', pattern: 'اسنپ', preferredCategory: 'حمل و نقل', fallbackCategory: 'transport' },
+  { id: 'tapsi', title: 'تپسی', pattern: 'تپسی', preferredCategory: 'حمل و نقل', fallbackCategory: 'transport' },
+  { id: 'fuel', title: 'بنزین و سوخت', pattern: 'پمپ بنزین', preferredCategory: 'سوخت و بنزین', fallbackCategory: 'transport' },
+  { id: 'parking', title: 'پارکینگ', pattern: 'پارکینگ', preferredCategory: 'پارکینگ و عوارض', fallbackCategory: 'transport' },
+  { id: 'car-repair', title: 'تعمیر خودرو', pattern: 'تعمیرگاه', preferredCategory: 'تعمیر و نگهداری خودرو', fallbackCategory: 'transport' },
+  { id: 'digikala', title: 'دیجی‌کالا', pattern: 'دیجی‌کالا', preferredCategory: 'خرید', fallbackCategory: 'shopping' },
+  { id: 'snapfood', title: 'اسنپ‌فود', pattern: 'اسنپ‌فود', preferredCategory: 'رستوران و غذای بیرون', fallbackCategory: 'food' },
+  { id: 'restaurant', title: 'رستوران', pattern: 'رستوران', preferredCategory: 'رستوران و غذای بیرون', fallbackCategory: 'food' },
+  { id: 'cafe', title: 'کافه', pattern: 'کافه', preferredCategory: 'کافه و قهوه', fallbackCategory: 'food' },
+  { id: 'internet', title: 'اینترنت', pattern: 'اینترنت', preferredCategory: 'اینترنت و تلفن', fallbackCategory: 'bills' },
+  { id: 'mci', title: 'همراه اول', pattern: 'همراه اول', preferredCategory: 'اینترنت و تلفن', fallbackCategory: 'bills' },
+  { id: 'irancell', title: 'ایرانسل', pattern: 'ایرانسل', preferredCategory: 'اینترنت و تلفن', fallbackCategory: 'bills' },
+  { id: 'utilities', title: 'قبض خدماتی', pattern: 'قبض', preferredCategory: 'آب، برق و گاز', fallbackCategory: 'bills' },
+  { id: 'rent', title: 'اجاره خانه', pattern: 'اجاره', preferredCategory: 'اجاره', fallbackCategory: 'rent' },
+  { id: 'home-repair', title: 'تعمیرات خانه', pattern: 'تعمیرات', preferredCategory: 'خانه و تعمیرات', fallbackCategory: 'rent' },
+  { id: 'pharmacy', title: 'داروخانه', pattern: 'داروخانه', preferredCategory: 'دارو و دندان‌پزشکی', fallbackCategory: 'health' },
+  { id: 'doctor', title: 'پزشک', pattern: 'پزشک', preferredCategory: 'درمان', fallbackCategory: 'health' },
+  { id: 'tuition', title: 'شهریه', pattern: 'شهریه', preferredCategory: 'آموزش', fallbackCategory: 'education' },
+  { id: 'book', title: 'کتاب', pattern: 'کتاب', preferredCategory: 'کتاب و آموزش آنلاین', fallbackCategory: 'education' },
+  { id: 'clothes', title: 'پوشاک', pattern: 'پوشاک', preferredCategory: 'پوشاک', fallbackCategory: 'clothes' },
+  { id: 'gym', title: 'باشگاه', pattern: 'باشگاه', preferredCategory: 'ورزش', fallbackCategory: 'sport' },
+  { id: 'cinema', title: 'سینما', pattern: 'سینما', preferredCategory: 'تفریح و سرگرمی دیجیتال', fallbackCategory: 'fun' },
+  { id: 'petshop', title: 'پت‌شاپ', pattern: 'پت‌شاپ', preferredCategory: 'حیوانات', fallbackCategory: 'pets' },
+  { id: 'insurance', title: 'بیمه', pattern: 'بیمه', preferredCategory: 'بیمه', fallbackCategory: 'other' },
+  { id: 'bank-fee', title: 'کارمزد بانکی', pattern: 'کارمزد', preferredCategory: 'کارمزد بانکی', fallbackCategory: 'other' },
+  { id: 'gift', title: 'هدیه', pattern: 'هدیه', preferredCategory: 'هدیه', fallbackCategory: 'gift' },
+  { id: 'subscription', title: 'اشتراک', pattern: 'اشتراک', preferredCategory: 'اشتراک‌ها', fallbackCategory: 'other' },
+  { id: 'tax', title: 'مالیات', pattern: 'مالیات', preferredCategory: 'مالیات و عوارض', fallbackCategory: 'other' },
+] as const
 const defaultIncomeSettings: BudgetyarIncomeSettings = {
   mode: 'average',
   historyMonths: 3,
@@ -1458,8 +1489,6 @@ function saveTransaction() {
     loanPerson: formType.value === 'expense' && form.isLoan ? form.loanPerson.trim() : undefined,
   }
 
-  payload = applyCategorizationRulesToTransaction(payload)
-
   if (editingId.value) {
     transactions.value = transactions.value.map((item) => (item.id === editingId.value ? payload : item))
     pushToast('ویرایش شد ✨')
@@ -1529,7 +1558,7 @@ async function acceptBankSuggestion(suggestion: BankNotificationSuggestion) {
       : 'other'
 
   const date = suggestion.postTime ? formatJalaliInputDate(toJalali(new Date(suggestion.postTime))) : todayKey
-  const payload: Transaction = applyCategorizationRulesToTransaction({
+  const payload: Transaction = {
     id: Date.now(),
     type: 'expense',
     title: suggestion.title || 'هزینه بلو بانک',
@@ -1543,7 +1572,7 @@ async function acceptBankSuggestion(suggestion: BankNotificationSuggestion) {
     sourceType: 'bank-notification',
     sourceId: suggestion.id,
     sourceDate: date,
-  })
+  }
 
   transactions.value = [payload, ...transactions.value]
   bankSuggestions.value = bankSuggestions.value.filter((item) => item.id !== suggestion.id)
@@ -2369,6 +2398,17 @@ function updateCategorizationRule(id: string, patch: Partial<BudgetyarCategoriza
 }
 
 function deleteCategorizationRule(id: string) {
+  if (id.startsWith('preset-')) {
+    const deletedIds = new Set<string>()
+    try {
+      const savedDeletedIds = JSON.parse(localStorage.getItem(DELETED_DEFAULT_CATEGORIZATION_RULES_STORAGE_KEY) ?? '[]')
+      if (Array.isArray(savedDeletedIds)) savedDeletedIds.filter((item): item is string => typeof item === 'string').forEach((item) => deletedIds.add(item))
+    } catch {
+      // Ignore malformed deletion history and replace it with a valid list.
+    }
+    deletedIds.add(id)
+    localStorage.setItem(DELETED_DEFAULT_CATEGORIZATION_RULES_STORAGE_KEY, JSON.stringify([...deletedIds]))
+  }
   categorizationRules.value = categorizationRules.value.filter((rule) => rule.id !== id)
   if (editingCategorizationRuleId.value === id) resetCategorizationRuleForm()
   pushToast('قانون حذف شد')
@@ -2801,6 +2841,27 @@ function restoreCategorizationRules(value: unknown) {
     createdAt: typeof item.createdAt === 'string' ? item.createdAt : todayKey,
     updatedAt: typeof item.updatedAt === 'string' ? item.updatedAt : todayKey,
   }))
+}
+
+function buildDefaultCategorizationRules(): BudgetyarCategorizationRule[] {
+  return defaultCategorizationRuleTemplates.map((template) => {
+    const preferredCategory = categories.value.find((category) => category.label === template.preferredCategory)
+    const fallbackCategory = categories.value.find((category) => category.key === template.fallbackCategory)
+
+    return {
+      id: `preset-${template.id}`,
+      title: template.title,
+      isActive: true,
+      matchType: 'contains',
+      pattern: template.pattern,
+      categoryId: preferredCategory?.key ?? fallbackCategory?.key ?? 'other',
+      transactionType: 'expense',
+      priority: 20,
+      applyToExisting: false,
+      createdAt: todayKey,
+      updatedAt: todayKey,
+    }
+  })
 }
 
 function restoreIncomeSettings(value: unknown) {
@@ -3489,6 +3550,20 @@ export function startBudgetyar() {
       } catch {
         localStorage.removeItem(CATEGORIZATION_RULES_STORAGE_KEY)
       }
+    }
+
+    const deletedDefaultRuleIds = new Set<string>()
+    try {
+      const savedDeletedIds = JSON.parse(localStorage.getItem(DELETED_DEFAULT_CATEGORIZATION_RULES_STORAGE_KEY) ?? '[]')
+      if (Array.isArray(savedDeletedIds)) savedDeletedIds.filter((item): item is string => typeof item === 'string').forEach((item) => deletedDefaultRuleIds.add(item))
+    } catch {
+      localStorage.removeItem(DELETED_DEFAULT_CATEGORIZATION_RULES_STORAGE_KEY)
+    }
+    const existingPatterns = new Set(categorizationRules.value.map((rule) => rule.pattern).filter(Boolean))
+    const missingDefaults = buildDefaultCategorizationRules().filter((rule) => !deletedDefaultRuleIds.has(rule.id) && !existingPatterns.has(rule.pattern))
+    if (missingDefaults.length) {
+      categorizationRules.value = [...categorizationRules.value, ...missingDefaults]
+      localStorage.setItem(CATEGORIZATION_RULES_STORAGE_KEY, JSON.stringify(categorizationRules.value))
     }
 
     if (savedIncomeSettings) {

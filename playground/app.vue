@@ -41,7 +41,7 @@ const navItems = [
   { label: '‏بودجه‌ها', path: '/budgets', group: '‏برنامه‌ریزی', icon: WalletCards },
   { label: '‏قسط‌ها', path: '/installments', group: '‏برنامه‌ریزی', icon: CreditCard },
   { label: '‏هدف‌ها', path: '/goals', group: '‏برنامه‌ریزی', icon: Target },
-  { label: '‏تکراری‌ها', path: '/recurring', group: '‏برنامه‌ریزی', icon: Repeat2 },
+  { label: '‏پرداخت‌های دوره‌ای', path: '/recurring', group: '‏برنامه‌ریزی', icon: Repeat2 },
   { label: '‏برنامه‌ریزی', path: '/planning', group: '‏تحلیل و کنترل', icon: ClipboardList },
   { label: '‏بدهی‌ها', path: '/debts', group: '‏تحلیل و کنترل', icon: Landmark },
   { label: '‏قوانین', path: '/rules', group: '‏تحلیل و کنترل', icon: ListChecks },

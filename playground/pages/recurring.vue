@@ -40,7 +40,7 @@ function frequencyLabel(value: string) {
   <section class="glass-panel settings-card">
     <div class="section-title">
       <div>
-        <h2>پرداخت‌های تکراری</h2>
+        <h2>پرداخت‌های دوره‌ای</h2>
         <p>درآمد ثابت، قبض، اشتراک و هزینه‌های دوره‌ای</p>
       </div>
     </div>

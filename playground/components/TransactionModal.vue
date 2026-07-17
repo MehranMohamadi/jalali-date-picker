@@ -17,7 +17,7 @@ const {
 } = budgetyar
 
 const suggestedRule = computed(() => {
-  if (formType.value !== 'expense' || !form.title || !form.amount) return undefined
+  if (formType.value !== 'expense' || !form.title) return undefined
 
   return matchTransactionCategoryRule({
     id: 0,
@@ -72,6 +72,15 @@ function applySuggestedCategory() {
         <div class="transaction-fields">
           <input v-model="form.title" type="text" placeholder="‏عنوان" aria-label="‏عنوان" required />
 
+          <div v-if="suggestedRule" class="rule-suggestion inline-rule-suggestion" aria-live="polite">
+            <span>
+              <Sparkles :size="16" aria-hidden="true" />
+              ‏دسته پیشنهادی: {{ getCategory(suggestedRule.categoryId).icon }} {{ getCategory(suggestedRule.categoryId).label }}
+            </span>
+            <button v-if="suggestedRule.categoryId !== form.category" class="soft-button" type="button" @click="applySuggestedCategory">‏تأیید دسته</button>
+            <small v-else class="rule-suggestion-confirmed">‏انتخاب شد ✓</small>
+          </div>
+
           <select v-if="formType === 'expense'" v-model="form.category" aria-label="‏دسته">
             <option v-for="category in categories" :key="category.key" :value="category.key">{{ category.icon }} {{ category.label }}</option>
           </select>
@@ -109,14 +118,6 @@ function applySuggestedCategory() {
           />
 
           <textarea v-model="form.description" rows="1" placeholder="‏توضیحات اختیاری" aria-label="‏توضیحات" />
-        </div>
-
-        <div v-if="suggestedRule && suggestedRule.categoryId !== form.category" class="rule-suggestion">
-          <span>
-            <Sparkles :size="16" aria-hidden="true" />
-            ‏دسته پیشنهادی: {{ getCategory(suggestedRule.categoryId).label }}
-          </span>
-          <button class="soft-button" type="button" @click="applySuggestedCategory">‏اعمال</button>
         </div>
 
         <button class="primary-button transaction-submit" type="submit">
