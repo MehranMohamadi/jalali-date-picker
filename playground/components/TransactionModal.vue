@@ -81,9 +81,9 @@ function applySuggestedCategory() {
             <small v-else class="rule-suggestion-confirmed">‏انتخاب شد ✓</small>
           </div>
 
-          <select v-if="formType === 'expense'" v-model="form.category" aria-label="‏دسته">
+          <BudgetyarSelect v-if="formType === 'expense'" v-model="form.category" aria-label="‏دسته">
             <option v-for="category in categories" :key="category.key" :value="category.key">{{ category.icon }} {{ category.label }}</option>
-          </select>
+          </BudgetyarSelect>
 
           <JalaliDatePicker
             v-model="formDatePickerValue"
@@ -94,14 +94,14 @@ function applySuggestedCategory() {
           />
 
           <div v-if="formType === 'expense'" class="form-inline-grid">
-            <select v-model="form.paymentMethod" aria-label="‏روش پرداخت">
+            <BudgetyarSelect v-model="form.paymentMethod" aria-label="‏روش پرداخت">
               <option value="cash">‏نقدی</option>
               <option value="credit">‏اعتباری</option>
-            </select>
-            <select v-model="form.isEssential" aria-label="‏نوع خرید">
+            </BudgetyarSelect>
+            <BudgetyarSelect v-model="form.isEssential" aria-label="‏نوع خرید">
               <option :value="true">‏ضروری</option>
               <option :value="false">‏غیرضروری</option>
-            </select>
+            </BudgetyarSelect>
           </div>
 
           <label v-if="formType === 'expense'" class="check-row compact-check">

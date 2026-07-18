@@ -49,21 +49,21 @@ function showMoreTransactions() {
 
     <div class="filters">
       <input v-model="query" type="search" placeholder="جستجو" aria-label="جستجو" />
-      <select v-model="selectedMonth" aria-label="ماه">
+      <BudgetyarSelect v-model="selectedMonth" aria-label="ماه">
         <option v-for="month in months" :key="month">{{ month }}</option>
-      </select>
-      <select v-model="selectedYear" aria-label="سال">
+      </BudgetyarSelect>
+      <BudgetyarSelect v-model="selectedYear" aria-label="سال">
         <option v-for="year in years" :key="year">{{ year }}</option>
-      </select>
-      <select v-model="selectedCategory" aria-label="دسته">
+      </BudgetyarSelect>
+      <BudgetyarSelect v-model="selectedCategory" aria-label="دسته">
         <option>همه</option>
         <option v-for="category in categories" :key="category.key">{{ category.label }}</option>
-      </select>
-      <select v-model="selectedType" aria-label="نوع تراکنش">
+      </BudgetyarSelect>
+      <BudgetyarSelect v-model="selectedType" aria-label="نوع تراکنش">
         <option>همه</option>
         <option>درآمد</option>
         <option>هزینه</option>
-      </select>
+      </BudgetyarSelect>
       <JalaliRangeDatePicker
         v-model="pickerDateRange"
         class="date-range-filter"

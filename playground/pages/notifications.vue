@@ -47,12 +47,12 @@ const {
         </article>
         <label class="notification-status">
           <small>اپ منبع</small>
-          <select :value="selectedBankPackage" @change="updateSelectedBankPackage">
+          <BudgetyarSelect :value="selectedBankPackage" @change="updateSelectedBankPackage">
             <option value="">انتخاب بلو بانک</option>
             <option v-for="app in bankApps" :key="app.packageName" :value="app.packageName">
               {{ app.label }}
             </option>
-          </select>
+          </BudgetyarSelect>
         </label>
       </div>
 

@@ -63,13 +63,13 @@ const {
       <label><span>عنوان بدهی</span><input v-model="debtForm.title" required /></label>
       <label>
         <span>نوع بدهی</span>
-        <select v-model="debtForm.type">
+        <BudgetyarSelect v-model="debtForm.type">
           <option value="loan">وام</option>
           <option value="credit">اعتبار</option>
           <option value="personal">شخصی</option>
           <option value="installment">قسطی</option>
           <option value="other">سایر</option>
-        </select>
+        </BudgetyarSelect>
       </label>
       <label>
         <span>مبلغ اولیه</span>
@@ -94,7 +94,7 @@ const {
       <label><span>طلبکار</span><input v-model="debtForm.creditorName" /></label>
       <label>
         <span>اولویت</span>
-        <select v-model="debtForm.priority"><option value="high">زیاد</option><option value="medium">متوسط</option><option value="low">کم</option></select>
+        <BudgetyarSelect v-model="debtForm.priority"><option value="high">زیاد</option><option value="medium">متوسط</option><option value="low">کم</option></BudgetyarSelect>
       </label>
       <label class="check-row"><input v-model="debtForm.isActive" type="checkbox" /><span>فعال است</span></label>
       <label class="installment-description"><span>توضیح</span><textarea v-model="debtForm.note" rows="2" /></label>

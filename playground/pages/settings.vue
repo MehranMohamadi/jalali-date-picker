@@ -41,15 +41,15 @@ function updateThemeMode(event: Event) {
       <label>اعتبار باقی‌مانده
         <input :value="formatMoneyInput(creditRemaining)" type="text" readonly />
       </label>
-      <label>ارز <select><option>تومان</option><option>ریال</option></select></label>
+      <label>ارز <BudgetyarSelect><option>تومان</option><option>ریال</option></BudgetyarSelect></label>
       <label>پوسته
-        <select :value="themeMode" @change="updateThemeMode">
+        <BudgetyarSelect :value="themeMode" @change="updateThemeMode">
           <option value="dark">تاریک</option>
           <option value="light">روشن</option>
           <option value="forest">بنفش مه‌آلود</option>
-        </select>
+        </BudgetyarSelect>
       </label>
-      <label>زبان <select><option>فارسی</option></select></label>
+      <label>زبان <BudgetyarSelect><option>فارسی</option></BudgetyarSelect></label>
       <label class="backup-import">بازیابی بکاپ
         <input type="file" accept="application/json,.json" @change="importBackup" />
       </label>

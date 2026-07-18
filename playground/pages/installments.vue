@@ -52,9 +52,9 @@ const {
       </label>
       <label>
         <span>دسته</span>
-        <select v-model="installmentForm.category">
+        <BudgetyarSelect v-model="installmentForm.category">
           <option v-for="category in categories" :key="category.key" :value="category.key">{{ category.icon }} {{ category.label }}</option>
-        </select>
+        </BudgetyarSelect>
       </label>
       <label>
         <span>تاریخ شروع</span>
@@ -76,10 +76,10 @@ const {
       </label>
       <label>
         <span>روش پرداخت</span>
-        <select v-model="installmentForm.paymentMethod">
+        <BudgetyarSelect v-model="installmentForm.paymentMethod">
           <option value="cash">نقدی</option>
           <option value="credit">اعتباری</option>
-        </select>
+        </BudgetyarSelect>
       </label>
       <label class="installment-description">
         <span>توضیحات</span>

@@ -112,20 +112,20 @@ onMounted(() => {
       </div>
       <label>
         <span>واحد هدف</span>
-        <select v-model="goalForm.unit">
+        <BudgetyarSelect v-model="goalForm.unit">
           <option value="irr">تومان</option>
           <option value="goldGram">گرم طلا</option>
           <option value="silverGram">گرم نقره</option>
           <option value="usd">دلار</option>
-        </select>
+        </BudgetyarSelect>
       </label>
       <label>
         <span>روش رهگیری</span>
-        <select v-model="goalForm.trackingMode">
+        <BudgetyarSelect v-model="goalForm.trackingMode">
           <option value="FIXED_MONEY">پول ثابت</option>
           <option value="ASSET_FUNDING">تامین دارایی</option>
           <option value="ASSET_HOLDING">دارایی در اختیار</option>
-        </select>
+        </BudgetyarSelect>
       </label>
       <label>
         <span>عنوان هدف</span>
@@ -147,20 +147,20 @@ onMounted(() => {
       </label>
       <label v-if="goalForm.trackingMode !== 'FIXED_MONEY'">
         <span>کد دارایی</span>
-        <select v-model="goalForm.assetCode">
+        <BudgetyarSelect v-model="goalForm.assetCode">
           <option value="">خودکار از واحد</option>
           <option value="gold18">طلا ۱۸ عیار</option>
           <option value="usd">دلار</option>
           <option value="silver">نقره</option>
-        </select>
+        </BudgetyarSelect>
       </label>
       <label v-if="goalForm.trackingMode !== 'FIXED_MONEY'">
         <span>سیاست ارزش</span>
-        <select v-model="goalForm.targetValuePolicy">
+        <BudgetyarSelect v-model="goalForm.targetValuePolicy">
           <option value="NOMINAL">اسمی</option>
           <option value="INFLATION_INDEXED">شاخص تورم</option>
           <option value="MARKET_LINKED">وابسته به بازار</option>
-        </select>
+        </BudgetyarSelect>
       </label>
       <label>
         <span>واریز برنامه‌ای</span>
@@ -172,18 +172,18 @@ onMounted(() => {
       </label>
       <label>
         <span>دسته</span>
-        <select v-model="goalForm.categoryId">
+        <BudgetyarSelect v-model="goalForm.categoryId">
           <option value="">بدون دسته</option>
           <option v-for="category in categories" :key="category.key" :value="category.key">{{ category.icon }} {{ category.label }}</option>
-        </select>
+        </BudgetyarSelect>
       </label>
       <label>
         <span>اولویت</span>
-        <select v-model="goalForm.priority">
+        <BudgetyarSelect v-model="goalForm.priority">
           <option value="high">زیاد</option>
           <option value="medium">متوسط</option>
           <option value="low">کم</option>
-        </select>
+        </BudgetyarSelect>
       </label>
       <label>
         <span>آیکن</span>
@@ -195,12 +195,12 @@ onMounted(() => {
       </label>
       <label>
         <span>تعهد</span>
-        <select v-model="goalForm.commitmentMode">
+        <BudgetyarSelect v-model="goalForm.commitmentMode">
           <option value="NONE">بدون تعهد</option>
           <option value="SOFT_WARNING">هشدار نرم</option>
           <option value="REQUIRE_REASON">نیاز به دلیل</option>
           <option value="COOLING_OFF">دوره انتظار</option>
-        </select>
+        </BudgetyarSelect>
       </label>
       <label class="installment-description">
         <span>توضیح</span>

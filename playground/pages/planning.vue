@@ -140,9 +140,9 @@ const nearInstallments = computed(() =>
         </label>
         <label>
           <span>دسته</span>
-          <select v-model="purchaseForm.categoryId">
+          <BudgetyarSelect v-model="purchaseForm.categoryId">
             <option v-for="category in categories" :key="category.key" :value="category.key">{{ category.icon }} {{ category.label }}</option>
-          </select>
+          </BudgetyarSelect>
         </label>
         <label>
           <span>تاریخ خرید</span>
@@ -150,10 +150,10 @@ const nearInstallments = computed(() =>
         </label>
         <label>
           <span>روش پرداخت</span>
-          <select v-model="purchaseForm.paymentMethod">
+          <BudgetyarSelect v-model="purchaseForm.paymentMethod">
             <option value="cash">نقدی</option>
             <option value="credit">اعتباری</option>
-          </select>
+          </BudgetyarSelect>
         </label>
         <label class="check-row">
           <input v-model="purchaseForm.isEssential" type="checkbox" />

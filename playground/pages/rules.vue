@@ -57,7 +57,7 @@ function matchTypeLabel(value: string) {
       <label><span>عنوان قانون</span><input v-model="categorizationRuleForm.title" required /></label>
       <label>
         <span>نوع تطبیق</span>
-        <select v-model="categorizationRuleForm.matchType">
+        <BudgetyarSelect v-model="categorizationRuleForm.matchType">
           <option value="contains">شامل متن</option>
           <option value="equals">برابر</option>
           <option value="startsWith">شروع با</option>
@@ -65,7 +65,7 @@ function matchTypeLabel(value: string) {
           <option value="regex">Regex</option>
           <option value="amountRange">بازه مبلغ</option>
           <option value="merchant">فروشنده</option>
-        </select>
+        </BudgetyarSelect>
       </label>
       <label><span>متن / الگو</span><input v-model="categorizationRuleForm.pattern" /></label>
       <label><span>فروشنده</span><input v-model="categorizationRuleForm.merchantName" /></label>
@@ -81,25 +81,25 @@ function matchTypeLabel(value: string) {
       </label>
       <label>
         <span>دسته مقصد</span>
-        <select v-model="categorizationRuleForm.categoryId">
+        <BudgetyarSelect v-model="categorizationRuleForm.categoryId">
           <option v-for="category in categories" :key="category.key" :value="category.key">{{ category.icon }} {{ category.label }}</option>
-        </select>
+        </BudgetyarSelect>
       </label>
       <label>
         <span>نوع تراکنش</span>
-        <select v-model="categorizationRuleForm.transactionType">
+        <BudgetyarSelect v-model="categorizationRuleForm.transactionType">
           <option value="">همه</option>
           <option value="expense">هزینه</option>
           <option value="income">درآمد</option>
-        </select>
+        </BudgetyarSelect>
       </label>
       <label>
         <span>روش پرداخت</span>
-        <select v-model="categorizationRuleForm.paymentMethod">
+        <BudgetyarSelect v-model="categorizationRuleForm.paymentMethod">
           <option value="">همه</option>
           <option value="cash">نقدی</option>
           <option value="credit">اعتباری</option>
-        </select>
+        </BudgetyarSelect>
       </label>
       <label><span>اولویت</span><input v-model.number="categorizationRuleForm.priority" type="number" min="1" /></label>
       <label class="check-row"><input v-model="categorizationRuleForm.isActive" type="checkbox" /><span>فعال</span></label>

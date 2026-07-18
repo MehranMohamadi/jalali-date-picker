@@ -47,20 +47,20 @@ function updateMoneySetting(key: string, event: Event) {
     <form class="installment-form planning-form" @submit.prevent>
       <label>
         <span>روش بودجه‌بندی</span>
-        <select :value="incomeSettings.mode" @change="updateIncomeSettings({ mode: ($event.target as HTMLSelectElement).value as any })">
+        <BudgetyarSelect :value="incomeSettings.mode" @change="updateIncomeSettings({ mode: ($event.target as HTMLSelectElement).value as any })">
           <option value="fixed">ثابت</option>
           <option value="average">میانگین</option>
           <option value="conservative">محافظه‌کارانه</option>
           <option value="manual">دستی</option>
-        </select>
+        </BudgetyarSelect>
       </label>
       <label>
         <span>ماه‌های بررسی</span>
-        <select :value="incomeSettings.historyMonths" @change="updateIncomeSettings({ historyMonths: Number(($event.target as HTMLSelectElement).value) as 3 | 6 | 12 })">
+        <BudgetyarSelect :value="incomeSettings.historyMonths" @change="updateIncomeSettings({ historyMonths: Number(($event.target as HTMLSelectElement).value) as 3 | 6 | 12 })">
           <option :value="3">۳</option>
           <option :value="6">۶</option>
           <option :value="12">۱۲</option>
-        </select>
+        </BudgetyarSelect>
       </label>
       <label><span>درآمد ثابت</span><input :value="formatMoneyInput(incomeSettings.fixedMonthlyIncome || 0)" inputmode="numeric" @input="updateMoneySetting('fixedMonthlyIncome', $event)" /></label>
       <label><span>بودجه دستی</span><input :value="formatMoneyInput(incomeSettings.manualBudgetBase || 0)" inputmode="numeric" @input="updateMoneySetting('manualBudgetBase', $event)" /></label>

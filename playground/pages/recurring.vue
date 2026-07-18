@@ -62,10 +62,10 @@ function frequencyLabel(value: string) {
       </label>
       <label>
         <span>نوع</span>
-        <select v-model="recurringForm.type">
+        <BudgetyarSelect v-model="recurringForm.type">
           <option value="expense">هزینه</option>
           <option value="income">درآمد</option>
-        </select>
+        </BudgetyarSelect>
       </label>
       <label>
         <span>مبلغ</span>
@@ -74,18 +74,18 @@ function frequencyLabel(value: string) {
       </label>
       <label>
         <span>دسته</span>
-        <select v-model="recurringForm.categoryId" :disabled="recurringForm.type === 'income'">
+        <BudgetyarSelect v-model="recurringForm.categoryId" :disabled="recurringForm.type === 'income'">
           <option v-for="category in categories" :key="category.key" :value="category.key">{{ category.icon }} {{ category.label }}</option>
-        </select>
+        </BudgetyarSelect>
       </label>
       <label>
         <span>تناوب</span>
-        <select v-model="recurringForm.frequency">
+        <BudgetyarSelect v-model="recurringForm.frequency">
           <option value="daily">روزانه</option>
           <option value="weekly">هفتگی</option>
           <option value="monthly">ماهانه</option>
           <option value="yearly">سالانه</option>
-        </select>
+        </BudgetyarSelect>
       </label>
       <label>
         <span>شروع</span>
@@ -101,10 +101,10 @@ function frequencyLabel(value: string) {
       </label>
       <label>
         <span>روش پرداخت</span>
-        <select v-model="recurringForm.paymentMethod" :disabled="recurringForm.type === 'income'">
+        <BudgetyarSelect v-model="recurringForm.paymentMethod" :disabled="recurringForm.type === 'income'">
           <option value="cash">نقدی</option>
           <option value="credit">اعتباری</option>
-        </select>
+        </BudgetyarSelect>
       </label>
       <label>
         <span>یادآوری چند روز قبل</span>
