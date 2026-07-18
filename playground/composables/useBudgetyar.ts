@@ -439,6 +439,8 @@ const statsWeeklyFlowCanvas = ref<HTMLCanvasElement | null>(null)
 const statsCashFlowCanvas = ref<HTMLCanvasElement | null>(null)
 const statsEssentialCanvas = ref<HTMLCanvasElement | null>(null)
 const statsPaymentMethodCanvas = ref<HTMLCanvasElement | null>(null)
+const statsMonthlyTrendCanvas = ref<HTMLCanvasElement | null>(null)
+const statsCommitmentCanvas = ref<HTMLCanvasElement | null>(null)
 const expenseShareChart = shallowRef<Chart<'doughnut'> | null>(null)
 const categoryBarChart = shallowRef<Chart<'bar'> | null>(null)
 const trendLineChart = shallowRef<Chart<'line'> | null>(null)
@@ -449,6 +451,8 @@ const statsWeeklyFlowChart = shallowRef<Chart<'bar'> | null>(null)
 const statsCashFlowChart = shallowRef<Chart<'bar'> | null>(null)
 const statsEssentialChart = shallowRef<Chart<'doughnut'> | null>(null)
 const statsPaymentMethodChart = shallowRef<Chart<'bar'> | null>(null)
+const statsMonthlyTrendChart = shallowRef<Chart<'line'> | null>(null)
+const statsCommitmentChart = shallowRef<Chart<'doughnut'> | null>(null)
 let chartSyncFrame: number | null = null
 let mobileViewportQuery: MediaQueryList | null = null
 let mobileViewportListener: ((event: MediaQueryListEvent) => void) | null = null
@@ -1234,6 +1238,80 @@ const statsPaymentMethodChartData = computed<ChartData<'bar'>>(() => {
     }],
   }
 })
+
+const monthlyTrendPoints = computed(() =>
+  Array.from({ length: 6 }, (_, index) => {
+    const date = addJalaliMonths(currentJalaliDate, index - 5)
+    const prefix = getJalaliMonthPrefix(date)
+    const monthTransactions = transactions.value.filter((item) => normalizeJalaliDate(item.date).startsWith(prefix))
+    const income = monthTransactions.filter((item) => item.type === 'income').reduce((sum, item) => sum + item.amount, 0)
+    const expense = monthTransactions.filter((item) => item.type === 'expense').reduce((sum, item) => sum + item.amount, 0)
+
+    return {
+      label: months[date.month - 1],
+      income,
+      expense,
+      saving: income - expense,
+    }
+  }),
+)
+
+const hasMonthlyTrendData = computed(() => monthlyTrendPoints.value.some((point) => point.income > 0 || point.expense > 0))
+const commitmentTotal = computed(() => creditExpense.value + monthlyInstallmentDue.value + monthlyRecurringExpenseTotal.value + totalMinimumDebtPayments.value + totalExtraDebtPayments.value)
+const flexibleAfterCommitments = computed(() => Math.max(totalIncome.value - commitmentTotal.value, 0))
+
+const statsMonthlyTrendChartData = computed<ChartData<'line'>>(() => ({
+  labels: monthlyTrendPoints.value.map((point) => point.label),
+  datasets: [
+    {
+      label: 'درآمد',
+      data: monthlyTrendPoints.value.map((point) => point.income),
+      borderColor: '#34d399',
+      backgroundColor: 'rgba(52, 211, 153, .12)',
+      pointBackgroundColor: '#34d399',
+      pointBorderColor: '#0f172a',
+      fill: false,
+      tension: .32,
+    },
+    {
+      label: 'هزینه',
+      data: monthlyTrendPoints.value.map((point) => point.expense),
+      borderColor: '#fb7185',
+      backgroundColor: 'rgba(251, 113, 133, .12)',
+      pointBackgroundColor: '#fb7185',
+      pointBorderColor: '#0f172a',
+      fill: false,
+      tension: .32,
+    },
+    {
+      label: 'مانده',
+      data: monthlyTrendPoints.value.map((point) => point.saving),
+      borderColor: '#60a5fa',
+      backgroundColor: 'rgba(96, 165, 250, .16)',
+      pointBackgroundColor: '#60a5fa',
+      pointBorderColor: '#0f172a',
+      fill: true,
+      tension: .32,
+    },
+  ],
+}))
+
+const statsCommitmentChartData = computed<ChartData<'doughnut'>>(() => ({
+  labels: ['اعتبار', 'قسط', 'تکرارشونده', 'بدهی', 'آزاد'],
+  datasets: [{
+    data: [
+      creditExpense.value,
+      monthlyInstallmentDue.value,
+      monthlyRecurringExpenseTotal.value,
+      totalMinimumDebtPayments.value + totalExtraDebtPayments.value,
+      flexibleAfterCommitments.value,
+    ],
+    backgroundColor: ['#fb7185', '#facc15', '#a78bfa', '#f97316', '#34d399'],
+    borderColor: 'rgba(15, 23, 42, .78)',
+    borderWidth: 2,
+    hoverOffset: 8,
+  }],
+}))
 
 const incomeChangePercent = computed(() => getChangePercent(totalIncome.value, previousIncome.value))
 const expenseChangePercent = computed(() => getChangePercent(totalExpense.value, previousExpense.value))
@@ -3478,6 +3556,29 @@ function doughnutOptions(): ChartOptions<'doughnut'> {
   }
 }
 
+function doughnutDatasetOptions(emptyLabel = 'هنوز داده‌ای ثبت نشده است'): ChartOptions<'doughnut'> {
+  return {
+    ...baseChartOptions(),
+    cutout: '64%',
+    plugins: {
+      ...baseChartOptions().plugins,
+      tooltip: {
+        ...baseChartOptions().plugins?.tooltip,
+        callbacks: {
+          label: (context: TooltipItem<'doughnut'>) => {
+            const dataset = context.dataset.data.map((item) => Number(item) || 0)
+            const total = dataset.reduce((sum, item) => sum + item, 0)
+            const value = Number(context.raw ?? 0)
+            const percent = total ? Math.round((value / total) * 100) : 0
+
+            return total ? `${context.label}: ${formatCompact(value)} (${toPersianNumber(percent)}٪)` : emptyLabel
+          },
+        },
+      },
+    },
+  }
+}
+
 function barOptions(): ChartOptions<'bar'> {
   return {
     ...baseChartOptions(),
@@ -3731,6 +3832,22 @@ function createCharts() {
       options: cashFlowOptions(),
     })
   }
+
+  if (!statsMonthlyTrendChart.value && statsMonthlyTrendCanvas.value) {
+    statsMonthlyTrendChart.value = new Chart(statsMonthlyTrendCanvas.value, {
+      type: 'line',
+      data: statsMonthlyTrendChartData.value,
+      options: lineOptions(),
+    })
+  }
+
+  if (!statsCommitmentChart.value && statsCommitmentCanvas.value) {
+    statsCommitmentChart.value = new Chart(statsCommitmentCanvas.value, {
+      type: 'doughnut',
+      data: statsCommitmentChartData.value,
+      options: doughnutDatasetOptions('هنوز تعهدی ثبت نشده است'),
+    })
+  }
 }
 
 function syncCharts() {
@@ -3788,6 +3905,16 @@ function syncCharts() {
     statsPaymentMethodChart.value.data = statsPaymentMethodChartData.value
     statsPaymentMethodChart.value.update('none')
   }
+
+  if (statsMonthlyTrendChart.value) {
+    statsMonthlyTrendChart.value.data = statsMonthlyTrendChartData.value
+    statsMonthlyTrendChart.value.update('none')
+  }
+
+  if (statsCommitmentChart.value) {
+    statsCommitmentChart.value.data = statsCommitmentChartData.value
+    statsCommitmentChart.value.update('none')
+  }
 }
 
 function scheduleChartSync() {
@@ -3819,6 +3946,8 @@ function destroyCharts() {
   statsCashFlowChart.value?.destroy()
   statsEssentialChart.value?.destroy()
   statsPaymentMethodChart.value?.destroy()
+  statsMonthlyTrendChart.value?.destroy()
+  statsCommitmentChart.value?.destroy()
   expenseShareChart.value = null
   categoryBarChart.value = null
   trendLineChart.value = null
@@ -3829,6 +3958,8 @@ function destroyCharts() {
   statsCashFlowChart.value = null
   statsEssentialChart.value = null
   statsPaymentMethodChart.value = null
+  statsMonthlyTrendChart.value = null
+  statsCommitmentChart.value = null
 }
 
 function bindMobileViewport() {
@@ -3866,7 +3997,7 @@ export function useBudgetyar() {
     debtForm, editingDebtId, debtPrincipalAmountInWords, debtRemainingAmountInWords, debtMinimumPaymentInWords, debtStartDatePickerValue, debtTargetPayoffDatePickerValue,
     categorizationRuleForm, editingCategorizationRuleId, ruleMinAmountInWords, ruleMaxAmountInWords,
     installPrompt, isStandalone, isAndroidNative, isNotificationsLoading, bankApps, bankSuggestions, selectedBankPackage, bankNotificationStatus,
-    expenseShareCanvas, categoryBarCanvas, trendLineCanvas, statsExpenseMixCanvas, statsBudgetUsageCanvas, statsDailyExpenseCanvas, statsWeeklyFlowCanvas, statsCashFlowCanvas, statsEssentialCanvas, statsPaymentMethodCanvas,
+    expenseShareCanvas, categoryBarCanvas, trendLineCanvas, statsExpenseMixCanvas, statsBudgetUsageCanvas, statsDailyExpenseCanvas, statsWeeklyFlowCanvas, statsCashFlowCanvas, statsEssentialCanvas, statsPaymentMethodCanvas, statsMonthlyTrendCanvas, statsCommitmentCanvas,
     currentMonthTransactions, currentWeekTransactions, expenseTransactions, incomeTransactions, weeklyExpenseTransactions, weeklyIncomeTransactions,
     totalIncome, totalExpense, creditExpense, creditRemaining, cashExpense, cashBeforeCreditPayment, balanceAfterCreditPayment, balanceAfterCommitments,
     loanedExpense, essentialExpense, nonEssentialExpense, weeklyIncome, weeklyExpense, weeklyCreditExpense, weeklyBalance, totalBudget, weeklyBudgetAllowance, balance, budgetUsage, savingsPercent,
@@ -3879,7 +4010,7 @@ export function useBudgetyar() {
     activeCategorizationRules, suggestedCategorizationRules,
     recentMonthlyIncome, averageMonthlyIncome, lowestRecentMonthlyIncome, highestRecentMonthlyIncome, incomeVolatilityPercent, recommendedBudgetBase, recommendedEssentialBudget, recommendedSavingBudget, recommendedFlexibleBudget, badMonthReserveSuggestion, irregularIncomeWarnings,
     financialHealthScore, financialHealthLevel, financialHealthSuggestions, financialHealthWarnings, financialHealthStrengths,
-    filteredTransactions, dailyTrend, hasExpenseData, expenseShareChartData, categoryBarChartData, trendLineChartData, dailyExpensePoints, weeklyFlowPoints, budgetAnalysisItems, statsExpenseMixChartData, statsBudgetUsageChartData, statsDailyExpenseChartData, statsWeeklyFlowChartData, statsCashFlowChartData, statsEssentialChartData, statsPaymentMethodChartData,
+    filteredTransactions, dailyTrend, hasExpenseData, expenseShareChartData, categoryBarChartData, trendLineChartData, dailyExpensePoints, weeklyFlowPoints, budgetAnalysisItems, monthlyTrendPoints, hasMonthlyTrendData, commitmentTotal, flexibleAfterCommitments, statsExpenseMixChartData, statsBudgetUsageChartData, statsDailyExpenseChartData, statsWeeklyFlowChartData, statsCashFlowChartData, statsEssentialChartData, statsPaymentMethodChartData, statsMonthlyTrendChartData, statsCommitmentChartData,
     summaryLines, insights, dashboardCards, widgets, statsItems,
     getCategory, normalizeDigits, normalizeJalaliDate, getJalaliInputDay, getTrendDays, getPreviousMonthPrefix, addJalaliMonths, getInstallmentDueDate, getInstallmentStatus, getInstallmentStatusLabel, getCurrentWeekRange, getWeekdayLabel, getJalaliMonthPrefix, getCurrentJalaliDate, formatJalaliInputDate, formatDisplayJalaliDate, jalaliInputToIso, isoToJalaliInput, toPersianNumber, parseMoneyInput, formatMoneyInput, formatMoneyWords, formatMoney, formatCompact, progressPercent, getChangePercent, formatPercentHint, formatChangeSentence, getRiskLabel, getFinancialHealthLevelLabel,
     selectSection, openModal, editTransaction, saveTransaction, removeTransaction, refreshBankNotifications, openNotificationAccessSettings, updateSelectedBankPackage, acceptBankSuggestion, dismissBankSuggestion, formatSuggestionDate, updateMoneyInput, updateCreditLimit, updateBudget, addCategory, deleteCategory, addInstallmentPlan, editInstallmentPlan, cancelInstallmentEdit, payInstallment, removeInstallmentPlan,
@@ -4180,6 +4311,8 @@ export function startBudgetyar() {
       statsCashFlowChartData,
       statsEssentialChartData,
       statsPaymentMethodChartData,
+      statsMonthlyTrendChartData,
+      statsCommitmentChartData,
     ],
     () => {
       nextTick(scheduleChartSync)

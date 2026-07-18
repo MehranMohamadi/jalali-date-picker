@@ -930,12 +930,14 @@ textarea {
 }
 
 .pie-chart.empty canvas,
-.stats-polar-chart.empty canvas {
+.stats-polar-chart.empty canvas,
+.chart-canvas.empty canvas {
   opacity: 0.42;
 }
 
 .pie-chart > span,
-.stats-polar-chart > span {
+.stats-polar-chart > span,
+.chart-canvas > span {
   color: var(--muted);
   display: grid;
   font-weight: 800;
@@ -973,9 +975,77 @@ textarea {
   min-height: 292px;
 }
 
+.analytics-chart-grid {
+  align-items: stretch;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.analytics-chart-grid .stats-chart-panel {
+  display: grid;
+  gap: 10px;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.analytics-stats-grid {
+  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+}
+
 .report-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   margin-top: 14px;
+}
+
+.analytics-summary-card {
+  display: grid;
+  gap: 12px;
+}
+
+.analytics-snapshot-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.analytics-snapshot-grid span {
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.12), rgba(96, 165, 250, 0.08));
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px;
+}
+
+.analytics-snapshot-grid small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.analytics-snapshot-grid b {
+  color: var(--text);
+  font-size: 0.92rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analysis-note-grid {
+  display: grid;
+  gap: 7px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.analysis-note-grid p {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted-2);
+  font-size: 0.82rem;
+  line-height: 1.8;
+  margin: 0;
+  padding: 9px 10px;
 }
 
 .report-grid span,
@@ -2851,6 +2921,8 @@ body .date-picker-popover .jalali-calendar.jalali-calendar {
   .settings-grid,
   .stats-grid,
   .stats-analysis-grid,
+  .analytics-snapshot-grid,
+  .analysis-note-grid,
   .dashboard-grid,
   .notification-status-grid {
     grid-template-columns: 1fr;
@@ -2920,6 +2992,14 @@ body .date-picker-popover .jalali-calendar.jalali-calendar {
   .stats-polar-chart {
     height: 210px;
     min-height: 210px;
+  }
+
+  .analytics-chart-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-snapshot-grid span {
+    padding: 9px;
   }
 
   .filters {
@@ -3454,6 +3534,12 @@ body.budgetyar-light tr,
 body.budgetyar-light .cashflow-timeline span {
   background: #fff;
   border-color: var(--line);
+}
+
+body.budgetyar-light .analytics-snapshot-grid span,
+body.budgetyar-light .analysis-note-grid p {
+  background: #fff;
+  border-color: #dbeafe;
 }
 
 body.budgetyar-light .nav-item {
