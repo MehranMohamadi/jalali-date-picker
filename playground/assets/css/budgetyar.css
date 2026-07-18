@@ -1377,6 +1377,33 @@ textarea {
   margin: 14px 0;
 }
 
+.transaction-filters {
+  align-items: center;
+  gap: 7px;
+  grid-template-columns: minmax(160px, 1.45fr) repeat(4, minmax(92px, 0.82fr)) minmax(190px, 1.25fr);
+  margin: 8px 0 10px;
+}
+
+.transaction-filters input[type='search'],
+.transaction-filters .budgetyar-select-trigger,
+.transaction-filters .date-range-filter .jalali-range-picker__input {
+  min-height: 38px !important;
+}
+
+.transaction-filters input[type='search'],
+.transaction-filters .budgetyar-select-trigger {
+  padding-block: 7px;
+}
+
+.transaction-filters .budgetyar-select-trigger {
+  gap: 7px;
+  padding-inline: 10px 9px;
+}
+
+.transaction-filters .date-range-filter .jalali-range-picker__input {
+  padding-block: 7px !important;
+}
+
 .date-picker-field,
 .date-range-filter {
   max-width: none;
@@ -1447,6 +1474,96 @@ th {
 .transaction-actions {
   gap: 6px;
   justify-content: flex-start;
+}
+
+.category-expense-summary {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  display: grid;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 9px;
+}
+
+.category-expense-summary__head {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.category-expense-summary__head span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.category-expense-summary__head strong {
+  color: #fda4af;
+  direction: ltr;
+  font-size: 0.88rem;
+}
+
+.category-expense-chips {
+  display: grid;
+  gap: 7px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.category-expense-chip {
+  align-items: center;
+  background: rgba(2, 6, 23, 0.28);
+  border: 1px solid rgba(148, 163, 184, 0.13);
+  border-radius: 10px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  min-width: 0;
+  padding: 7px 8px;
+}
+
+.category-expense-chip__icon {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  display: inline-flex;
+  font-size: 0.96rem;
+  height: 30px;
+  justify-content: center;
+  width: 30px;
+}
+
+.category-expense-chip div {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.category-expense-chip strong,
+.category-expense-chip small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.category-expense-chip strong {
+  color: var(--text);
+  font-size: 0.78rem;
+}
+
+.category-expense-chip small {
+  color: var(--muted);
+  font-size: 0.66rem;
+}
+
+.category-expense-chip b {
+  color: #fda4af;
+  direction: ltr;
+  font-size: 0.8rem;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .transaction-compact-list {
@@ -3430,6 +3547,26 @@ body.budgetyar-light .transaction-compact-card:hover {
   background: #fff;
 }
 
+body.budgetyar-light .category-expense-summary {
+  background: rgba(255, 255, 255, 0.82);
+  border-color: var(--line);
+}
+
+body.budgetyar-light .category-expense-chip {
+  background: #fff;
+  border-color: #dbeafe;
+}
+
+body.budgetyar-light .category-expense-chip__icon {
+  background: #f8fafc;
+  border-color: #dbeafe;
+}
+
+body.budgetyar-light .category-expense-summary__head strong,
+body.budgetyar-light .category-expense-chip b {
+  color: #be123c;
+}
+
 body.budgetyar-light .modal-backdrop,
 body.budgetyar-light .mobile-menu-backdrop {
   background: rgba(15, 23, 42, 0.28);
@@ -3484,6 +3621,34 @@ body.budgetyar-light .toast {
     height: 27px;
     min-height: 27px;
     width: 27px;
+  }
+
+  .transaction-filters {
+    gap: 6px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-top: 6px;
+  }
+
+  .transaction-filters input[type='search'] {
+    grid-column: 1 / -1;
+  }
+
+  .transaction-filters .date-range-filter {
+    grid-column: span 2;
+  }
+
+  .transaction-filters .budgetyar-select-trigger,
+  .transaction-filters input[type='search'],
+  .transaction-filters .date-range-filter .jalali-range-picker__input {
+    min-height: 36px !important;
+  }
+
+  .category-expense-summary {
+    padding: 8px;
+  }
+
+  .category-expense-chips {
+    grid-template-columns: 1fr;
   }
 
   body.budgetyar-light {
