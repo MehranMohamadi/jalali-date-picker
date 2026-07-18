@@ -15,14 +15,14 @@ export default defineNuxtConfig({
         lang: 'fa',
         dir: 'rtl',
       },
-      title: 'بودجه‌یار | مدیریت بودجه شخصی',
+      title: 'پولدار | مدیریت هوشمند دخل‌وخرج',
       meta: [
         { name: 'theme-color', content: '#050816' },
         { name: 'mobile-web-app-capable', content: 'yes' },
         { name: 'apple-mobile-web-app-capable', content: 'yes' },
-        { name: 'apple-mobile-web-app-title', content: 'بودجه‌یار' },
+        { name: 'apple-mobile-web-app-title', content: 'پولدار' },
         { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
-        { name: 'description', content: 'داشبورد فارسی مدیریت بودجه ماهانه با رویکرد موبایل‌فرست و آفلاین‌فرست' },
+        { name: 'description', content: 'داشبورد فارسی مدیریت دخل‌وخرج، هدف‌های مالی و پس‌انداز با رویکرد آفلاین‌فرست' },
       ],
       link: [
         { rel: 'manifest', href: '/manifest.webmanifest' },

@@ -1,4 +1,4 @@
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from 'vue'
+﻿import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from 'vue'
 
 import {
   Chart,
@@ -13,10 +13,6 @@ import {
   buildCashflowTimeline,
   getCashflowRiskLevel,
   getPurchaseDecision,
-  goalProgressPercent,
-  goalRemainingAmount,
-  suggestedMonthlySaving,
-  suggestedWeeklySaving,
   getRecurringNextDueDate as getPlanningRecurringNextDueDate,
   type CashflowForecastDay,
   type CashflowRiskLevel,
@@ -34,6 +30,16 @@ import {
   type FinancialHealthLevel,
   type IncomeBudgetingMode,
 } from '../../src/utils/budgetyarAdvancedFinance'
+import {
+  calculateGoalScenario,
+  calculateGoalSnapshot,
+  formatGoalHealthLabel,
+  formatGoalModeLabel,
+  type GoalCommitmentMode,
+  type GoalMarketRates,
+  type GoalTargetValuePolicy,
+  type GoalTrackingMode,
+} from '../../src/utils/budgetyarGoals'
 
 Chart.register(...registerables)
 const BankNotifications = registerPlugin<BankNotificationsPlugin>('BankNotifications')
@@ -44,6 +50,7 @@ export type CashFlowMode = 'regular' | 'afterCredit' | 'afterCommitments'
 export type ThemeMode = 'dark' | 'light'
 export type GoalPriority = 'low' | 'medium' | 'high'
 export type GoalUnit = 'irr' | 'goldGram' | 'silverGram' | 'usd'
+export type GoalStatus = 'active' | 'paused' | 'completed' | 'archived'
 export type RecurringItemType = 'income' | 'expense'
 export type CashflowForecastPeriod = 'untilEndOfMonth' | 'next30Days' | 'next90Days'
 export type BudgetyarDebtType = 'loan' | 'credit' | 'personal' | 'installment' | 'other'
@@ -102,15 +109,46 @@ export interface BudgetyarGoal {
   targetAmount: number
   savedAmount: number
   unit?: GoalUnit
+  trackingMode?: GoalTrackingMode
+  baseCurrency?: 'irr' | 'usd'
+  targetQuantity?: number
+  assetCode?: string
+  targetValuePolicy?: GoalTargetValuePolicy
+  inflationRate?: number
+  priceSource?: string
+  contributionFrequency?: 'none' | 'weekly' | 'monthly' | 'salary-day' | 'custom'
+  plannedContribution?: number
+  reminderPolicy?: 'none' | 'before-due' | 'every-week' | 'manual'
+  commitmentMode?: GoalCommitmentMode
+  coolingOffPeriod?: number
   targetDate?: string
   categoryId?: string
   priority: GoalPriority
   icon?: string
   color?: string
   note?: string
+  status?: GoalStatus
   isArchived: boolean
   createdAt: string
   updatedAt: string
+}
+
+export interface BudgetyarGoalTransaction {
+  id: string
+  goalId: string
+  type: 'DEPOSIT' | 'WITHDRAWAL' | 'TRANSFER_IN' | 'TRANSFER_OUT' | 'ADJUSTMENT' | 'ASSET_PURCHASE' | 'ASSET_SALE'
+  baseAmount: number
+  quantity: number
+  unitPrice: number
+  fee: number
+  currency: 'irr' | 'usd'
+  assetCode?: string
+  occurredAt: string
+  note?: string
+  sourceAccountId?: string
+  relatedTransactionId?: string
+  idempotencyKey: string
+  createdAt: string
 }
 
 export interface BudgetyarRecurringItem {
@@ -289,6 +327,7 @@ const CREDIT_STORAGE_KEY = 'budgetyar-credit-limit-v1'
 const INSTALLMENTS_STORAGE_KEY = 'budgetyar-installments-v1'
 const THEME_STORAGE_KEY = 'budgetyar-theme-v1'
 const GOALS_STORAGE_KEY = 'budgetyar-goals-v1'
+const GOAL_TRANSACTIONS_STORAGE_KEY = 'budgetyar-goal-transactions-v1'
 const RECURRING_ITEMS_STORAGE_KEY = 'budgetyar-recurring-items-v1'
 const DEBTS_STORAGE_KEY = 'budgetyar-debts-v1'
 const CATEGORIZATION_RULES_STORAGE_KEY = 'budgetyar-categorization-rules-v1'
@@ -435,12 +474,13 @@ const formDatePickerValue = computed({
 
 const categoryForm = reactive({
   label: '',
-  icon: '✨',
+  icon: 'âœ¨',
   budget: 1000000,
 })
 const installments = ref<InstallmentPlan[]>([])
 const goals = ref<BudgetyarGoal[]>([])
-const marketRates = ref<{ usd: number; gold18: number; updatedAt: string } | null>(null)
+const goalTransactions = ref<BudgetyarGoalTransaction[]>([])
+const marketRates = ref<GoalMarketRates | null>(null)
 const marketRatesLoading = ref(false)
 const marketRatesError = ref('')
 const recurringItems = ref<BudgetyarRecurringItem[]>([])
@@ -469,6 +509,18 @@ const goalForm = reactive({
   targetAmount: 0,
   savedAmount: 0,
   unit: 'irr' as GoalUnit,
+  trackingMode: 'FIXED_MONEY' as GoalTrackingMode,
+  baseCurrency: 'irr' as 'irr' | 'usd',
+  targetQuantity: 0,
+  assetCode: '',
+  targetValuePolicy: 'NOMINAL' as GoalTargetValuePolicy,
+  inflationRate: 0,
+  priceSource: '',
+  contributionFrequency: 'monthly' as 'none' | 'weekly' | 'monthly' | 'salary-day' | 'custom',
+  plannedContribution: 0,
+  reminderPolicy: 'before-due' as 'none' | 'before-due' | 'every-week' | 'manual',
+  commitmentMode: 'NONE' as GoalCommitmentMode,
+  coolingOffPeriod: 0,
   targetDate: '',
   categoryId: '',
   priority: 'medium' as GoalPriority,
@@ -746,12 +798,24 @@ const commitmentInstallmentDue = computed(() =>
 const balanceAfterCommitments = computed(() => cashBeforeCreditPayment.value - creditExpense.value - commitmentInstallmentDue.value)
 const activeGoals = computed(() => goals.value.filter((goal) => !goal.isArchived))
 const archivedGoals = computed(() => goals.value.filter((goal) => goal.isArchived))
-const totalGoalsTarget = computed(() => activeGoals.value.reduce((sum, goal) => sum + goal.targetAmount, 0))
-const totalGoalsSaved = computed(() => activeGoals.value.reduce((sum, goal) => sum + goal.savedAmount, 0))
-const totalGoalsRemaining = computed(() => activeGoals.value.reduce((sum, goal) => sum + getGoalRemainingAmount(goal), 0))
+const activeGoalSnapshots = computed(() =>
+  activeGoals.value.map((goal) => ({
+    goal,
+    snapshot: calculateGoalSnapshot(goal, goalTransactions.value, marketRates.value, todayKey),
+  })),
+)
+const archivedGoalSnapshots = computed(() =>
+  archivedGoals.value.map((goal) => ({
+    goal,
+    snapshot: calculateGoalSnapshot(goal, goalTransactions.value, marketRates.value, todayKey),
+  })),
+)
+const totalGoalsTarget = computed(() => activeGoalSnapshots.value.reduce((sum, item) => sum + (item.snapshot.currentRequiredAmount ?? item.goal.targetAmount), 0))
+const totalGoalsSaved = computed(() => activeGoalSnapshots.value.reduce((sum, item) => sum + item.snapshot.netSavedAmount, 0))
+const totalGoalsRemaining = computed(() => activeGoalSnapshots.value.reduce((sum, item) => sum + item.snapshot.remainingAmount, 0))
 const nearestGoal = computed(() =>
-  [...activeGoals.value]
-    .sort((a, b) => getGoalProgress(b) - getGoalProgress(a) || (a.targetDate || '9999/99/99').localeCompare(b.targetDate || '9999/99/99'))[0],
+  [...activeGoalSnapshots.value]
+    .sort((a, b) => b.snapshot.progressPercent - a.snapshot.progressPercent || (a.goal.targetDate || '9999/99/99').localeCompare(b.goal.targetDate || '9999/99/99'))[0]?.goal,
 )
 const activeRecurringItems = computed(() => recurringItems.value.filter((item) => item.isActive))
 const recurringSummaries = computed(() =>
@@ -1210,7 +1274,7 @@ const widgets = computed(() => [
   { label: 'درآمد امروز', value: formatMoney(todayIncome.value), icon: '💰' },
   { label: 'اعتبار مانده', value: formatMoney(creditRemaining.value), icon: '💳' },
   { label: 'قسط ماه', value: formatMoney(monthlyInstallmentDue.value), icon: '🧾' },
-  { label: 'سررسید نزدیک', value: toPersianNumber(dueRecurringItems.value.length + overdueRecurringItems.value.length + upcomingRecurringItems.value.length), icon: '⏱' },
+  { label: 'سررسید نزدیک', value: toPersianNumber(dueRecurringItems.value.length + overdueRecurringItems.value.length + upcomingRecurringItems.value.length), icon: 'â±' },
 ])
 
 const statsItems = computed(() => [
@@ -1671,7 +1735,7 @@ function updateBudget(category: CategoryKey, event: Event) {
 
 function addCategory() {
   const label = categoryForm.label.trim()
-  const icon = categoryForm.icon.trim() || '✨'
+  const icon = categoryForm.icon.trim() || 'âœ¨'
 
   if (!label) return
 
@@ -1681,7 +1745,7 @@ function addCategory() {
 
   categories.value = [...categories.value, { key, label, icon, color }]
   budgets.value = [...budgets.value, { category: key, budget: Math.max(0, Number(categoryForm.budget) || 0) }]
-  Object.assign(categoryForm, { label: '', icon: '✨', budget: 1000000 })
+  Object.assign(categoryForm, { label: '', icon: 'âœ¨', budget: 1000000 })
   pushToast('دسته‌بندی اضافه شد ✅')
 }
 
@@ -1806,6 +1870,71 @@ function removeInstallmentPlan(id: number) {
   pushToast('قسط حذف شد')
 }
 
+function getGoalSnapshot(goal: BudgetyarGoal) {
+  return calculateGoalSnapshot(goal, goalTransactions.value, marketRates.value, todayKey)
+}
+
+function getGoalSummary(goal: BudgetyarGoal) {
+  return getGoalSnapshot(goal)
+}
+
+function getGoalMarketPrice(goal: BudgetyarGoal) {
+  return getGoalSnapshot(goal).currentMarketPrice
+}
+
+function getGoalSavedValue(goal: BudgetyarGoal) {
+  const snapshot = getGoalSnapshot(goal)
+  return goal.trackingMode === 'ASSET_HOLDING' ? snapshot.currentMarketValue ?? snapshot.currentQuantity : snapshot.netSavedAmount
+}
+
+function getGoalTargetValue(goal: BudgetyarGoal) {
+  const snapshot = getGoalSnapshot(goal)
+  return snapshot.currentRequiredAmount ?? goal.targetAmount
+}
+
+function buildGoalTransaction(goal: BudgetyarGoal, type: BudgetyarGoalTransaction['type'], amount: number, note?: string): BudgetyarGoalTransaction {
+  const normalizedAmount = Math.max(0, amount)
+  const marketPrice = getGoalMarketPrice(goal) ?? 0
+  const isAssetMode = goal.trackingMode === 'ASSET_HOLDING'
+  const quantity = isAssetMode ? normalizedAmount : 0
+
+  return {
+    id: `${goal.id}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    goalId: goal.id,
+    type,
+    baseAmount: isAssetMode ? Math.round(quantity * marketPrice) : normalizedAmount,
+    quantity,
+    unitPrice: marketPrice,
+    fee: 0,
+    currency: goal.baseCurrency ?? 'irr',
+    assetCode: goal.assetCode || goal.unit,
+    occurredAt: todayKey,
+    note,
+    idempotencyKey: `${goal.id}-${type}-${Date.now()}`,
+    createdAt: todayKey,
+  }
+}
+
+function refreshGoalState(id: string) {
+  const goal = goals.value.find((item) => item.id === id)
+  if (!goal) return
+
+  const snapshot = getGoalSnapshot(goal)
+  const nextGoal: BudgetyarGoal = {
+    ...goal,
+    targetAmount: goal.trackingMode === 'ASSET_FUNDING'
+      ? (snapshot.currentRequiredAmount ?? goal.targetAmount)
+      : goal.trackingMode === 'ASSET_HOLDING'
+        ? (goal.targetQuantity ?? goal.targetAmount)
+        : goal.targetAmount,
+    savedAmount: goal.trackingMode === 'ASSET_HOLDING' ? snapshot.currentQuantity : snapshot.netSavedAmount,
+    status: goal.isArchived ? 'archived' : snapshot.progressPercent >= 100 ? 'completed' : goal.status ?? 'active',
+    updatedAt: todayKey,
+  }
+
+  goals.value = goals.value.map((item) => (item.id === id ? nextGoal : item))
+}
+
 function resetGoalForm() {
   editingGoalId.value = null
   Object.assign(goalForm, {
@@ -1813,6 +1942,18 @@ function resetGoalForm() {
     targetAmount: 0,
     savedAmount: 0,
     unit: 'irr',
+    trackingMode: 'FIXED_MONEY',
+    baseCurrency: 'irr',
+    targetQuantity: 0,
+    assetCode: '',
+    targetValuePolicy: 'NOMINAL',
+    inflationRate: 0,
+    priceSource: '',
+    contributionFrequency: 'monthly',
+    plannedContribution: 0,
+    reminderPolicy: 'before-due',
+    commitmentMode: 'NONE',
+    coolingOffPeriod: 0,
     targetDate: '',
     categoryId: '',
     priority: 'medium',
@@ -1825,15 +1966,31 @@ function resetGoalForm() {
 function addGoal() {
   const title = goalForm.title.trim()
   const targetAmount = Math.max(0, Number(goalForm.targetAmount) || 0)
-  if (!title || !targetAmount) return
+  const targetQuantity = Math.max(0, Number(goalForm.targetQuantity) || 0)
+  const savedAmount = Math.max(0, Number(goalForm.savedAmount) || 0)
+  if (!title) return
+  if (goalForm.trackingMode === 'FIXED_MONEY' && !targetAmount) return
+  if (goalForm.trackingMode !== 'FIXED_MONEY' && !targetQuantity && !targetAmount) return
 
   const existing = editingGoalId.value ? goals.value.find((goal) => goal.id === editingGoalId.value) : undefined
-  const goal: BudgetyarGoal = {
+  const baseGoal: BudgetyarGoal = {
     id: existing?.id ?? String(Date.now()),
     title,
     targetAmount,
-    savedAmount: Math.min(targetAmount, Math.max(0, Number(goalForm.savedAmount) || 0)),
+    savedAmount,
     unit: goalForm.unit,
+    trackingMode: goalForm.trackingMode,
+    baseCurrency: goalForm.baseCurrency,
+    targetQuantity: targetQuantity || undefined,
+    assetCode: goalForm.assetCode.trim() || undefined,
+    targetValuePolicy: goalForm.targetValuePolicy,
+    inflationRate: Math.max(0, Number(goalForm.inflationRate) || 0),
+    priceSource: goalForm.priceSource.trim() || undefined,
+    contributionFrequency: goalForm.contributionFrequency,
+    plannedContribution: Math.max(0, Number(goalForm.plannedContribution) || 0),
+    reminderPolicy: goalForm.reminderPolicy,
+    commitmentMode: goalForm.commitmentMode,
+    coolingOffPeriod: Math.max(0, Math.trunc(Number(goalForm.coolingOffPeriod) || 0)),
     targetDate: goalForm.targetDate ? normalizeJalaliDate(goalForm.targetDate) : undefined,
     categoryId: goalForm.categoryId || undefined,
     priority: goalForm.priority,
@@ -1841,11 +1998,33 @@ function addGoal() {
     color: goalForm.color || '#22d3ee',
     note: goalForm.note.trim(),
     isArchived: existing?.isArchived ?? false,
+    status: existing?.status ?? 'active',
     createdAt: existing?.createdAt ?? todayKey,
     updatedAt: todayKey,
   }
+  const snapshot = calculateGoalSnapshot(baseGoal, goalTransactions.value, marketRates.value, todayKey)
+  const goal: BudgetyarGoal = {
+    ...baseGoal,
+    targetAmount: baseGoal.trackingMode === 'ASSET_FUNDING'
+      ? (snapshot.currentRequiredAmount ?? targetAmount)
+      : baseGoal.trackingMode === 'ASSET_HOLDING'
+        ? (targetQuantity || targetAmount)
+        : targetAmount,
+    savedAmount: baseGoal.trackingMode === 'ASSET_HOLDING' ? (targetQuantity || savedAmount) : savedAmount,
+  }
 
   goals.value = existing ? goals.value.map((item) => (item.id === existing.id ? goal : item)) : [goal, ...goals.value]
+  const previousSavedAmount = existing?.savedAmount ?? 0
+  const delta = goal.savedAmount - previousSavedAmount
+  if (!existing && savedAmount > 0) {
+    goalTransactions.value = [buildGoalTransaction(goal, 'ADJUSTMENT', savedAmount, 'مقدار اولیه هدف'), ...goalTransactions.value]
+  } else if (existing && delta !== 0) {
+    const adjustmentType = goal.trackingMode === 'ASSET_HOLDING'
+      ? (delta > 0 ? 'ASSET_PURCHASE' : 'ASSET_SALE')
+      : (delta > 0 ? 'DEPOSIT' : 'WITHDRAWAL')
+    goalTransactions.value = [buildGoalTransaction(goal, adjustmentType, Math.abs(delta), delta > 0 ? 'افزایش موجودی هدف' : 'کاهش موجودی هدف'), ...goalTransactions.value]
+  }
+  refreshGoalState(goal.id)
   resetGoalForm()
   pushToast(existing ? 'هدف ویرایش شد ✅' : 'هدف مالی اضافه شد ✅')
 }
@@ -1857,6 +2036,18 @@ function editGoal(goal: BudgetyarGoal) {
     targetAmount: goal.targetAmount,
     savedAmount: goal.savedAmount,
     unit: goal.unit ?? 'irr',
+    trackingMode: goal.trackingMode ?? 'FIXED_MONEY',
+    baseCurrency: goal.baseCurrency ?? 'irr',
+    targetQuantity: goal.targetQuantity ?? 0,
+    assetCode: goal.assetCode ?? '',
+    targetValuePolicy: goal.targetValuePolicy ?? 'NOMINAL',
+    inflationRate: goal.inflationRate ?? 0,
+    priceSource: goal.priceSource ?? '',
+    contributionFrequency: goal.contributionFrequency ?? 'monthly',
+    plannedContribution: goal.plannedContribution ?? 0,
+    reminderPolicy: goal.reminderPolicy ?? 'before-due',
+    commitmentMode: goal.commitmentMode ?? 'NONE',
+    coolingOffPeriod: goal.coolingOffPeriod ?? 0,
     targetDate: goal.targetDate ?? '',
     categoryId: goal.categoryId ?? '',
     priority: goal.priority,
@@ -1873,6 +2064,7 @@ function updateGoal(id: string, patch: Partial<BudgetyarGoal>) {
 
 function deleteGoal(id: string) {
   goals.value = goals.value.filter((goal) => goal.id !== id)
+  goalTransactions.value = goalTransactions.value.filter((transaction) => transaction.goalId !== id)
   if (editingGoalId.value === id) resetGoalForm()
   pushToast('هدف حذف شد')
 }
@@ -1883,12 +2075,27 @@ function archiveGoal(id: string) {
   pushToast(goal?.isArchived ? 'هدف فعال شد' : 'هدف بایگانی شد')
 }
 
+function pauseGoal(id: string) {
+  const goal = goals.value.find((item) => item.id === id)
+  if (!goal || goal.isArchived || goal.status === 'completed') return
+  updateGoal(id, { status: 'paused' })
+  pushToast('هدف متوقف شد')
+}
+
+function resumeGoal(id: string) {
+  const goal = goals.value.find((item) => item.id === id)
+  if (!goal || goal.isArchived || goal.status !== 'paused') return
+  updateGoal(id, { status: 'active' })
+  pushToast('هدف ادامه پیدا کرد')
+}
+
 function addGoalContribution(goal: BudgetyarGoal, amount = 0) {
   const rawAmount = amount || Number(window.prompt('مبلغ واریز به هدف') || 0)
   const value = Math.max(0, rawAmount)
   if (!value) return
 
-  updateGoal(goal.id, { savedAmount: Math.min(goal.targetAmount, goal.savedAmount + value) })
+  goalTransactions.value = [buildGoalTransaction(goal, goal.trackingMode === 'ASSET_HOLDING' ? 'ASSET_PURCHASE' : 'DEPOSIT', value), ...goalTransactions.value]
+  refreshGoalState(goal.id)
   pushToast('پس‌انداز هدف بیشتر شد ✅')
 }
 
@@ -1896,17 +2103,37 @@ function withdrawFromGoal(goal: BudgetyarGoal, amount = 0) {
   const rawAmount = amount || Number(window.prompt('مبلغ برداشت از هدف') || 0)
   const value = Math.max(0, rawAmount)
   if (!value) return
+  const snapshot = getGoalSnapshot(goal)
+  const available = goal.trackingMode === 'ASSET_HOLDING' ? snapshot.currentQuantity : snapshot.netSavedAmount
+  if (value > available) {
+    pushToast('برداشت بیشتر از موجودی هدف ممکن نیست')
+    return
+  }
 
-  updateGoal(goal.id, { savedAmount: Math.max(0, goal.savedAmount - value) })
+  goalTransactions.value = [buildGoalTransaction(goal, goal.trackingMode === 'ASSET_HOLDING' ? 'ASSET_SALE' : 'WITHDRAWAL', value), ...goalTransactions.value]
+  refreshGoalState(goal.id)
   pushToast('برداشت از هدف ثبت شد')
 }
 
 function getGoalProgress(goal: BudgetyarGoal) {
-  return goalProgressPercent(goal)
+  return getGoalSnapshot(goal).progressPercent
 }
 
 function getGoalUnitLabel(unit: GoalUnit = 'irr') {
   return unit === 'goldGram' ? 'گرم طلا' : unit === 'silverGram' ? 'گرم نقره' : unit === 'usd' ? 'دلار' : 'تومان'
+}
+
+function getGoalTransactionTypeLabel(type: BudgetyarGoalTransaction['type']) {
+  const labels: Record<BudgetyarGoalTransaction['type'], string> = {
+    DEPOSIT: 'واریز',
+    WITHDRAWAL: 'برداشت',
+    TRANSFER_IN: 'انتقال به هدف',
+    TRANSFER_OUT: 'انتقال از هدف',
+    ADJUSTMENT: 'اصلاح موجودی',
+    ASSET_PURCHASE: 'خرید دارایی',
+    ASSET_SALE: 'فروش دارایی',
+  }
+  return labels[type] ?? type
 }
 
 function formatGoalAmount(amount: number, unit: GoalUnit = 'irr') {
@@ -1914,6 +2141,16 @@ function formatGoalAmount(amount: number, unit: GoalUnit = 'irr') {
 }
 
 function getGoalEstimatedValue(goal: BudgetyarGoal, amount = goal.savedAmount) {
+  const snapshot = getGoalSnapshot(goal)
+  if (goal.trackingMode === 'ASSET_HOLDING') {
+    if (snapshot.currentMarketPrice === null) return null
+    const quantity = amount === goal.targetAmount ? (goal.targetQuantity ?? goal.targetAmount) : snapshot.currentQuantity
+    return Math.round(quantity * snapshot.currentMarketPrice)
+  }
+  if (goal.trackingMode === 'ASSET_FUNDING') {
+    if (amount === goal.targetAmount) return snapshot.currentRequiredAmount ?? null
+    return snapshot.netSavedAmount
+  }
   if (goal.unit === 'usd' && marketRates.value?.usd) return Math.round(amount * marketRates.value.usd)
   if (goal.unit === 'goldGram' && marketRates.value?.gold18) return Math.round(amount * marketRates.value.gold18)
   if (goal.unit === 'irr') return amount
@@ -1921,15 +2158,31 @@ function getGoalEstimatedValue(goal: BudgetyarGoal, amount = goal.savedAmount) {
 }
 
 function getGoalRemainingAmount(goal: BudgetyarGoal) {
-  return goalRemainingAmount(goal)
+  return getGoalSnapshot(goal).remainingAmount
 }
 
 function getGoalSuggestedMonthlySaving(goal: BudgetyarGoal) {
-  return suggestedMonthlySaving(goal, todayKey)
+  return getGoalSnapshot(goal).monthlyNeeded
 }
 
 function getGoalSuggestedWeeklySaving(goal: BudgetyarGoal) {
-  return suggestedWeeklySaving(goal, todayKey)
+  return getGoalSnapshot(goal).weeklyNeeded
+}
+
+function getGoalTrackingModeLabel(goal: BudgetyarGoal) {
+  return formatGoalModeLabel(goal.trackingMode ?? 'FIXED_MONEY')
+}
+
+function getGoalHealthLabel(goal: BudgetyarGoal) {
+  return formatGoalHealthLabel(getGoalSnapshot(goal).healthLevel)
+}
+
+function getGoalScenario(goal: BudgetyarGoal) {
+  return calculateGoalScenario(goal, goalTransactions.value, marketRates.value, todayKey)
+}
+
+function getGoalTransactions(goalId: string) {
+  return goalTransactions.value.filter((transaction) => transaction.goalId === goalId).slice(0, 8)
 }
 
 async function refreshMarketRates() {
@@ -2746,7 +2999,7 @@ function buildExcelReport() {
   </style>
 </head>
 <body>
-  <h1>گزارش بودجه‌یار</h1>
+  <h1>گزارش پولدار</h1>
   <p>درآمد ماه: ${formatMoney(totalIncome.value)}</p>
   <p>هزینه ماه: ${formatMoney(totalExpense.value)}</p>
   <p>پرداخت اعتبار آخر ماه: ${formatMoney(creditExpense.value)}</p>
@@ -2782,6 +3035,7 @@ function buildBackupJson() {
     budgets: budgets.value,
     installments: installments.value,
     goals: goals.value,
+    goalTransactions: goalTransactions.value,
     recurringItems: recurringItems.value,
     debts: debts.value,
     categorizationRules: categorizationRules.value,
@@ -2883,10 +3137,59 @@ function restoreGoals(value: unknown) {
   ).map((item) => ({
     ...item,
     unit: item.unit === 'goldGram' || item.unit === 'silverGram' || item.unit === 'usd' ? item.unit : 'irr',
+    trackingMode: item.trackingMode === 'ASSET_FUNDING' || item.trackingMode === 'ASSET_HOLDING' ? item.trackingMode : 'FIXED_MONEY',
+    baseCurrency: item.baseCurrency === 'usd' ? 'usd' : 'irr',
+    targetQuantity: typeof item.targetQuantity === 'number' ? item.targetQuantity : undefined,
+    assetCode: typeof item.assetCode === 'string' ? item.assetCode : undefined,
+    targetValuePolicy: item.targetValuePolicy === 'INFLATION_INDEXED' || item.targetValuePolicy === 'MARKET_LINKED' ? item.targetValuePolicy : 'NOMINAL',
+    inflationRate: typeof item.inflationRate === 'number' ? item.inflationRate : 0,
+    priceSource: typeof item.priceSource === 'string' ? item.priceSource : undefined,
+    contributionFrequency: item.contributionFrequency === 'weekly' || item.contributionFrequency === 'monthly' || item.contributionFrequency === 'salary-day' || item.contributionFrequency === 'custom' ? item.contributionFrequency : 'monthly',
+    plannedContribution: typeof item.plannedContribution === 'number' ? item.plannedContribution : 0,
+    reminderPolicy: item.reminderPolicy === 'every-week' || item.reminderPolicy === 'manual' || item.reminderPolicy === 'none' ? item.reminderPolicy : 'before-due',
+    commitmentMode: item.commitmentMode === 'SOFT_WARNING' || item.commitmentMode === 'REQUIRE_REASON' || item.commitmentMode === 'COOLING_OFF' ? item.commitmentMode : 'NONE',
+    coolingOffPeriod: typeof item.coolingOffPeriod === 'number' ? item.coolingOffPeriod : 0,
     isArchived: Boolean(item.isArchived),
+    status: item.status === 'paused' || item.status === 'completed' || item.status === 'archived' ? item.status : 'active',
     createdAt: typeof item.createdAt === 'string' ? item.createdAt : todayKey,
     updatedAt: typeof item.updatedAt === 'string' ? item.updatedAt : todayKey,
   }))
+}
+
+function restoreGoalTransactions(value: unknown) {
+  if (!Array.isArray(value)) return []
+
+  return value.filter((item): item is BudgetyarGoalTransaction =>
+    isRecord(item) &&
+    typeof item.id === 'string' &&
+    typeof item.goalId === 'string' &&
+    typeof item.baseAmount === 'number' &&
+    typeof item.quantity === 'number' &&
+    typeof item.unitPrice === 'number' &&
+    typeof item.fee === 'number' &&
+    typeof item.occurredAt === 'string' &&
+    typeof item.createdAt === 'string' &&
+    typeof item.idempotencyKey === 'string' &&
+    (item.type === 'DEPOSIT' || item.type === 'WITHDRAWAL' || item.type === 'TRANSFER_IN' || item.type === 'TRANSFER_OUT' || item.type === 'ADJUSTMENT' || item.type === 'ASSET_PURCHASE' || item.type === 'ASSET_SALE'),
+  ).map((item) => ({
+    ...item,
+    currency: item.currency === 'usd' ? 'usd' : 'irr',
+    assetCode: typeof item.assetCode === 'string' ? item.assetCode : undefined,
+    note: typeof item.note === 'string' ? item.note : undefined,
+    sourceAccountId: typeof item.sourceAccountId === 'string' ? item.sourceAccountId : undefined,
+    relatedTransactionId: typeof item.relatedTransactionId === 'string' ? item.relatedTransactionId : undefined,
+  }))
+}
+
+function seedGoalTransactionsFromLegacyGoals(goalList = goals.value) {
+  const seeded: BudgetyarGoalTransaction[] = []
+  goalList.forEach((goal) => {
+    const hasLedger = goalTransactions.value.some((transaction) => transaction.goalId === goal.id)
+    if (hasLedger || goal.savedAmount <= 0) return
+    seeded.push(buildGoalTransaction(goal, 'ADJUSTMENT', goal.savedAmount, 'مقدار اولیه هدف'))
+  })
+
+  return seeded
 }
 
 function restoreRecurringItems(value: unknown) {
@@ -2990,7 +3293,7 @@ async function importBackup(event: Event) {
   try {
     const backup = JSON.parse(await file.text()) as unknown
     if (!isRecord(backup) || backup.app !== 'budgetyar') {
-      pushToast('فایل بکاپ بودجه‌یار نیست')
+      pushToast('این فایل بکاپ پولدار نیست')
       return
     }
 
@@ -3000,6 +3303,8 @@ async function importBackup(event: Event) {
     budgets.value = restoreBudgets(backup.budgets)
     installments.value = restoreInstallments(backup.installments)
     goals.value = restoreGoals(backup.goals)
+    goalTransactions.value = restoreGoalTransactions((backup as Record<string, unknown>).goalTransactions)
+    goals.value.forEach((goal) => refreshGoalState(goal.id))
     recurringItems.value = restoreRecurringItems(backup.recurringItems)
     debts.value = restoreDebts(backup.debts)
     categorizationRules.value = restoreCategorizationRules(backup.categorizationRules)
@@ -3048,7 +3353,7 @@ function createExportFile(format: ExportFormat) {
   return {
     blob: new Blob([buildBackupJson()], { type: 'application/json;charset=utf-8' }),
     filename: `budgetyar-backup-${stamp}.json`,
-    message: 'بکاپ بودجه‌یار آماده ذخیره شد ✅',
+    message: 'بکاپ پولدار آماده ذخیره شد ✅',
   }
 }
 
@@ -3061,7 +3366,7 @@ async function saveBlobToDevice(blob: Blob, filename: string, successMessage: st
       await shareNavigator.share({
         files: [file],
         title: filename,
-        text: 'خروجی بودجه‌یار',
+        text: 'خروجی پولدار',
       })
       pushToast(successMessage)
       return
@@ -3550,7 +3855,7 @@ function unbindMobileViewport() {
 export function useBudgetyar() {
   return {
     activeSection, isMobileMenuOpen, isMobileViewport, navItems, months, years, today, todayKey, currentMonthYear, currentJalaliDate, currentMonthLength,
-    categories, transactions, budgets, installments, goals, recurringItems, debts, categorizationRules, incomeSettings, creditLimit, cashFlowMode, themeMode, cashflowForecastPeriod, selectedDebtStrategy, marketRates, marketRatesLoading, marketRatesError,
+    categories, transactions, budgets, installments, goals, goalTransactions, recurringItems, debts, categorizationRules, incomeSettings, creditLimit, cashFlowMode, themeMode, cashflowForecastPeriod, selectedDebtStrategy, marketRates, marketRatesLoading, marketRatesError,
     query, selectedMonth, selectedYear, selectedCategory, selectedType, dateRange, pickerDateRange,
     isModalOpen, formType, form, formAmountInWords, formDatePickerValue, editingId, toasts,
     categoryForm, installmentForm, editingInstallmentId, installmentAmountInWords, installmentStartDatePickerValue,
@@ -3577,7 +3882,7 @@ export function useBudgetyar() {
     summaryLines, insights, dashboardCards, widgets, statsItems,
     getCategory, normalizeDigits, normalizeJalaliDate, getJalaliInputDay, getTrendDays, getPreviousMonthPrefix, addJalaliMonths, getInstallmentDueDate, getInstallmentStatus, getInstallmentStatusLabel, getCurrentWeekRange, getWeekdayLabel, getJalaliMonthPrefix, getCurrentJalaliDate, formatJalaliInputDate, formatDisplayJalaliDate, jalaliInputToIso, isoToJalaliInput, toPersianNumber, parseMoneyInput, formatMoneyInput, formatMoneyWords, formatMoney, formatCompact, progressPercent, getChangePercent, formatPercentHint, formatChangeSentence, getRiskLabel, getFinancialHealthLevelLabel,
     selectSection, openModal, editTransaction, saveTransaction, removeTransaction, refreshBankNotifications, openNotificationAccessSettings, updateSelectedBankPackage, acceptBankSuggestion, dismissBankSuggestion, formatSuggestionDate, updateMoneyInput, updateCreditLimit, updateBudget, addCategory, deleteCategory, addInstallmentPlan, editInstallmentPlan, cancelInstallmentEdit, payInstallment, removeInstallmentPlan,
-    addGoal, editGoal, updateGoal, deleteGoal, archiveGoal, addGoalContribution, withdrawFromGoal, getGoalProgress, getGoalRemainingAmount, getGoalSuggestedMonthlySaving, getGoalSuggestedWeeklySaving, getGoalUnitLabel, formatGoalAmount, getGoalEstimatedValue,
+    addGoal, editGoal, updateGoal, deleteGoal, archiveGoal, pauseGoal, resumeGoal, addGoalContribution, withdrawFromGoal, getGoalProgress, getGoalRemainingAmount, getGoalSuggestedMonthlySaving, getGoalSuggestedWeeklySaving, getGoalUnitLabel, getGoalTransactionTypeLabel, formatGoalAmount, getGoalEstimatedValue, getGoalTrackingModeLabel, getGoalHealthLabel, getGoalScenario, getGoalTransactions, getGoalSummary, getGoalSavedValue, getGoalTargetValue,
     addRecurringItem, editRecurringItem, updateRecurringItem, deleteRecurringItem, toggleRecurringItem, getRecurringNextDueDate, markRecurringItemPaid, skipRecurringOccurrence, createTransactionFromRecurringItem, getRecurringStatusLabel, createPurchaseTransaction, setThemeMode, refreshMarketRates,
     addDebt, editDebt, updateDebt, deleteDebt, toggleDebt, recordDebtPayment, calculateDebtPayoffPlan,
     addCategorizationRule, editCategorizationRule, updateCategorizationRule, deleteCategorizationRule, toggleCategorizationRule, matchTransactionCategoryRule, applyCategorizationRulesToTransaction, applyCategorizationRulesToAllTransactions, suggestCategorizationRules, acceptSuggestedCategorizationRule, bulkUpdateTransactionCategory,
@@ -3604,7 +3909,7 @@ export function startBudgetyar() {
     window.addEventListener('appinstalled', () => {
       isStandalone.value = true
       installPrompt.value = null
-      pushToast('بودجه‌یار نصب شد ✅')
+      pushToast('پولدار نصب شد ✅')
     })
   
     const savedTransactions = localStorage.getItem(STORAGE_KEY)
@@ -3669,6 +3974,19 @@ export function startBudgetyar() {
         localStorage.removeItem(GOALS_STORAGE_KEY)
       }
     }
+
+    const savedGoalTransactions = localStorage.getItem(GOAL_TRANSACTIONS_STORAGE_KEY)
+    if (savedGoalTransactions) {
+      try {
+        goalTransactions.value = restoreGoalTransactions(JSON.parse(savedGoalTransactions))
+      } catch {
+        localStorage.removeItem(GOAL_TRANSACTIONS_STORAGE_KEY)
+      }
+    }
+    if (!goalTransactions.value.length && goals.value.length) {
+      goalTransactions.value = seedGoalTransactionsFromLegacyGoals(goals.value)
+    }
+    goals.value.forEach((goal) => refreshGoalState(goal.id))
 
     if (savedRecurringItems) {
       try {
@@ -3800,6 +4118,24 @@ export function startBudgetyar() {
   )
 
   watch(
+    goalTransactions,
+    (value) => {
+      localStorage.setItem(GOAL_TRANSACTIONS_STORAGE_KEY, JSON.stringify(value))
+    },
+    { deep: true },
+  )
+
+  watch(
+    marketRates,
+    () => {
+      activeGoals.value.forEach((goal) => {
+        if (goal.trackingMode !== 'FIXED_MONEY') refreshGoalState(goal.id)
+      })
+    },
+    { deep: true },
+  )
+
+  watch(
     recurringItems,
     (value) => {
       localStorage.setItem(RECURRING_ITEMS_STORAGE_KEY, JSON.stringify(value))
@@ -3855,4 +4191,5 @@ export function startBudgetyar() {
     nextTick(scheduleChartSync)
   })
 }
+
 

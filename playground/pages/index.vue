@@ -36,7 +36,7 @@ onBeforeUnmount(destroyCharts)
   <section class="dashboard-hero glass-panel">
     <div>
       <small>‏نمای امروز</small>
-      <h1>‏بودجه‌یار</h1>
+      <h1>‏پولدار</h1>
     </div>
     <div class="dashboard-quick-strip">
       <span v-for="widget in primaryWidgets" :key="widget.label">

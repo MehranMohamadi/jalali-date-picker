@@ -1,16 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="بودجه‌یار">
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="پولدار">
   <defs>
     <linearGradient id="g" x1="54" x2="458" y1="54" y2="458" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#22d3ee"/>
-      <stop offset=".52" stop-color="#2563eb"/>
-      <stop offset="1" stop-color="#7c3aed"/>
+      <stop stop-color="#4ade80"/>
+      <stop offset=".52" stop-color="#16a34a"/>
+      <stop offset="1" stop-color="#047857"/>
     </linearGradient>
     <filter id="s" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="48" stdDeviation="42" flood-color="#22d3ee" flood-opacity=".34"/>
+      <feDropShadow dx="0" dy="48" stdDeviation="42" flood-color="#22c55e" flood-opacity=".38"/>
     </filter>
   </defs>
-  <rect width="512" height="512" rx="128" fill="#050816"/>
+  <rect width="512" height="512" rx="128" fill="#03140d"/>
   <rect x="70" y="70" width="372" height="372" rx="102" fill="url(#g)" filter="url(#s)"/>
-  <path d="M162 299c30 41 72 62 126 62 59 0 101-30 101-75 0-51-45-67-104-80-48-10-67-19-67-40 0-19 19-32 51-32 35 0 65 14 91 40l22-43c-30-30-68-46-115-46-60 0-102 32-102 80 0 51 43 67 105 80 48 10 66 19 66 39 0 19-18 30-49 30-40 0-75-16-105-51l-20 36Z" fill="#fff"/>
-  <path d="M146 386h220" stroke="#fff" stroke-width="26" stroke-linecap="round" opacity=".72"/>
+  <rect x="112" y="163" width="288" height="186" rx="32" fill="#ecfdf5" stroke="#fff" stroke-width="14"/>
+  <path d="M147 195h40M325 317h40" stroke="#16a34a" stroke-width="16" stroke-linecap="round"/>
+  <circle cx="256" cy="256" r="62" fill="#22c55e"/>
+  <text x="256" y="297" fill="#fff" font-family="Arial, sans-serif" font-size="116" font-weight="800" text-anchor="middle">$</text>
+  <circle cx="160" cy="296" r="16" fill="#86efac"/><circle cx="352" cy="216" r="16" fill="#86efac"/>
 </svg>

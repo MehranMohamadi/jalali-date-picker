@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import { X } from 'lucide-vue-next'
+import { Banknote, X } from 'lucide-vue-next'
 
 interface NavItem {
   label: string
@@ -33,9 +33,9 @@ const groupedItems = computed(() => {
 <template>
   <aside class="sidebar glass-panel" :class="{ open }" aria-label="‏منوی اصلی">
     <div class="brand">
-      <span class="brand-mark" aria-hidden="true">ب</span>
+      <span class="brand-mark" aria-hidden="true"><Banknote :size="27" :stroke-width="2.4" /></span>
       <div>
-        <strong>‏بودجه‌یار</strong>
+        <strong>‏پولدار</strong>
         <small>‏مدیریت مالی شخصی</small>
       </div>
       <button class="drawer-close" type="button" aria-label="‏بستن منو" @click="emit('close')">

@@ -18,7 +18,7 @@ const emit = defineEmits<{
       <Menu :size="20" aria-hidden="true" />
     </button>
     <div class="mobile-title">
-      <strong>‏بودجه‌یار</strong>
+      <strong>‏پولدار</strong>
       <small>{{ title }}</small>
     </div>
     <button class="mobile-add" type="button" aria-label="‏ثبت هزینه" @click="emit('quickAdd')">

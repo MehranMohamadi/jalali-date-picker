@@ -131,9 +131,9 @@ small,
 
 .brand-mark {
   align-items: center;
-  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  background: linear-gradient(145deg, #4ade80 0%, #16a34a 52%, #047857 100%);
   border-radius: 8px;
-  box-shadow: 0 14px 28px rgba(20, 184, 166, 0.2);
+  box-shadow: 0 14px 28px rgba(22, 163, 74, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.28);
   color: #fff;
   display: inline-flex;
   font-weight: 900;
@@ -1691,6 +1691,31 @@ th {
   white-space: nowrap;
 }
 
+.goal-scenario-details {
+  margin-top: 12px;
+}
+
+.goal-ledger-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.goal-ledger-list span {
+  background: rgba(15, 23, 42, .28);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+}
+
+.goal-ledger-list b,
+.goal-ledger-list em {
+  min-width: 0;
+}
+
 @media (max-width: 760px) {
   .health-details {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1704,6 +1729,10 @@ th {
   .goal-transfer-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .goal-ledger-list span {
+    flex-direction: column;
   }
 }
 
