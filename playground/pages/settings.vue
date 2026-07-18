@@ -19,7 +19,7 @@ const {
 
 function updateThemeMode(event: Event) {
   const value = (event.target as HTMLSelectElement).value
-  setThemeMode(value === 'light' ? 'light' : 'dark')
+  setThemeMode(value === 'light' ? 'light' : value === 'forest' ? 'forest' : 'dark')
 }
 </script>
 
@@ -46,6 +46,7 @@ function updateThemeMode(event: Event) {
         <select :value="themeMode" @change="updateThemeMode">
           <option value="dark">تاریک</option>
           <option value="light">روشن</option>
+          <option value="forest">بنفش مه‌آلود</option>
         </select>
       </label>
       <label>زبان <select><option>فارسی</option></select></label>

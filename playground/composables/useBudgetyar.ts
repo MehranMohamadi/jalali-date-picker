@@ -47,7 +47,7 @@ const BankNotifications = registerPlugin<BankNotificationsPlugin>('BankNotificat
 export type TransactionType = 'income' | 'expense'
 export type PaymentMethod = 'cash' | 'credit'
 export type CashFlowMode = 'regular' | 'afterCredit' | 'afterCommitments'
-export type ThemeMode = 'dark' | 'light'
+export type ThemeMode = 'dark' | 'light' | 'forest'
 export type GoalPriority = 'low' | 'medium' | 'high'
 export type GoalUnit = 'irr' | 'goldGram' | 'silverGram' | 'usd'
 export type GoalStatus = 'active' | 'paused' | 'completed' | 'archived'
@@ -966,11 +966,11 @@ const moneyInputFormatter = new Intl.NumberFormat('fa-IR', {
   maximumFractionDigits: 0,
   useGrouping: true,
 })
-const chartTextColor = () => (themeMode.value === 'light' ? '#334155' : '#cbd5e1')
-const chartMutedColor = () => (themeMode.value === 'light' ? '#64748b' : '#94a3b8')
-const chartGridColor = () => (themeMode.value === 'light' ? 'rgba(15, 23, 42, .1)' : 'rgba(255, 255, 255, .08)')
-const chartTooltipBackground = () => (themeMode.value === 'light' ? 'rgba(255, 255, 255, .96)' : 'rgba(15, 23, 42, .94)')
-const chartTooltipBodyColor = () => (themeMode.value === 'light' ? '#0f172a' : '#f8fafc')
+const chartTextColor = () => (themeMode.value === 'light' ? '#334155' : themeMode.value === 'forest' ? '#ede9fe' : '#cbd5e1')
+const chartMutedColor = () => (themeMode.value === 'light' ? '#64748b' : themeMode.value === 'forest' ? '#aaa1c2' : '#94a3b8')
+const chartGridColor = () => (themeMode.value === 'light' ? 'rgba(15, 23, 42, .1)' : themeMode.value === 'forest' ? 'rgba(221, 214, 254, .1)' : 'rgba(255, 255, 255, .08)')
+const chartTooltipBackground = () => (themeMode.value === 'light' ? 'rgba(255, 255, 255, .96)' : themeMode.value === 'forest' ? 'rgba(29, 24, 50, .97)' : 'rgba(15, 23, 42, .94)')
+const chartTooltipBodyColor = () => (themeMode.value === 'light' ? '#0f172a' : themeMode.value === 'forest' ? '#f5f3ff' : '#f8fafc')
 
 const expenseShareChartData = computed<ChartData<'doughnut'>>(() => {
   const items = visibleCategoryTotals.value
@@ -1503,6 +1503,7 @@ function applyTheme(mode = themeMode.value) {
 
   document.body.classList.toggle('budgetyar-light', mode === 'light')
   document.body.classList.toggle('budgetyar-dark', mode === 'dark')
+  document.body.classList.toggle('budgetyar-forest', mode === 'forest')
 }
 
 function setThemeMode(mode: ThemeMode) {
@@ -4034,7 +4035,7 @@ export function startBudgetyar() {
       }
     }
 
-    if (savedThemeMode === 'light' || savedThemeMode === 'dark') {
+    if (savedThemeMode === 'light' || savedThemeMode === 'dark' || savedThemeMode === 'forest') {
       themeMode.value = savedThemeMode
     }
     applyTheme()

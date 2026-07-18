@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Pencil, Trash2 } from 'lucide-vue-next'
+import { ArrowDownLeft, Pencil, Trash2 } from 'lucide-vue-next'
 
 const budgetyar = useBudgetyar()
 const {
@@ -72,45 +72,42 @@ function showMoreTransactions() {
       />
     </div>
 
-    <div v-if="filteredTransactions.length" class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>نوع</th>
-            <th>عنوان</th>
-            <th>دسته</th>
-            <th>تاریخ</th>
-            <th>مبلغ</th>
-            <th>جزئیات</th>
-            <th>عملیات</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="item in visibleTransactions" :key="item.id">
-            <td><span class="pill" :class="item.type">{{ item.type === 'income' ? 'درآمد' : 'هزینه' }}</span></td>
-            <td>{{ item.title }}</td>
-            <td>{{ item.type === 'income' ? 'درآمد' : `${getCategory(item.category).icon} ${getCategory(item.category).label}` }}</td>
-            <td>{{ item.date }}</td>
-            <td>{{ formatMoney(item.amount) }}</td>
-            <td>
-              <div v-if="item.type === 'expense'" class="transaction-meta">
-                <span>{{ getPaymentMethodLabel(item) }}</span>
-                <span v-if="item.isEssential === false" class="nonessential-meta" title="غیرضروری" aria-label="غیرضروری">⚠️</span>
-                <span v-if="item.isLoan">قرض: {{ item.loanPerson }}</span>
-              </div>
-              <span v-else>-</span>
-            </td>
-            <td class="actions transaction-actions">
-              <button class="icon-action" type="button" aria-label="‏ویرایش تراکنش" title="ویرایش" @click="editTransaction(item)">
-                <Pencil :size="16" aria-hidden="true" />
-              </button>
-              <button class="icon-action danger" type="button" aria-label="‏حذف تراکنش" title="حذف" @click="removeTransaction(item.id)">
-                <Trash2 :size="16" aria-hidden="true" />
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <div v-if="filteredTransactions.length" class="transaction-compact-list">
+      <article v-for="item in visibleTransactions" :key="item.id" class="transaction-compact-card" :class="item.type">
+        <span class="transaction-compact-icon" aria-hidden="true">
+          <ArrowDownLeft v-if="item.type === 'income'" :size="18" />
+          <span v-else>{{ getCategory(item.category).icon }}</span>
+        </span>
+
+        <div class="transaction-compact-main">
+          <strong>{{ item.title }}</strong>
+          <small>
+            {{ item.type === 'income' ? 'درآمد' : getCategory(item.category).label }}
+            <i>·</i>
+            {{ item.date }}
+          </small>
+        </div>
+
+        <div v-if="item.type === 'expense'" class="transaction-compact-tags">
+          <span>{{ getPaymentMethodLabel(item) }}</span>
+          <span v-if="item.isEssential === false" class="nonessential-meta" title="غیرضروری" aria-label="غیرضروری">⚠️</span>
+          <span v-if="item.isLoan">قرض: {{ item.loanPerson }}</span>
+        </div>
+
+        <div class="transaction-compact-amount" :class="item.type">
+          <strong>{{ item.type === 'income' ? '+' : '−' }}{{ formatMoney(item.amount) }}</strong>
+          <small>{{ item.type === 'income' ? 'واریزی' : 'پرداختی' }}</small>
+        </div>
+
+        <div class="transaction-compact-actions">
+          <button class="icon-action" type="button" aria-label="‏ویرایش تراکنش" title="ویرایش" @click="editTransaction(item)">
+            <Pencil :size="15" aria-hidden="true" />
+          </button>
+          <button class="icon-action danger" type="button" aria-label="‏حذف تراکنش" title="حذف" @click="removeTransaction(item.id)">
+            <Trash2 :size="15" aria-hidden="true" />
+          </button>
+        </div>
+      </article>
       <div v-if="hasMoreTransactions" class="load-more-row">
         <button type="button" class="soft-button" @click="showMoreTransactions">
           نمایش بیشتر
