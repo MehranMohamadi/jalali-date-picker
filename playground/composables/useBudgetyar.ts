@@ -478,7 +478,7 @@ const formDatePickerValue = computed({
 
 const categoryForm = reactive({
   label: '',
-  icon: 'âœ¨',
+  icon: '✨',
   budget: 1000000,
 })
 const installments = ref<InstallmentPlan[]>([])
@@ -1071,6 +1071,7 @@ const weeklyFlowPoints = computed(() =>
 
 const budgetAnalysisItems = computed(() =>
   [...categoryTotals.value]
+    .filter((item) => item.budget > 0)
     .sort((a, b) => progressPercent(b.spent, b.budget) - progressPercent(a.spent, a.budget))
     .slice(0, 10),
 )
@@ -1323,7 +1324,7 @@ const projectedSavings = computed(() => {
 })
 
 const summaryLines = computed(() => [
-  `این ماه ${toPersianNumber(budgetUsage.value)}٪ بودجه مصرف شده است.`,
+  ...(totalBudget.value > 0 ? [`این ماه ${toPersianNumber(budgetUsage.value)}٪ بودجه مصرف شده است.`] : []),
   hasExpenseData.value ? `بیشترین هزینه مربوط به ${safeMaxCategory.value.label ?? 'بدون دسته'} بوده است.` : 'هنوز هزینه‌ای برای این ماه ثبت نشده است.',
   formatChangeSentence(expenseChangePercent.value, 'هزینه نسبت به ماه قبل افزایش داشته است.', 'هزینه نسبت به ماه قبل کمتر شده است.', 'هزینه نسبت به ماه قبل تغییری نکرده است.'),
 ])
@@ -1352,7 +1353,7 @@ const widgets = computed(() => [
   { label: 'درآمد امروز', value: formatMoney(todayIncome.value), icon: '💰' },
   { label: 'اعتبار مانده', value: formatMoney(creditRemaining.value), icon: '💳' },
   { label: 'قسط ماه', value: formatMoney(monthlyInstallmentDue.value), icon: '🧾' },
-  { label: 'سررسید نزدیک', value: toPersianNumber(dueRecurringItems.value.length + overdueRecurringItems.value.length + upcomingRecurringItems.value.length), icon: 'â±' },
+  { label: 'سررسید نزدیک', value: toPersianNumber(dueRecurringItems.value.length + overdueRecurringItems.value.length + upcomingRecurringItems.value.length), icon: '⏱' },
 ])
 
 const statsItems = computed(() => [
@@ -1814,7 +1815,7 @@ function updateBudget(category: CategoryKey, event: Event) {
 
 function addCategory() {
   const label = categoryForm.label.trim()
-  const icon = categoryForm.icon.trim() || 'âœ¨'
+  const icon = categoryForm.icon.trim() || '✨'
 
   if (!label) return
 
@@ -1824,7 +1825,7 @@ function addCategory() {
 
   categories.value = [...categories.value, { key, label, icon, color }]
   budgets.value = [...budgets.value, { category: key, budget: Math.max(0, Number(categoryForm.budget) || 0) }]
-  Object.assign(categoryForm, { label: '', icon: 'âœ¨', budget: 1000000 })
+  Object.assign(categoryForm, { label: '', icon: '✨', budget: 1000000 })
   pushToast('دسته‌بندی اضافه شد ✅')
 }
 
@@ -3854,6 +3855,11 @@ function syncCharts() {
   // Each page owns its canvas refs. Create/update only the charts whose
   // canvases are currently mounted; section labels may change independently
   // from the chart lifecycle.
+  if (statsBudgetUsageChart.value && !statsBudgetUsageCanvas.value) {
+    statsBudgetUsageChart.value.destroy()
+    statsBudgetUsageChart.value = null
+  }
+
   createCharts()
 
   if (expenseShareChart.value) {

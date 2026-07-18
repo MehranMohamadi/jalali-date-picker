@@ -16,9 +16,11 @@ const {
   statsMonthlyTrendCanvas,
   cashFlowMode,
   totalExpense,
+  totalBudget,
   commitmentTotal,
   flexibleAfterCommitments,
   balanceAfterCommitments,
+  budgetAnalysisItems,
   formatCompact,
   formatMoney,
   toPersianNumber,
@@ -27,8 +29,9 @@ const {
   destroyCharts,
 } = budgetyar
 
-const primaryStats = computed(() => statsItems.value.slice(0, 8))
-const secondaryStats = computed(() => statsItems.value.slice(8))
+const visibleStats = computed(() => statsItems.value.filter((item) => !item.label.includes('بودجه') || totalBudget.value > 0))
+const primaryStats = computed(() => visibleStats.value.slice(0, 8))
+const secondaryStats = computed(() => visibleStats.value.slice(8))
 
 onMounted(() => nextTick(scheduleChartSync))
 onBeforeUnmount(destroyCharts)
@@ -130,7 +133,7 @@ onBeforeUnmount(destroyCharts)
           </div>
         </section>
 
-        <section class="stats-chart-panel wide">
+        <section v-if="budgetAnalysisItems.length" class="stats-chart-panel wide">
           <div class="section-title compact">
             <div>
               <h2>مصرف بودجه</h2>
