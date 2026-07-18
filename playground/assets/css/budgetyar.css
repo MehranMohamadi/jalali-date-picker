@@ -991,6 +991,27 @@ textarea {
   grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
 }
 
+.analytics-stats-grid.compact {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.analytics-stats-grid.compact div {
+  padding: 9px;
+}
+
+.analytics-chart-grid.simplified {
+  gap: 10px;
+}
+
+.analytics-chart-grid.simplified .stats-chart-panel {
+  min-height: 0;
+}
+
+.analytics-priority-chart .stats-line-chart {
+  height: 260px;
+  min-height: 260px;
+}
+
 .report-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   margin-top: 14px;
@@ -1046,6 +1067,54 @@ textarea {
   line-height: 1.8;
   margin: 0;
   padding: 9px 10px;
+}
+
+.analysis-note-grid.compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.analysis-note-grid.compact p {
+  font-size: 0.78rem;
+  padding: 8px 9px;
+}
+
+.analytics-decision-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.75fr);
+}
+
+.analytics-insights,
+.analytics-alerts {
+  margin-top: 0;
+}
+
+.analytics-insights span {
+  font-size: 0.84rem;
+}
+
+.analytics-alerts p {
+  color: var(--muted-2);
+  line-height: 1.8;
+  margin: 0;
+}
+
+.analytics-details {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-top: 10px;
+  padding: 10px;
+}
+
+.analytics-details summary {
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.analytics-details .analytics-stats-grid {
+  margin-top: 10px;
 }
 
 .report-grid span,
@@ -2923,6 +2992,7 @@ body .date-picker-popover .jalali-calendar.jalali-calendar {
   .stats-analysis-grid,
   .analytics-snapshot-grid,
   .analysis-note-grid,
+  .analytics-decision-grid,
   .dashboard-grid,
   .notification-status-grid {
     grid-template-columns: 1fr;
@@ -2999,6 +3069,15 @@ body .date-picker-popover .jalali-calendar.jalali-calendar {
   }
 
   .analytics-snapshot-grid span {
+    padding: 9px;
+  }
+
+  .analytics-priority-chart .stats-line-chart {
+    height: 230px;
+    min-height: 230px;
+  }
+
+  .analytics-details {
     padding: 9px;
   }
 
