@@ -8,6 +8,7 @@ const {
   goalSavedAmountInWords,
   formatGoalAmount,
   getGoalUnitLabel,
+  getGoalEstimatedValue,
   goalTargetDatePickerValue,
   activeGoals,
   archivedGoals,
@@ -16,6 +17,7 @@ const {
   totalGoalsSaved,
   totalGoalsRemaining,
   formatMoneyInput,
+  parseMoneyInput,
   formatMoney,
   formatCompact,
   updateMoneyInput,
@@ -35,6 +37,32 @@ const {
   marketRatesError,
   refreshMarketRates,
 } = budgetyar
+
+const goalTransferAmounts = reactive<Record<string, string>>({})
+
+function updateGoalTransferAmount(goalId: string, event: Event) {
+  const input = event.target as HTMLInputElement
+  const amount = parseMoneyInput(input.value)
+  goalTransferAmounts[goalId] = formatMoneyInput(amount)
+  input.value = goalTransferAmounts[goalId]
+}
+
+function submitGoalTransfer(goal: Parameters<typeof addGoalContribution>[0], type: 'deposit' | 'withdraw') {
+  const amount = parseMoneyInput(goalTransferAmounts[goal.id] ?? '')
+  if (!amount) return
+
+  if (type === 'deposit') {
+    addGoalContribution(goal, amount)
+  } else {
+    withdrawFromGoal(goal, amount)
+  }
+
+  goalTransferAmounts[goal.id] = ''
+}
+
+onMounted(() => {
+  if (!marketRates.value) refreshMarketRates()
+})
 </script>
 
 <template>
@@ -144,15 +172,30 @@ const {
         </div>
         <div class="installment-meta">
           <span class="goal-unit-summary">واحد: {{ getGoalUnitLabel(goal.unit) }} · هدف {{ formatGoalAmount(goal.targetAmount, goal.unit) }} · ذخیره {{ formatGoalAmount(goal.savedAmount, goal.unit) }}</span>
+          <span v-if="getGoalEstimatedValue(goal) !== null">ارزش تقریبی فعلی: {{ formatMoney(getGoalEstimatedValue(goal) || 0) }} تومان</span>
+          <span v-if="getGoalEstimatedValue(goal, goal.targetAmount) !== null">ارزش تقریبی هدف: {{ formatMoney(getGoalEstimatedValue(goal, goal.targetAmount) || 0) }} تومان</span>
           <span>{{ formatMoney(goal.savedAmount) }} از {{ formatMoney(goal.targetAmount) }}</span>
           <span>مانده: {{ formatMoney(getGoalRemainingAmount(goal)) }}</span>
           <span>ماهیانه پیشنهادی: {{ formatCompact(getGoalSuggestedMonthlySaving(goal)) }}</span>
           <span>هفتگی پیشنهادی: {{ formatCompact(getGoalSuggestedWeeklySaving(goal)) }}</span>
         </div>
         <p v-if="goal.note">{{ goal.note }}</p>
+        <div class="goal-transfer-box">
+          <label>
+            <span>مبلغ واریز یا برداشت</span>
+            <input
+              :value="goalTransferAmounts[goal.id] || ''"
+              inputmode="numeric"
+              :placeholder="getGoalUnitLabel(goal.unit)"
+              @input="updateGoalTransferAmount(goal.id, $event)"
+            />
+          </label>
+          <div class="goal-transfer-actions">
+            <button class="primary-button" type="button" :disabled="!parseMoneyInput(goalTransferAmounts[goal.id] || '')" @click="submitGoalTransfer(goal, 'deposit')">واریز</button>
+            <button class="soft-button" type="button" :disabled="!parseMoneyInput(goalTransferAmounts[goal.id] || '')" @click="submitGoalTransfer(goal, 'withdraw')">برداشت</button>
+          </div>
+        </div>
         <div class="installment-actions">
-          <button class="primary-button" type="button" @click="addGoalContribution(goal)">واریز</button>
-          <button class="soft-button" type="button" @click="withdrawFromGoal(goal)">برداشت</button>
           <button class="soft-button" type="button" @click="editGoal(goal)">ویرایش</button>
           <button class="soft-button" type="button" @click="archiveGoal(goal.id)">بایگانی</button>
           <button class="soft-button" type="button" @click="deleteGoal(goal.id)">حذف</button>
