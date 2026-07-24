@@ -12,6 +12,7 @@ const {
   hasMonthlyTrendData,
   statsExpenseMixCanvas,
   statsBudgetUsageCanvas,
+  statsDailyExpenseCanvas,
   statsCashFlowCanvas,
   statsMonthlyTrendCanvas,
   cashFlowMode,
@@ -130,6 +131,19 @@ onBeforeUnmount(destroyCharts)
           <div class="chart-canvas stats-line-chart" :class="{ empty: !hasMonthlyTrendData }">
             <canvas ref="statsMonthlyTrendCanvas" aria-label="نمودار روند شش‌ماهه" role="img" />
             <span v-if="!hasMonthlyTrendData">بدون داده</span>
+          </div>
+        </section>
+
+        <section class="stats-chart-panel wide">
+          <div class="section-title compact">
+            <div>
+              <h2>‏خرج روزانه</h2>
+              <p>‏هزینه هر روز ماه جاری در مقایسه با میانگین روزانه</p>
+            </div>
+          </div>
+          <div class="chart-canvas stats-line-chart" :class="{ empty: !hasExpenseData }">
+            <canvas ref="statsDailyExpenseCanvas" aria-label="‏نمودار خرج روزانه ماه جاری" role="img" />
+            <span v-if="!hasExpenseData">‏بدون داده</span>
           </div>
         </section>
 
