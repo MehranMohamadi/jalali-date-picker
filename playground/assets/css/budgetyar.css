@@ -3338,6 +3338,24 @@ body .date-picker-popover .jalali-calendar.jalali-calendar {
     grid-template-columns: 1fr;
   }
 
+  .date-picker-popover.jalali-date-picker__popover,
+  .date-picker-popover.jalali-range-picker__popover {
+    inset-inline: 8px !important;
+    margin: 0 auto !important;
+    max-height: calc(100svh - 24px);
+    overflow-y: auto;
+    position: fixed !important;
+    right: auto !important;
+    top: 50% !important;
+    transform: translateY(-50%);
+    width: min(18rem, calc(100vw - 16px)) !important;
+  }
+
+  .date-picker-popover .jalali-calendar {
+    max-width: 100%;
+    width: 100% !important;
+  }
+
   .transaction-modal > label:has(.date-picker-field) {
     grid-column: auto;
   }

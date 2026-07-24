@@ -69,3 +69,69 @@
   border-radius: 14px;
   padding: 11px;
 }
+
+.upcoming-expense-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.upcoming-expense-item {
+  align-items: center;
+  background: rgba(15, 23, 42, .38);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  padding: 13px;
+}
+
+.upcoming-expense-item.overdue {
+  border-color: rgba(251, 113, 133, .48);
+}
+
+.upcoming-expense-icon {
+  background: rgba(34, 211, 238, .12);
+  border-radius: 12px;
+  display: grid;
+  font-size: 1.25rem;
+  height: 42px;
+  place-items: center;
+  width: 42px;
+}
+
+.upcoming-expense-item div {
+  display: grid;
+  gap: 3px;
+}
+
+.upcoming-expense-item small,
+.upcoming-expense-status {
+  color: var(--muted);
+}
+
+.upcoming-expense-status {
+  background: rgba(148, 163, 184, .1);
+  border-radius: 999px;
+  font-size: .72rem;
+  padding: 5px 8px;
+}
+
+.upcoming-expense-item b {
+  color: #fb7185;
+}
+
+@media (max-width: 520px) {
+  .upcoming-expense-item {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .upcoming-expense-status {
+    display: none;
+  }
+
+  .upcoming-expense-item b {
+    grid-column: 2 / -1;
+  }
+}

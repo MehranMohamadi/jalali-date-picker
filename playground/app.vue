@@ -4,6 +4,7 @@ import './assets/css/budgetyar.css'
 import './assets/css/budgetyar-overrides.css'
 import {
   Bell,
+  CalendarClock,
   ChartNoAxesCombined,
   CircleDollarSign,
   ClipboardList,
@@ -42,6 +43,7 @@ const navItems = [
   { label: '‏قسط‌ها', path: '/installments', group: '‏برنامه‌ریزی', icon: CreditCard },
   { label: '‏هدف‌ها', path: '/goals', group: '‏برنامه‌ریزی', icon: Target },
   { label: '‏پرداخت‌های دوره‌ای', path: '/recurring', group: '‏برنامه‌ریزی', icon: Repeat2 },
+  { label: '‏خرج‌های پیش‌رو', path: '/upcoming-expenses', group: '‏برنامه‌ریزی', icon: CalendarClock },
   { label: '‏برنامه‌ریزی', path: '/planning', group: '‏تحلیل و کنترل', icon: ClipboardList },
   { label: '‏بدهی‌ها', path: '/debts', group: '‏تحلیل و کنترل', icon: Landmark },
   { label: '‏قوانین', path: '/rules', group: '‏تحلیل و کنترل', icon: ListChecks },

@@ -7,6 +7,7 @@ const {
   categoryForm,
   categoryTotals,
   formatMoneyInput,
+  formatMoneyWords,
   formatMoney,
   updateMoneyInput,
   updateBudget,
@@ -91,6 +92,7 @@ function addSuggestedCategory(suggestion: (typeof suggestedCategories)[number]) 
           inputmode="numeric"
           @input="updateMoneyInput(categoryForm, 'budget', $event)"
         />
+        <small v-if="categoryForm.budget" class="amount-in-words">{{ formatMoneyWords(categoryForm.budget) }}</small>
       </label>
       <button class="primary-button" type="submit">
         <Plus :size="17" aria-hidden="true" />
@@ -151,6 +153,7 @@ function addSuggestedCategory(suggestion: (typeof suggestedCategories)[number]) 
         <label class="budget-edit">
           <span>ویرایش بودجه</span>
           <input :value="formatMoneyInput(item.budget)" type="text" inputmode="numeric" @change="updateBudget(item.key, $event)" />
+          <small v-if="item.budget" class="amount-in-words">{{ formatMoneyWords(item.budget) }}</small>
         </label>
         <div class="progress" :class="{ danger: item.spent > item.budget }">
           <i :style="{ width: `${progressPercent(item.spent, item.budget)}%` }" />

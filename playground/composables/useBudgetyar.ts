@@ -935,6 +935,12 @@ const financialHealthStrengths = computed(() => financialHealthScore.value.stren
 
 const filteredTransactions = computed(() => {
   const normalizedQuery = query.value.trim()
+  const selectedMonthIndex = months.indexOf(selectedMonth.value) + 1
+  const selectedYearNumber = normalizeDigits(selectedYear.value)
+  const selectedMonthPrefix = selectedMonthIndex > 0 && selectedYearNumber
+    ? `${selectedYearNumber}/${String(selectedMonthIndex).padStart(2, '0')}`
+    : ''
+
   return transactions.value.filter((item) => {
     const itemDate = normalizeJalaliDate(item.date)
     const category = item.category ? getCategory(item.category).label : 'درآمد'
@@ -946,7 +952,8 @@ const filteredTransactions = computed(() => {
       (selectedType.value === 'هزینه' && item.type === 'expense')
     const matchesStart = !dateRange.start || itemDate >= normalizeJalaliDate(dateRange.start)
     const matchesEnd = !dateRange.end || itemDate <= normalizeJalaliDate(dateRange.end)
-    return matchesQuery && matchesCategory && matchesType && matchesStart && matchesEnd
+    const matchesMonth = !selectedMonthPrefix || itemDate.startsWith(selectedMonthPrefix)
+    return matchesQuery && matchesCategory && matchesType && matchesMonth && matchesStart && matchesEnd
   })
 })
 
