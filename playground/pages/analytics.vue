@@ -128,8 +128,10 @@ onBeforeUnmount(destroyCharts)
               <p>درآمد، هزینه و مانده در چند ماه اخیر</p>
             </div>
           </div>
-          <div class="chart-canvas stats-line-chart" :class="{ empty: !hasMonthlyTrendData }">
-            <canvas ref="statsMonthlyTrendCanvas" aria-label="نمودار روند شش‌ماهه" role="img" />
+          <div class="chart-canvas chart-scrollable stats-line-chart" :class="{ empty: !hasMonthlyTrendData }">
+            <div class="chart-scroll-content">
+              <canvas ref="statsMonthlyTrendCanvas" aria-label="نمودار روند شش‌ماهه" role="img" />
+            </div>
             <span v-if="!hasMonthlyTrendData">بدون داده</span>
           </div>
         </section>
@@ -141,8 +143,10 @@ onBeforeUnmount(destroyCharts)
               <p>‏هزینه هر روز ماه جاری در مقایسه با میانگین روزانه</p>
             </div>
           </div>
-          <div class="chart-canvas stats-line-chart" :class="{ empty: !hasExpenseData }">
-            <canvas ref="statsDailyExpenseCanvas" aria-label="‏نمودار خرج روزانه ماه جاری" role="img" />
+          <div class="chart-canvas chart-scrollable stats-line-chart" :class="{ empty: !hasExpenseData }">
+            <div class="chart-scroll-content">
+              <canvas ref="statsDailyExpenseCanvas" aria-label="‏نمودار خرج روزانه ماه جاری" role="img" />
+            </div>
             <span v-if="!hasExpenseData">‏بدون داده</span>
           </div>
         </section>
@@ -154,8 +158,10 @@ onBeforeUnmount(destroyCharts)
               <p>دسته‌هایی که بودجه را خورده‌اند یا از سقف رد شده‌اند</p>
             </div>
           </div>
-          <div class="chart-canvas stats-budget-chart">
-            <canvas ref="statsBudgetUsageCanvas" aria-label="نمودار مصرف بودجه دسته‌ها" role="img" />
+          <div class="chart-canvas chart-scrollable stats-budget-chart">
+            <div class="chart-scroll-content">
+              <canvas ref="statsBudgetUsageCanvas" aria-label="نمودار مصرف بودجه دسته‌ها" role="img" />
+            </div>
           </div>
         </section>
 
@@ -184,8 +190,10 @@ onBeforeUnmount(destroyCharts)
             <button type="button" :class="{ active: cashFlowMode === 'afterCredit' }" @click="cashFlowMode = 'afterCredit'">بعد اعتبار</button>
             <button type="button" :class="{ active: cashFlowMode === 'afterCommitments' }" @click="cashFlowMode = 'afterCommitments'">بعد تعهدات</button>
           </div>
-          <div class="chart-canvas stats-cash-chart">
-            <canvas ref="statsCashFlowCanvas" aria-label="نمودار جریان پول" role="img" />
+          <div class="chart-canvas chart-scrollable stats-cash-chart">
+            <div class="chart-scroll-content">
+              <canvas ref="statsCashFlowCanvas" aria-label="نمودار جریان پول" role="img" />
+            </div>
           </div>
         </section>
       </div>

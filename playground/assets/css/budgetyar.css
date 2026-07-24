@@ -923,6 +923,12 @@ textarea {
   width: 100% !important;
 }
 
+.chart-scroll-content {
+  height: 100%;
+  min-width: 100%;
+  position: relative;
+}
+
 .pie-chart {
   height: 220px;
   min-height: 220px;
@@ -3066,6 +3072,20 @@ body .date-picker-popover .jalali-calendar.jalali-calendar {
 
   .analytics-chart-grid {
     grid-template-columns: 1fr;
+  }
+
+  .analytics-chart-grid .chart-scrollable {
+    overscroll-behavior-inline: contain;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-color: var(--line) transparent;
+    scrollbar-width: thin;
+    touch-action: pan-x pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .analytics-chart-grid .chart-scroll-content {
+    min-width: 620px;
   }
 
   .analytics-snapshot-grid span {
