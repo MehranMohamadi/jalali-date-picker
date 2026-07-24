@@ -210,7 +210,7 @@ onMounted(() => {
     </form>
 
     <div v-if="activeGoals.length" class="installments-grid planning-card-grid">
-      <article v-for="goal in activeGoals" :key="goal.id" class="installment-item goal-item">
+      <article v-for="goal in activeGoals" :key="goal.id" class="installment-item goal-item" :style="{ '--goal-accent': goal.color }">
         <div class="installment-item-head">
           <div>
             <strong>{{ goal.icon }} {{ goal.title }}</strong>
