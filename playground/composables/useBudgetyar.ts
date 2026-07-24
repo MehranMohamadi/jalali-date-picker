@@ -77,7 +77,7 @@ export interface Transaction {
   isEssential?: boolean
   isLoan?: boolean
   loanPerson?: string
-  sourceType?: 'manual' | 'recurring' | 'installment' | 'bank-notification'
+  sourceType?: 'manual' | 'recurring' | 'installment' | 'bank-notification' | 'credit-payment'
   sourceId?: string
   sourceDate?: string
   autoCategorized?: boolean
@@ -671,13 +671,16 @@ const weeklyExpenseTransactions = computed(() => currentWeekTransactions.value.f
 const weeklyIncomeTransactions = computed(() => currentWeekTransactions.value.filter((item) => item.type === 'income'))
 const previousExpense = computed(() => previousMonthTransactions.value.filter((item) => item.type === 'expense').reduce((sum, item) => sum + item.amount, 0))
 const previousIncome = computed(() => previousMonthTransactions.value.filter((item) => item.type === 'income').reduce((sum, item) => sum + item.amount, 0))
+const previousMonthRemainder = computed(() => previousIncome.value - previousExpense.value)
 const totalIncome = computed(() => incomeTransactions.value.reduce((sum, item) => sum + item.amount, 0))
 const totalExpense = computed(() => expenseTransactions.value.reduce((sum, item) => sum + item.amount, 0))
-const creditExpense = computed(() => expenseTransactions.value.filter((item) => item.paymentMethod === 'credit').reduce((sum, item) => sum + item.amount, 0))
+const creditPurchases = computed(() => expenseTransactions.value.filter((item) => item.paymentMethod === 'credit').reduce((sum, item) => sum + item.amount, 0))
+const creditPayments = computed(() => expenseTransactions.value.filter((item) => item.sourceType === 'credit-payment').reduce((sum, item) => sum + item.amount, 0))
+const creditExpense = computed(() => Math.max(creditPurchases.value - creditPayments.value, 0))
 const creditRemaining = computed(() => Math.max(creditLimit.value - creditExpense.value, 0))
 const cashExpense = computed(() => expenseTransactions.value.filter((item) => item.paymentMethod !== 'credit').reduce((sum, item) => sum + item.amount, 0))
 const cashBeforeCreditPayment = computed(() => totalIncome.value - cashExpense.value)
-const balanceAfterCreditPayment = computed(() => cashBeforeCreditPayment.value - creditExpense.value)
+const balanceAfterCreditPayment = computed(() => previousMonthRemainder.value + cashBeforeCreditPayment.value - creditExpense.value)
 const loanedExpense = computed(() => expenseTransactions.value.filter((item) => item.isLoan).reduce((sum, item) => sum + item.amount, 0))
 const essentialExpense = computed(() => expenseTransactions.value.filter((item) => item.isEssential !== false).reduce((sum, item) => sum + item.amount, 0))
 const nonEssentialExpense = computed(() => expenseTransactions.value.filter((item) => item.isEssential === false).reduce((sum, item) => sum + item.amount, 0))
@@ -688,7 +691,7 @@ const weeklyBalance = computed(() => weeklyIncome.value - weeklyExpense.value)
 const totalBudget = computed(() => budgets.value.reduce((sum, item) => sum + item.budget, 0))
 const currentMonthWeekCount = computed(() => Math.ceil(currentMonthLength / 7))
 const weeklyBudgetAllowance = computed(() => Math.round(totalBudget.value / Math.max(currentMonthWeekCount.value, 1)))
-const balance = computed(() => totalIncome.value - totalExpense.value)
+const balance = computed(() => previousMonthRemainder.value + totalIncome.value - totalExpense.value)
 const budgetUsage = computed(() => Math.round((totalExpense.value / Math.max(totalBudget.value, 1)) * 100))
 const savingsPercent = computed(() => Math.max(0, Math.round((balance.value / Math.max(totalIncome.value, 1)) * 100)))
 
@@ -799,7 +802,7 @@ const commitmentInstallmentDue = computed(() =>
     .filter((item) => item.nextDueDate <= currentMonthEndKey)
     .reduce((sum, item) => sum + item.amount, 0),
 )
-const balanceAfterCommitments = computed(() => cashBeforeCreditPayment.value - creditExpense.value - commitmentInstallmentDue.value)
+const balanceAfterCommitments = computed(() => previousMonthRemainder.value + cashBeforeCreditPayment.value - creditExpense.value - commitmentInstallmentDue.value)
 const activeGoals = computed(() => goals.value.filter((goal) => !goal.isArchived))
 const archivedGoals = computed(() => goals.value.filter((goal) => goal.isArchived))
 const activeGoalSnapshots = computed(() =>
@@ -879,7 +882,7 @@ const safeDailySpend = computed(() => {
 const safeWeeklySpend = computed(() => safeDailySpend.value * 7)
 const purchaseDecision = computed(() => buildPurchaseDecision())
 const activeDebts = computed(() => debts.value.filter((debt) => debt.isActive))
-const totalDebtRemaining = computed(() => activeDebts.value.reduce((sum, debt) => sum + debt.remainingAmount, 0))
+const totalDebtRemaining = computed(() => activeDebts.value.reduce((sum, debt) => sum + debt.remainingAmount, 0) + creditExpense.value)
 const totalMinimumDebtPayments = computed(() => activeDebts.value.reduce((sum, debt) => sum + debt.minimumMonthlyPayment, 0))
 const totalExtraDebtPayments = computed(() => activeDebts.value.reduce((sum, debt) => sum + (debt.extraMonthlyPayment ?? 0), 0))
 const snowballDebtPlan = computed(() => calculateDebtPayoffPlan('snowball'))
@@ -1575,6 +1578,28 @@ function updateCreditLimit(event: Event) {
   const amount = Math.max(0, parseMoneyInput(input.value))
   creditLimit.value = amount
   input.value = formatMoneyInput(amount)
+}
+
+function recordCreditPayment(amount = 0) {
+  const rawAmount = amount || Number(window.prompt('مبلغ پرداخت بدهی اعتبار') || 0)
+  const value = Math.min(Math.max(0, rawAmount), creditExpense.value)
+  if (!value) return
+
+  transactions.value = [{
+    id: Date.now(),
+    type: 'expense',
+    title: 'پرداخت بدهی اعتبار',
+    amount: value,
+    date: todayKey,
+    category: 'other',
+    description: 'تسویه بدهی اعتبار',
+    paymentMethod: 'cash',
+    isEssential: true,
+    isLoan: false,
+    sourceType: 'credit-payment',
+    sourceDate: todayKey,
+  }, ...transactions.value]
+  pushToast('پرداخت بدهی اعتبار ثبت شد ✅')
 }
 
 function applyTheme(mode = themeMode.value) {
@@ -4019,7 +4044,7 @@ export function useBudgetyar() {
     filteredTransactions, dailyTrend, hasExpenseData, expenseShareChartData, categoryBarChartData, trendLineChartData, dailyExpensePoints, weeklyFlowPoints, budgetAnalysisItems, monthlyTrendPoints, hasMonthlyTrendData, commitmentTotal, flexibleAfterCommitments, statsExpenseMixChartData, statsBudgetUsageChartData, statsDailyExpenseChartData, statsWeeklyFlowChartData, statsCashFlowChartData, statsEssentialChartData, statsPaymentMethodChartData, statsMonthlyTrendChartData, statsCommitmentChartData,
     summaryLines, insights, dashboardCards, widgets, statsItems,
     getCategory, normalizeDigits, normalizeJalaliDate, getJalaliInputDay, getTrendDays, getPreviousMonthPrefix, addJalaliMonths, getInstallmentDueDate, getInstallmentStatus, getInstallmentStatusLabel, getCurrentWeekRange, getWeekdayLabel, getJalaliMonthPrefix, getCurrentJalaliDate, formatJalaliInputDate, formatDisplayJalaliDate, jalaliInputToIso, isoToJalaliInput, toPersianNumber, parseMoneyInput, formatMoneyInput, formatMoneyWords, formatMoney, formatCompact, progressPercent, getChangePercent, formatPercentHint, formatChangeSentence, getRiskLabel, getFinancialHealthLevelLabel,
-    selectSection, openModal, editTransaction, saveTransaction, removeTransaction, refreshBankNotifications, openNotificationAccessSettings, updateSelectedBankPackage, acceptBankSuggestion, dismissBankSuggestion, formatSuggestionDate, updateMoneyInput, updateCreditLimit, updateBudget, addCategory, deleteCategory, addInstallmentPlan, editInstallmentPlan, cancelInstallmentEdit, payInstallment, removeInstallmentPlan,
+    selectSection, openModal, editTransaction, saveTransaction, removeTransaction, refreshBankNotifications, openNotificationAccessSettings, updateSelectedBankPackage, acceptBankSuggestion, dismissBankSuggestion, formatSuggestionDate, updateMoneyInput, updateCreditLimit, recordCreditPayment, updateBudget, addCategory, deleteCategory, addInstallmentPlan, editInstallmentPlan, cancelInstallmentEdit, payInstallment, removeInstallmentPlan,
     addGoal, editGoal, updateGoal, deleteGoal, archiveGoal, pauseGoal, resumeGoal, addGoalContribution, withdrawFromGoal, getGoalProgress, getGoalRemainingAmount, getGoalSuggestedMonthlySaving, getGoalSuggestedWeeklySaving, getGoalUnitLabel, getGoalTransactionTypeLabel, formatGoalAmount, getGoalEstimatedValue, getGoalTrackingModeLabel, getGoalHealthLabel, getGoalScenario, getGoalTransactions, getGoalSummary, getGoalSavedValue, getGoalTargetValue,
     addRecurringItem, editRecurringItem, updateRecurringItem, deleteRecurringItem, toggleRecurringItem, getRecurringNextDueDate, markRecurringItemPaid, skipRecurringOccurrence, createTransactionFromRecurringItem, getRecurringStatusLabel, createPurchaseTransaction, setThemeMode, refreshMarketRates,
     addDebt, editDebt, updateDebt, deleteDebt, toggleDebt, recordDebtPayment, calculateDebtPayoffPlan,

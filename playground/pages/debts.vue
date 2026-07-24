@@ -31,6 +31,7 @@ const {
   creditExpense,
   creditRemaining,
   updateCreditLimit,
+  recordCreditPayment,
 } = budgetyar
 </script>
 
@@ -56,6 +57,7 @@ const {
       </label>
       <span><small>مصرف اعتبار این ماه</small><strong>{{ formatMoney(creditExpense) }}</strong></span>
       <span><small>اعتبار باقی‌مانده</small><strong>{{ formatMoney(creditRemaining) }}</strong></span>
+      <button class="secondary-button" type="button" :disabled="!creditExpense" @click="recordCreditPayment()">پرداخت بدهی اعتبار</button>
     </div>
 
     <form class="installment-form planning-form" @submit.prevent="addDebt">
