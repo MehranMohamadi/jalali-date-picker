@@ -369,6 +369,11 @@
   color: #86efac;
 }
 
+.fitness-task.disabled {
+  cursor: not-allowed;
+  opacity: .48;
+}
+
 .fitness-task input,
 .fitness-meal input,
 .fitness-check input {
@@ -400,6 +405,61 @@
 
 .fitness-water-input small {
   color: var(--muted);
+}
+
+.fitness-meal-plan-picker {
+  align-items: center;
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 7px 10px;
+  grid-template-columns: minmax(150px, .7fr) minmax(220px, 1.3fr);
+  padding: 10px;
+}
+
+.fitness-meal-plan-picker > span {
+  align-items: center;
+  display: flex;
+  font-weight: 800;
+  gap: 7px;
+}
+
+.fitness-meal-plan-picker > span svg {
+  color: #5eead4;
+}
+
+.fitness-meal-plan-picker > small {
+  color: var(--muted);
+  font-size: .72rem;
+  grid-column: 1 / -1;
+}
+
+.fitness-selected-plan-macros {
+  margin-top: 12px;
+}
+
+.fitness-meal-plan-empty {
+  align-items: center;
+  color: var(--muted);
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  min-height: 130px;
+  padding: 16px;
+  text-align: center;
+}
+
+.fitness-meal-plan-empty svg {
+  color: #5eead4;
+}
+
+.fitness-meal-plan-empty strong {
+  color: var(--muted-2);
+}
+
+.fitness-meal-plan-empty small {
+  font-size: .74rem;
 }
 
 .fitness-meal-list {
@@ -738,6 +798,195 @@
   justify-self: end;
 }
 
+.fitness-history-count {
+  background: rgba(20, 184, 166, .12);
+  border: 1px solid rgba(20, 184, 166, .22);
+  border-radius: 999px;
+  color: #5eead4;
+  flex: 0 0 auto;
+  font-size: .74rem;
+  padding: 5px 9px;
+}
+
+.fitness-workout-chart-stats {
+  display: grid;
+  gap: 7px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 10px;
+}
+
+.fitness-workout-chart-stats > span {
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+}
+
+.fitness-workout-chart-stats small {
+  color: var(--muted);
+  font-size: .68rem;
+}
+
+.fitness-workout-chart-stats b {
+  color: #5eead4;
+  font-size: .9rem;
+}
+
+.fitness-workout-history-chart {
+  height: 240px;
+  min-width: 0;
+}
+
+.fitness-session-history,
+.fitness-session-exercises {
+  display: grid;
+  gap: 7px;
+}
+
+.fitness-session-card {
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.fitness-session-summary {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  display: flex;
+  justify-content: space-between;
+  min-height: 52px;
+  padding: 9px 11px;
+  text-align: right;
+  width: 100%;
+}
+
+.fitness-session-summary > span {
+  display: grid;
+  gap: 2px;
+}
+
+.fitness-session-summary small {
+  color: var(--muted);
+  font-size: .72rem;
+}
+
+.fitness-session-summary svg {
+  color: var(--muted);
+  flex: 0 0 auto;
+  transition: transform .18s ease;
+}
+
+.fitness-session-summary svg.rotated {
+  transform: rotate(180deg);
+}
+
+.fitness-session-details {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 9px;
+  padding: 9px;
+}
+
+.fitness-session-exercise {
+  background: rgba(2, 6, 23, .2);
+  border: 1px solid rgba(148, 163, 184, .1);
+  border-radius: 7px;
+  display: grid;
+  gap: 8px;
+  padding: 9px;
+}
+
+.fitness-session-exercise.editing {
+  border-color: rgba(20, 184, 166, .22);
+}
+
+.fitness-session-exercise-head {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.fitness-session-exercise-head > span {
+  display: grid;
+  gap: 2px;
+}
+
+.fitness-session-exercise-head small {
+  color: var(--muted);
+  font-size: .7rem;
+}
+
+.fitness-session-values {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.fitness-session-values > span {
+  background: rgba(148, 163, 184, .07);
+  border-radius: 6px;
+  display: grid;
+  gap: 2px;
+  padding: 6px 8px;
+}
+
+.fitness-session-values small {
+  color: var(--muted);
+  font-size: .66rem;
+}
+
+.fitness-session-values b {
+  color: var(--muted-2);
+  font-size: .78rem;
+}
+
+.fitness-session-note {
+  color: var(--muted-2);
+  font-size: .74rem;
+  line-height: 1.7;
+}
+
+.fitness-session-date {
+  display: grid;
+  gap: 4px;
+  max-width: 210px;
+}
+
+.fitness-session-date > span {
+  color: var(--muted);
+  font-size: .68rem;
+}
+
+.fitness-session-date input {
+  min-height: 36px;
+  padding: 7px 9px;
+}
+
+.fitness-session-actions {
+  display: flex;
+  gap: 7px;
+  justify-content: flex-end;
+}
+
+.fitness-session-actions button {
+  min-height: 35px;
+  padding: 7px 10px;
+}
+
+.fitness-delete-session {
+  color: #fca5a5;
+}
+
+.fitness-delete-session:hover {
+  background: rgba(251, 113, 133, .1);
+  border-color: rgba(251, 113, 133, .28);
+}
+
 .fitness-history-list {
   display: grid;
   gap: 6px;
@@ -838,7 +1087,8 @@
 }
 
 body.budgetyar-light .fitness-alternative-list article,
-body.budgetyar-light .fitness-workout-body {
+body.budgetyar-light .fitness-workout-body,
+body.budgetyar-light .fitness-session-exercise {
   background: rgba(255, 255, 255, .3);
 }
 
@@ -930,6 +1180,14 @@ body.budgetyar-light .fitness-workout-body {
     display: none;
   }
 
+  .fitness-meal-plan-picker {
+    grid-template-columns: 1fr;
+  }
+
+  .fitness-meal-plan-picker > small {
+    grid-column: auto;
+  }
+
   .fitness-meal {
     align-items: start;
     grid-template-columns: auto minmax(0, 1fr);
@@ -976,5 +1234,18 @@ body.budgetyar-light .fitness-workout-body {
 
   .fitness-progress-history > article {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .fitness-workout-chart-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .fitness-session-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .fitness-session-date {
+    max-width: none;
   }
 }

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'budgetyar-v2'
+const CACHE_NAME = 'budgetyar-v3'
 const APP_SHELL = [
   '/',
   '/offline.html',

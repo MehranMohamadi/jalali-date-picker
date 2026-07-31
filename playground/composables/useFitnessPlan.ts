@@ -1,5 +1,5 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { toJalali } from '../../src/utils/jalali'
+import { parseJalaliInput, toJalali } from '../../src/utils/jalali'
 import {
   meals,
   nutritionWeek,
@@ -26,6 +26,7 @@ export interface FitnessProfile {
 
 export interface DailyNutritionRecord {
   date: string
+  planWeekday?: number
   completedMealIds: string[]
   tasks: Record<string, boolean>
   waterMl: number
@@ -117,13 +118,7 @@ function clampPercent(value: number): number {
 
 const todayKey = computed(getTodayJalali)
 const todayWeekday = computed(() => new Date().getDay())
-const todayNutritionPlan = computed(() => nutritionWeek.find((day) => day.weekday === todayWeekday.value) ?? nutritionWeek[0])
 const todayWorkout = computed(() => workouts.find((day) => day.weekday === todayWeekday.value))
-const todayMeals = computed(() =>
-  todayNutritionPlan.value.mealIds
-    .map((id) => meals.find((meal) => meal.id === id))
-    .filter((meal): meal is (typeof meals)[number] => Boolean(meal)),
-)
 
 function createDailyRecord(date: string): DailyNutritionRecord {
   return {
@@ -135,6 +130,7 @@ function createDailyRecord(date: string): DailyNutritionRecord {
       calories: false,
       protein: false,
       cardio: false,
+      recovery: false,
       water: false,
     },
     waterMl: 0,
@@ -150,6 +146,17 @@ const todayRecord = computed(() => {
   return record
 })
 
+const todayNutritionPlan = computed(() => {
+  if (todayRecord.value.planWeekday === undefined) return null
+  return nutritionWeek.find((day) => day.weekday === todayRecord.value.planWeekday) ?? null
+})
+
+const todayMeals = computed(() =>
+  (todayNutritionPlan.value?.mealIds ?? [])
+    .map((id) => meals.find((meal) => meal.id === id))
+    .filter((meal): meal is (typeof meals)[number] => Boolean(meal)),
+)
+
 const caloriesConsumed = computed(() =>
   todayMeals.value
     .filter((meal) => todayRecord.value.completedMealIds.includes(meal.id))
@@ -163,7 +170,10 @@ const proteinConsumed = computed(() =>
 )
 
 const dailyCompletion = computed(() => {
-  const taskValues = Object.values(todayRecord.value.tasks)
+  const taskIds = todayWorkout.value
+    ? ['workout', 'meals', 'calories', 'protein', 'cardio', 'water']
+    : ['recovery', 'meals', 'calories', 'protein', 'water']
+  const taskValues = taskIds.map((taskId) => Boolean(todayRecord.value.tasks[taskId]))
   const completed = taskValues.filter(Boolean).length
   return clampPercent((completed / taskValues.length) * 100)
 })
@@ -188,6 +198,16 @@ function toggleMeal(mealId: string): void {
   todayRecord.value.tasks.meals = todayMeals.value.every((meal) => ids.includes(meal.id))
   todayRecord.value.tasks.calories = caloriesConsumed.value >= profile.value.calorieMin
   todayRecord.value.tasks.protein = proteinConsumed.value >= profile.value.proteinMin
+}
+
+function selectNutritionPlan(weekday: number): void {
+  const plan = nutritionWeek.find((day) => day.weekday === Number(weekday))
+  if (!plan || todayRecord.value.planWeekday === plan.weekday) return
+  todayRecord.value.planWeekday = plan.weekday
+  todayRecord.value.completedMealIds = []
+  todayRecord.value.tasks.meals = false
+  todayRecord.value.tasks.calories = false
+  todayRecord.value.tasks.protein = false
 }
 
 function toggleDailyTask(taskId: string): void {
@@ -222,6 +242,30 @@ function saveWorkout(workout: WorkoutDay, logs: ExerciseLog[]): void {
     exercises: completedLogs,
   })
   if (workout.id === todayWorkout.value?.id) todayRecord.value.tasks.workout = true
+}
+
+function updateWorkoutSession(id: string, updates: Pick<WorkoutSession, 'date' | 'exercises'>): boolean {
+  const session = workoutSessions.value.find((item) => item.id === id)
+  if (!session) return false
+  const parsedDate = parseJalaliInput(updates.date)
+  if (!parsedDate) return false
+  const exercises = updates.exercises
+    .filter((log) => log.completedSets > 0 || log.weight > 0 || log.reps > 0 || log.notes.trim())
+    .map((log) => ({
+      exerciseId: log.exerciseId,
+      weight: Math.max(0, Number(log.weight) || 0),
+      reps: Math.max(0, Number(log.reps) || 0),
+      completedSets: Math.max(0, Number(log.completedSets) || 0),
+      notes: log.notes.trim(),
+    }))
+  if (!exercises.length) return false
+  session.date = `${parsedDate.year}/${String(parsedDate.month).padStart(2, '0')}/${String(parsedDate.day).padStart(2, '0')}`
+  session.exercises = exercises
+  return true
+}
+
+function removeWorkoutSession(id: string): void {
+  workoutSessions.value = workoutSessions.value.filter((session) => session.id !== id)
 }
 
 function addCardio(log: Omit<CardioLog, 'id' | 'date'>): void {
@@ -336,11 +380,14 @@ export function useFitnessPlan() {
     waistProgress,
     overallProgress,
     toggleMeal,
+    selectNutritionPlan,
     toggleDailyTask,
     setWater,
     getLatestExerciseLog,
     shouldIncreaseWeight,
     saveWorkout,
+    updateWorkoutSession,
+    removeWorkoutSession,
     addCardio,
     addProgress,
     removeProgress,

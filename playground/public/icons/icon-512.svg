@@ -1,19 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="پولدار">
-  <defs>
-    <linearGradient id="g" x1="54" x2="458" y1="54" y2="458" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#4ade80"/>
-      <stop offset=".52" stop-color="#16a34a"/>
-      <stop offset="1" stop-color="#047857"/>
-    </linearGradient>
-    <filter id="s" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="48" stdDeviation="42" flood-color="#22c55e" flood-opacity=".38"/>
-    </filter>
-  </defs>
-  <rect width="512" height="512" rx="128" fill="#03140d"/>
-  <rect x="70" y="70" width="372" height="372" rx="102" fill="url(#g)" filter="url(#s)"/>
-  <rect x="112" y="163" width="288" height="186" rx="32" fill="#ecfdf5" stroke="#fff" stroke-width="14"/>
-  <path d="M147 195h40M325 317h40" stroke="#16a34a" stroke-width="16" stroke-linecap="round"/>
-  <circle cx="256" cy="256" r="62" fill="#22c55e"/>
-  <text x="256" y="297" fill="#fff" font-family="Arial, sans-serif" font-size="116" font-weight="800" text-anchor="middle">$</text>
-  <circle cx="160" cy="296" r="16" fill="#86efac"/><circle cx="352" cy="216" r="16" fill="#86efac"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="‏لوگوی سبز پولدار">
+  <rect width="512" height="512" fill="#064e3b"/>
+  <circle cx="92" cy="90" r="118" fill="#10b981" opacity=".18"/>
+  <circle cx="446" cy="432" r="150" fill="#022c22" opacity=".3"/>
+
+  <g transform="rotate(-6 256 235)">
+    <rect x="101" y="116" width="326" height="216" rx="34" fill="#86efac"/>
+    <rect x="118" y="133" width="292" height="182" rx="25" fill="none" stroke="#dcfce7" stroke-width="8"/>
+  </g>
+
+  <rect x="72" y="157" width="368" height="226" rx="38" fill="#ecfdf5" stroke="#ffffff" stroke-width="10"/>
+  <path d="M72 224c37 0 67-30 67-67M440 224c-37 0-67-30-67-67M72 316c37 0 67 30 67 67M440 316c-37 0-67 30-67 67" fill="none" stroke="#34d399" stroke-width="13"/>
+  <circle cx="256" cy="270" r="72" fill="#16a34a"/>
+  <path d="M281 225h-38c-18 0-30 10-30 25 0 16 13 23 43 27 30 4 43 11 43 28 0 17-15 28-37 28h-45M256 211v119" fill="none" stroke="#ffffff" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="137" cy="270" r="12" fill="#16a34a"/>
+  <circle cx="375" cy="270" r="12" fill="#16a34a"/>
+
+  <g stroke="#fef3c7" stroke-width="7">
+    <ellipse cx="365" cy="379" rx="57" ry="20" fill="#f59e0b"/>
+    <path d="M308 379v24c0 11 25 20 57 20s57-9 57-20v-24" fill="#fbbf24"/>
+    <ellipse cx="365" cy="379" rx="57" ry="20" fill="#fbbf24"/>
+    <path d="M326 357v20c0 10 23 18 52 18s52-8 52-18v-20" fill="#f59e0b"/>
+    <ellipse cx="378" cy="357" rx="52" ry="18" fill="#fcd34d"/>
+  </g>
 </svg>

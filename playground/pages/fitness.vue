@@ -8,15 +8,19 @@ import {
   Droplets,
   Flame,
   HeartPulse,
+  Pencil,
   Plus,
   Scale,
+  Save,
   ShoppingBasket,
   Target,
+  Trash2,
   Utensils,
+  X,
 } from 'lucide-vue-next'
 import { Chart, registerables, type ChartConfiguration } from 'chart.js'
 import { mealTiming, shoppingList, type WorkoutDay } from '../data/fitnessPlan'
-import type { ExerciseLog } from '../composables/useFitnessPlan'
+import type { ExerciseLog, WorkoutSession } from '../composables/useFitnessPlan'
 
 Chart.register(...registerables)
 
@@ -45,11 +49,14 @@ const {
   waistProgress,
   overallProgress,
   toggleMeal,
+  selectNutritionPlan,
   toggleDailyTask,
   setWater,
   getLatestExerciseLog,
   shouldIncreaseWeight,
   saveWorkout,
+  updateWorkoutSession,
+  removeWorkoutSession,
   addCardio,
   addProgress,
   removeProgress,
@@ -64,14 +71,47 @@ const tabs = [
   { id: 'progress' as const, label: '‏پیشرفت', icon: Scale },
 ]
 
-const dailyTasks = computed(() => [
-  { id: 'workout', label: todayWorkout.value ? `‏تمرین ${todayWorkout.value.title}` : '‏ریکاوری و قدم روزانه', detail: todayWorkout.value?.targetMuscles ?? '‏روز بدون تمرین مقاومتی', icon: Dumbbell },
-  { id: 'meals', label: '‏وعده‌های برنامه', detail: `‏${todayMeals.value.length} وعده برای امروز`, icon: Utensils },
-  { id: 'calories', label: '‏هدف کالری', detail: `‏${profile.value.calorieMin} تا ${profile.value.calorieMax} کیلوکالری`, icon: Flame },
-  { id: 'protein', label: '‏هدف پروتئین', detail: `‏${profile.value.proteinMin} تا ${profile.value.proteinMax} گرم`, icon: Target },
-  { id: 'cardio', label: '‏هوازی', detail: '‏۱۵ دقیقه پس از تمرین', icon: HeartPulse },
-  { id: 'water', label: '‏آب روزانه', detail: '‏۲٫۵ تا ۳ لیتر', icon: Droplets },
-])
+const todayCalendarDay = computed(() => nutritionWeek.find((day) => day.weekday === new Date().getDay()) ?? nutritionWeek[0])
+
+const selectedMealPlanWeekday = computed({
+  get: () => todayRecord.value.planWeekday === undefined ? '' : String(todayRecord.value.planWeekday),
+  set: (value: string) => {
+    if (value !== '') selectNutritionPlan(Number(value))
+  },
+})
+
+const dailyTasks = computed(() => {
+  const nutritionTasks = [
+    {
+      id: 'meals',
+      label: '‏وعده‌های برنامه',
+      detail: todayNutritionPlan.value ? `‏${todayMeals.value.length} وعده انتخاب شده` : '‏ابتدا برنامه غذایی را انتخاب کن',
+      icon: Utensils,
+    },
+    { id: 'calories', label: '‏هدف کالری', detail: `‏${profile.value.calorieMin} تا ${profile.value.calorieMax} کیلوکالری`, icon: Flame },
+    { id: 'protein', label: '‏هدف پروتئین', detail: `‏${profile.value.proteinMin} تا ${profile.value.proteinMax} گرم`, icon: Target },
+  ]
+  const waterTask = { id: 'water', label: '‏آب روزانه', detail: '‏۲٫۵ تا ۳ لیتر', icon: Droplets }
+
+  if (todayWorkout.value) {
+    return [
+      { id: 'workout', label: `‏تمرین ${todayWorkout.value.title}`, detail: todayWorkout.value.targetMuscles, icon: Dumbbell },
+      ...nutritionTasks,
+      { id: 'cardio', label: '‏هوازی پس از تمرین', detail: '‏۱۵ دقیقه با شدت سبک تا متوسط', icon: HeartPulse },
+      waterTask,
+    ]
+  }
+
+  return [
+    { id: 'recovery', label: '‏پیاده‌روی و ریکاوری', detail: '‏روز بدون تمرین مقاومتی؛ قدم و خواب کافی', icon: Activity },
+    ...nutritionTasks,
+    waterTask,
+  ]
+})
+
+function isDailyTaskDisabled(taskId: string): boolean {
+  return !todayNutritionPlan.value && ['meals', 'calories', 'protein'].includes(taskId)
+}
 
 const mealGroups = computed(() => [
   { id: 'breakfast', title: '‏صبحانه‌ها', items: meals.filter((meal) => meal.slot === 'breakfast') },
@@ -111,8 +151,27 @@ const progressForm = reactive({
 })
 
 const progressCanvas = ref<HTMLCanvasElement | null>(null)
+const workoutHistoryCanvas = ref<HTMLCanvasElement | null>(null)
 const statusMessage = ref('')
+const openHistorySessionId = ref('')
+const editingSessionId = ref('')
+const sessionEditDraft = reactive<{ date: string; exercises: ExerciseLog[] }>({
+  date: '',
+  exercises: [],
+})
 let progressChart: Chart<'line'> | null = null
+let workoutHistoryChart: Chart<'bar'> | null = null
+
+const workoutChartEntries = computed(() => [...workoutSessions.value].slice(0, 12).reverse())
+const workoutHistoryStats = computed(() => {
+  const counts = workoutSessions.value.map((session) => session.exercises.length)
+  const total = counts.reduce((sum, count) => sum + count, 0)
+  return {
+    average: counts.length ? Math.round((total / counts.length) * 10) / 10 : 0,
+    maximum: counts.length ? Math.max(...counts) : 0,
+    sessions: counts.length,
+  }
+})
 
 function showStatus(message: string): void {
   statusMessage.value = message
@@ -156,6 +215,65 @@ function submitWorkout(workout: WorkoutDay): void {
     log.notes = ''
   })
   showStatus('‏جلسه تمرین ذخیره شد.')
+}
+
+function getWorkoutTitle(workoutId: string): string {
+  return workouts.find((workout) => workout.id === workoutId)?.title ?? '‏جلسه تمرین'
+}
+
+function getExerciseName(workoutId: string, exerciseId: string): string {
+  return workouts
+    .find((workout) => workout.id === workoutId)
+    ?.exercises.find((exercise) => exercise.id === exerciseId)?.name ?? '‏حرکت ثبت‌شده'
+}
+
+function getExerciseTarget(workoutId: string, exerciseId: string): string {
+  const exercise = workouts
+    .find((workout) => workout.id === workoutId)
+    ?.exercises.find((item) => item.id === exerciseId)
+  return exercise ? `‏هدف ${toPersianNumber(exercise.sets)} ست × ${toPersianNumber(exercise.reps)}` : ''
+}
+
+function getSessionTotalSets(session: WorkoutSession): number {
+  return session.exercises.reduce((sum, exercise) => sum + exercise.completedSets, 0)
+}
+
+function startEditingSession(session: WorkoutSession): void {
+  openHistorySessionId.value = session.id
+  editingSessionId.value = session.id
+  sessionEditDraft.date = session.date
+  sessionEditDraft.exercises = session.exercises.map((exercise) => ({ ...exercise }))
+}
+
+function cancelEditingSession(): void {
+  editingSessionId.value = ''
+  sessionEditDraft.date = ''
+  sessionEditDraft.exercises = []
+}
+
+function submitSessionEdit(session: WorkoutSession): void {
+  if (!sessionEditDraft.exercises.some((exercise) => exercise.completedSets || exercise.weight || exercise.reps || exercise.notes.trim())) {
+    showStatus('‏حداقل یک حرکت باید در جلسه باقی بماند.')
+    return
+  }
+  const updated = updateWorkoutSession(session.id, {
+    date: sessionEditDraft.date,
+    exercises: sessionEditDraft.exercises.map((exercise) => ({ ...exercise })),
+  })
+  if (!updated) {
+    showStatus('‏تاریخ جلسه را به‌صورت معتبر وارد کن.')
+    return
+  }
+  cancelEditingSession()
+  showStatus('‏تغییرات جلسه ذخیره شد.')
+}
+
+function deleteWorkoutSession(session: WorkoutSession): void {
+  if (!window.confirm(`جلسه ${getWorkoutTitle(session.workoutId).replace('‏', '')} در تاریخ ${session.date} حذف شود؟`)) return
+  removeWorkoutSession(session.id)
+  if (openHistorySessionId.value === session.id) openHistorySessionId.value = ''
+  if (editingSessionId.value === session.id) cancelEditingSession()
+  showStatus('‏جلسه از تاریخچه حذف شد.')
 }
 
 function submitCardio(): void {
@@ -235,13 +353,75 @@ function renderProgressChart(): void {
   progressChart = new Chart(progressCanvas.value, config)
 }
 
-watch(workoutSessions, () => hydrateWorkoutDrafts(), { deep: true })
-watch([activeTab, progressEntries], () => nextTick(renderProgressChart), { deep: true })
+function renderWorkoutHistoryChart(): void {
+  workoutHistoryChart?.destroy()
+  workoutHistoryChart = null
+  if (!workoutHistoryCanvas.value || activeTab.value !== 'workout' || !workoutChartEntries.value.length) return
+  const entries = workoutChartEntries.value
+  const config: ChartConfiguration<'bar'> = {
+    type: 'bar',
+    data: {
+      labels: entries.map((session) => toPersianNumber(session.date)),
+      datasets: [
+        {
+          label: '‏تعداد حرکات ثبت‌شده',
+          data: entries.map((session) => session.exercises.length),
+          backgroundColor: 'rgba(45, 212, 191, .72)',
+          borderColor: '#5eead4',
+          borderWidth: 1,
+          borderRadius: 7,
+          borderSkipped: false,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { color: '#bac6d5', boxWidth: 10, font: { family: 'Vazirmatn Variable' } },
+        },
+        tooltip: {
+          callbacks: {
+            afterLabel: (context) => `‏${getWorkoutTitle(entries[context.dataIndex]?.workoutId ?? '')}`,
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: { color: '#91a0b4', maxRotation: 45, minRotation: 0 },
+          grid: { display: false },
+        },
+        y: {
+          beginAtZero: true,
+          ticks: { color: '#91a0b4', precision: 0, stepSize: 1 },
+          grid: { color: 'rgba(148, 163, 184, .08)' },
+          title: { display: true, text: '‏تعداد حرکت', color: '#91a0b4' },
+        },
+      },
+    },
+  }
+  workoutHistoryChart = new Chart(workoutHistoryCanvas.value, config)
+}
+
+watch(workoutSessions, () => {
+  hydrateWorkoutDrafts()
+  nextTick(renderWorkoutHistoryChart)
+}, { deep: true })
+watch([activeTab, progressEntries], () => nextTick(() => {
+  renderProgressChart()
+  renderWorkoutHistoryChart()
+}), { deep: true })
 onMounted(() => nextTick(() => {
   hydrateWorkoutDrafts()
   renderProgressChart()
+  renderWorkoutHistoryChart()
 }))
-onBeforeUnmount(() => progressChart?.destroy())
+onBeforeUnmount(() => {
+  progressChart?.destroy()
+  workoutHistoryChart?.destroy()
+})
 </script>
 
 <template>
@@ -304,17 +484,23 @@ onBeforeUnmount(() => progressChart?.destroy())
       <article class="glass-panel fitness-card">
         <div class="section-title compact">
           <div>
-            <h2>‏امروز؛ {{ todayNutritionPlan.label }}</h2>
-            <p>‏{{ todayNutritionPlan.activity }} · تکمیل {{ toPersianNumber(dailyCompletion) }}٪</p>
+            <h2>‏امروز؛ {{ todayCalendarDay.label }}</h2>
+            <p>‏{{ todayWorkout ? todayWorkout.title : 'روز استراحت و ریکاوری' }} · تکمیل {{ toPersianNumber(dailyCompletion) }}٪</p>
           </div>
           <strong class="fitness-completion">{{ toPersianNumber(dailyCompletion) }}٪</strong>
         </div>
         <div class="progress fitness-master-progress"><i :style="{ width: `${dailyCompletion}%` }" /></div>
         <div class="fitness-task-grid">
-          <label v-for="task in dailyTasks" :key="task.id" class="fitness-task" :class="{ completed: todayRecord.tasks[task.id] }">
+          <label
+            v-for="task in dailyTasks"
+            :key="task.id"
+            class="fitness-task"
+            :class="{ completed: todayRecord.tasks[task.id], disabled: isDailyTaskDisabled(task.id) }"
+          >
             <input
               type="checkbox"
               :checked="todayRecord.tasks[task.id]"
+              :disabled="isDailyTaskDisabled(task.id)"
               @change="toggleDailyTask(task.id)"
             />
             <component :is="task.icon" :size="18" aria-hidden="true" />
@@ -338,28 +524,47 @@ onBeforeUnmount(() => progressChart?.destroy())
 
       <article class="glass-panel fitness-card">
         <div class="section-title compact">
-          <div><h2>‏وعده‌های امروز</h2><p>‏با تکمیل هر وعده، کالری و پروتئین محاسبه می‌شود.</p></div>
+          <div><h2>‏وعده‌های امروز</h2><p>‏ابتدا یکی از برنامه‌های روزانه را انتخاب کن؛ سپس وعده‌های همان برنامه را ثبت کن.</p></div>
         </div>
-        <div class="fitness-macro-grid">
-          <div>
-            <span><small>‏کالری</small><b>{{ toPersianNumber(caloriesConsumed) }} / {{ toPersianNumber(profile.calorieMin) }}</b></span>
-            <div class="progress"><i :style="{ width: progressWidth(caloriesConsumed, profile.calorieMin) }" /></div>
+        <label class="fitness-meal-plan-picker">
+          <span><Utensils :size="17" /> ‏برنامه غذایی این تاریخ</span>
+          <BudgetyarSelect v-model="selectedMealPlanWeekday">
+            <option value="" disabled>‏انتخاب برنامه غذایی...</option>
+            <option v-for="day in nutritionWeek" :key="day.weekday" :value="String(day.weekday)">
+              {{ day.label }} · {{ day.activity }}
+            </option>
+          </BudgetyarSelect>
+          <small v-if="todayNutritionPlan">‏انتخاب فعلی: {{ todayNutritionPlan.label }}، {{ todayNutritionPlan.activity }}</small>
+          <small v-else>‏تا قبل از انتخاب برنامه، چک‌باکس‌های تغذیه در پیشرفت روزانه غیرفعال هستند.</small>
+        </label>
+
+        <template v-if="todayNutritionPlan">
+          <div class="fitness-macro-grid fitness-selected-plan-macros">
+            <div>
+              <span><small>‏کالری</small><b>{{ toPersianNumber(caloriesConsumed) }} / {{ toPersianNumber(profile.calorieMin) }}</b></span>
+              <div class="progress"><i :style="{ width: progressWidth(caloriesConsumed, profile.calorieMin) }" /></div>
+            </div>
+            <div>
+              <span><small>‏پروتئین</small><b>{{ toPersianNumber(proteinConsumed) }} / {{ toPersianNumber(profile.proteinMin) }} گرم</b></span>
+              <div class="progress"><i :style="{ width: progressWidth(proteinConsumed, profile.proteinMin) }" /></div>
+            </div>
           </div>
-          <div>
-            <span><small>‏پروتئین</small><b>{{ toPersianNumber(proteinConsumed) }} / {{ toPersianNumber(profile.proteinMin) }} گرم</b></span>
-            <div class="progress"><i :style="{ width: progressWidth(proteinConsumed, profile.proteinMin) }" /></div>
+          <div class="fitness-meal-list">
+            <label v-for="meal in todayMeals" :key="meal.id" class="fitness-meal" :class="{ completed: todayRecord.completedMealIds.includes(meal.id) }">
+              <input
+                type="checkbox"
+                :checked="todayRecord.completedMealIds.includes(meal.id)"
+                @change="toggleMeal(meal.id)"
+              />
+              <span><b>{{ meal.name }}</b><small>{{ meal.amount }}</small></span>
+              <em>{{ toPersianNumber(meal.calories) }} kcal · {{ toPersianNumber(meal.protein) }}g</em>
+            </label>
           </div>
-        </div>
-        <div class="fitness-meal-list">
-          <label v-for="meal in todayMeals" :key="meal.id" class="fitness-meal" :class="{ completed: todayRecord.completedMealIds.includes(meal.id) }">
-            <input
-              type="checkbox"
-              :checked="todayRecord.completedMealIds.includes(meal.id)"
-              @change="toggleMeal(meal.id)"
-            />
-            <span><b>{{ meal.name }}</b><small>{{ meal.amount }}</small></span>
-            <em>{{ toPersianNumber(meal.calories) }} kcal · {{ toPersianNumber(meal.protein) }}g</em>
-          </label>
+        </template>
+        <div v-else class="fitness-meal-plan-empty">
+          <Utensils :size="24" />
+          <strong>‏هنوز برنامه‌ای برای امروز انتخاب نشده است.</strong>
+          <small>‏از فهرست بالا یک برنامه انتخاب کن تا وعده‌ها و چک‌باکس‌ها نمایش داده شوند.</small>
         </div>
       </article>
     </div>
@@ -464,12 +669,109 @@ onBeforeUnmount(() => progressChart?.destroy())
       </article>
 
       <article v-if="workoutSessions.length" class="glass-panel fitness-card">
-        <div class="section-title compact"><div><h2>‏آخرین جلسه‌ها</h2><p>‏تاریخچه ثبت‌شده روی همین دستگاه</p></div></div>
-        <div class="fitness-history-list">
-          <span v-for="session in workoutSessions.slice(0, 6)" :key="session.id">
-            <b>{{ workouts.find((item) => item.id === session.workoutId)?.title }}</b>
-            <small>{{ toPersianNumber(session.date) }} · {{ toPersianNumber(session.exercises.length) }} حرکت</small>
-          </span>
+        <div class="section-title compact">
+          <div>
+            <h2>‏روند تعداد حرکات باشگاه</h2>
+            <p>‏تعداد حرکات ثبت‌شده در ۱۲ جلسه اخیر؛ با ویرایش تاریخچه خودکار به‌روز می‌شود.</p>
+          </div>
+        </div>
+        <div class="fitness-workout-chart-stats">
+          <span><small>‏تعداد جلسات</small><b>{{ toPersianNumber(workoutHistoryStats.sessions) }}</b></span>
+          <span><small>‏میانگین حرکت در جلسه</small><b>{{ toPersianNumber(workoutHistoryStats.average) }}</b></span>
+          <span><small>‏بیشترین حرکت</small><b>{{ toPersianNumber(workoutHistoryStats.maximum) }}</b></span>
+        </div>
+        <div class="fitness-workout-history-chart">
+          <canvas ref="workoutHistoryCanvas" />
+        </div>
+      </article>
+
+      <article v-if="workoutSessions.length" class="glass-panel fitness-card">
+        <div class="section-title compact">
+          <div>
+            <h2>‏تاریخچه جلسات</h2>
+            <p>‏برای دیدن جزئیات، ویرایش یا حذف، هر جلسه را باز کن.</p>
+          </div>
+          <span class="fitness-history-count">{{ toPersianNumber(workoutSessions.length) }} جلسه</span>
+        </div>
+        <div class="fitness-session-history">
+          <article v-for="session in workoutSessions" :key="session.id" class="fitness-session-card">
+            <button
+              class="fitness-session-summary"
+              type="button"
+              :aria-expanded="openHistorySessionId === session.id"
+              @click="openHistorySessionId = openHistorySessionId === session.id ? '' : session.id"
+            >
+              <span>
+                <b>{{ getWorkoutTitle(session.workoutId) }}</b>
+                <small>
+                  {{ toPersianNumber(session.date) }} ·
+                  {{ toPersianNumber(session.exercises.length) }} حرکت ·
+                  {{ toPersianNumber(getSessionTotalSets(session)) }} ست کامل
+                </small>
+              </span>
+              <ChevronDown :size="18" :class="{ rotated: openHistorySessionId === session.id }" />
+            </button>
+
+            <div v-if="openHistorySessionId === session.id" class="fitness-session-details">
+              <template v-if="editingSessionId === session.id">
+                <label class="fitness-session-date">
+                  <span>‏تاریخ جلسه</span>
+                  <input v-model="sessionEditDraft.date" type="text" inputmode="numeric" placeholder="‏۱۴۰۵/۰۵/۰۹" />
+                </label>
+                <div class="fitness-session-exercises">
+                  <article v-for="exercise in sessionEditDraft.exercises" :key="exercise.exerciseId" class="fitness-session-exercise editing">
+                    <div class="fitness-session-exercise-head">
+                      <span>
+                        <strong>{{ getExerciseName(session.workoutId, exercise.exerciseId) }}</strong>
+                        <small>{{ getExerciseTarget(session.workoutId, exercise.exerciseId) }}</small>
+                      </span>
+                    </div>
+                    <div class="fitness-log-grid">
+                      <label><span>‏وزنه (کیلو)</span><input v-model.number="exercise.weight" type="number" min="0" step="0.5" inputmode="decimal" /></label>
+                      <label><span>‏تکرار</span><input v-model.number="exercise.reps" type="number" min="0" inputmode="numeric" /></label>
+                      <label><span>‏ست کامل</span><input v-model.number="exercise.completedSets" type="number" min="0" inputmode="numeric" /></label>
+                      <label class="fitness-log-note"><span>‏یادداشت</span><input v-model="exercise.notes" type="text" placeholder="‏اختیاری" /></label>
+                    </div>
+                  </article>
+                </div>
+                <div class="fitness-session-actions">
+                  <button class="primary-button" type="button" @click="submitSessionEdit(session)">
+                    <Save :size="16" /> ‏ذخیره تغییرات
+                  </button>
+                  <button class="soft-button" type="button" @click="cancelEditingSession">
+                    <X :size="16" /> ‏انصراف
+                  </button>
+                </div>
+              </template>
+
+              <template v-else>
+                <div class="fitness-session-exercises">
+                  <article v-for="exercise in session.exercises" :key="exercise.exerciseId" class="fitness-session-exercise">
+                    <div class="fitness-session-exercise-head">
+                      <span>
+                        <strong>{{ getExerciseName(session.workoutId, exercise.exerciseId) }}</strong>
+                        <small>{{ getExerciseTarget(session.workoutId, exercise.exerciseId) }}</small>
+                      </span>
+                    </div>
+                    <div class="fitness-session-values">
+                      <span><small>‏وزنه</small><b>{{ toPersianNumber(exercise.weight) }} کیلو</b></span>
+                      <span><small>‏تکرار</small><b>{{ toPersianNumber(exercise.reps) }}</b></span>
+                      <span><small>‏ست کامل</small><b>{{ toPersianNumber(exercise.completedSets) }}</b></span>
+                    </div>
+                    <p v-if="exercise.notes" class="fitness-session-note">‏{{ exercise.notes }}</p>
+                  </article>
+                </div>
+                <div class="fitness-session-actions">
+                  <button class="soft-button" type="button" @click="startEditingSession(session)">
+                    <Pencil :size="16" /> ‏ویرایش جلسه
+                  </button>
+                  <button class="soft-button fitness-delete-session" type="button" @click="deleteWorkoutSession(session)">
+                    <Trash2 :size="16" /> ‏حذف جلسه
+                  </button>
+                </div>
+              </template>
+            </div>
+          </article>
         </div>
       </article>
     </div>
