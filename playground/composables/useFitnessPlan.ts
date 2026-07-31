@@ -1,6 +1,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { parseJalaliInput, toJalali } from '../../src/utils/jalali'
 import {
+  legacyExerciseNames,
   meals,
   nutritionWeek,
   workouts,
@@ -34,6 +35,7 @@ export interface DailyNutritionRecord {
 
 export interface ExerciseLog {
   exerciseId: string
+  exerciseName?: string
   weight: number
   reps: number
   completedSets: number
@@ -233,7 +235,13 @@ function shouldIncreaseWeight(exercise: Exercise, log: ExerciseLog): boolean {
 function saveWorkout(workout: WorkoutDay, logs: ExerciseLog[]): void {
   const completedLogs = logs
     .filter((log) => log.completedSets > 0 || log.weight > 0 || log.reps > 0 || log.notes.trim())
-    .map((log) => ({ ...log, weight: Number(log.weight) || 0, reps: Number(log.reps) || 0, completedSets: Number(log.completedSets) || 0 }))
+    .map((log) => ({
+      ...log,
+      exerciseName: workout.exercises.find((exercise) => exercise.id === log.exerciseId)?.name ?? log.exerciseName,
+      weight: Number(log.weight) || 0,
+      reps: Number(log.reps) || 0,
+      completedSets: Number(log.completedSets) || 0,
+    }))
   if (!completedLogs.length) return
   workoutSessions.value.unshift({
     id: `${Date.now()}-${workout.id}`,
@@ -253,6 +261,7 @@ function updateWorkoutSession(id: string, updates: Pick<WorkoutSession, 'date' |
     .filter((log) => log.completedSets > 0 || log.weight > 0 || log.reps > 0 || log.notes.trim())
     .map((log) => ({
       exerciseId: log.exerciseId,
+      exerciseName: log.exerciseName,
       weight: Math.max(0, Number(log.weight) || 0),
       reps: Math.max(0, Number(log.reps) || 0),
       completedSets: Math.max(0, Number(log.completedSets) || 0),
@@ -322,7 +331,17 @@ function startFitnessPlan(): void {
     progressEntries.value = restoreArray<ProgressEntry>(PROGRESS_STORAGE_KEY)
     try {
       const workoutStore = JSON.parse(localStorage.getItem(WORKOUTS_STORAGE_KEY) ?? 'null') as WorkoutStore | null
-      workoutSessions.value = Array.isArray(workoutStore?.sessions) ? workoutStore.sessions : []
+      workoutSessions.value = Array.isArray(workoutStore?.sessions)
+        ? workoutStore.sessions.map((session) => ({
+          ...session,
+          exercises: Array.isArray(session.exercises)
+            ? session.exercises.map((exercise) => ({
+              ...exercise,
+              exerciseName: exercise.exerciseName || legacyExerciseNames[exercise.exerciseId],
+            }))
+            : [],
+        }))
+        : []
       cardioLogs.value = Array.isArray(workoutStore?.cardio) ? workoutStore.cardio : []
     } catch {
       localStorage.removeItem(WORKOUTS_STORAGE_KEY)

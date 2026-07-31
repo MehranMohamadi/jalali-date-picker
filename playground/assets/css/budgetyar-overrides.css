@@ -678,6 +678,32 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.fitness-workout-rules {
+  display: grid;
+  gap: 7px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 8px;
+}
+
+.fitness-workout-rules > span {
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  display: grid;
+  gap: 3px;
+  padding: 8px 10px;
+}
+
+.fitness-workout-rules small {
+  color: var(--muted);
+  font-size: .68rem;
+}
+
+.fitness-workout-rules b {
+  color: var(--muted-2);
+  font-size: .76rem;
+}
+
 .fitness-workout {
   overflow: hidden;
 }
@@ -726,6 +752,41 @@
   color: var(--muted);
   font-size: .75rem;
   line-height: 1.8;
+}
+
+.fitness-abs-plan {
+  align-items: center;
+  background: rgba(20, 184, 166, .08);
+  border: 1px solid rgba(20, 184, 166, .2);
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 9px 10px;
+}
+
+.fitness-abs-plan > span {
+  display: grid;
+  gap: 2px;
+}
+
+.fitness-abs-plan small {
+  color: var(--muted);
+  font-size: .7rem;
+}
+
+.fitness-abs-plan > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.fitness-abs-plan > div b {
+  background: rgba(20, 184, 166, .12);
+  border-radius: 999px;
+  color: #5eead4;
+  font-size: .7rem;
+  padding: 4px 7px;
 }
 
 .fitness-exercise-list {
@@ -1200,6 +1261,15 @@ body.budgetyar-light .fitness-session-exercise {
   .fitness-macro-grid,
   .fitness-overload {
     grid-template-columns: 1fr;
+  }
+
+  .fitness-workout-rules {
+    grid-template-columns: 1fr;
+  }
+
+  .fitness-abs-plan {
+    align-items: stretch;
+    display: grid;
   }
 
   .fitness-exercise-head {

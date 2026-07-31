@@ -37,6 +37,10 @@ export interface WorkoutDay {
   targetMuscles: string
   note: string
   exercises: Exercise[]
+  abs?: {
+    duration: string
+    exercises: string[]
+  }
 }
 
 export const meals: Meal[] = [
@@ -195,16 +199,16 @@ export const meals: Meal[] = [
 ]
 
 export const nutritionWeek: NutritionDay[] = [
-  { weekday: 6, label: '‏شنبه', activity: '‏بالاتنه A', mealIds: ['breakfast-b', 'lunch-chicken', 'snack-whey', 'dinner-tuna', 'daily-adjustment'] },
-  { weekday: 0, label: '‏یکشنبه', activity: '‏پایین‌تنه A', mealIds: ['breakfast-a', 'lunch-beef', 'snack-yogurt', 'dinner-wrap', 'daily-adjustment'] },
+  { weekday: 6, label: '‏شنبه', activity: '‏سینه + سرشانه + پشت بازو', mealIds: ['breakfast-b', 'lunch-chicken', 'snack-whey', 'dinner-tuna', 'daily-adjustment'] },
+  { weekday: 0, label: '‏یکشنبه', activity: '‏پشت + زیر بغل + جلو بازو', mealIds: ['breakfast-a', 'lunch-beef', 'snack-yogurt', 'dinner-wrap', 'daily-adjustment'] },
   { weekday: 1, label: '‏دوشنبه', activity: '‏استراحت', mealIds: ['breakfast-c', 'lunch-fish', 'snack-milk', 'dinner-omelet', 'daily-adjustment'] },
-  { weekday: 2, label: '‏سه‌شنبه', activity: '‏بالاتنه B', mealIds: ['breakfast-b', 'lunch-stew', 'snack-whey', 'dinner-yogurt-chicken', 'daily-adjustment'] },
+  { weekday: 2, label: '‏سه‌شنبه', activity: '‏پا + شکم', mealIds: ['breakfast-b', 'lunch-stew', 'snack-whey', 'dinner-yogurt-chicken', 'daily-adjustment'] },
   { weekday: 3, label: '‏چهارشنبه', activity: '‏استراحت', mealIds: ['breakfast-d', 'lunch-lentil', 'snack-yogurt', 'dinner-leftover', 'daily-adjustment'] },
-  { weekday: 4, label: '‏پنجشنبه', activity: '‏پایین‌تنه B + بازو', mealIds: ['breakfast-a', 'lunch-chicken', 'snack-whey', 'dinner-wrap', 'daily-adjustment'] },
+  { weekday: 4, label: '‏پنجشنبه', activity: '‏بازو + حرکات کمکی', mealIds: ['breakfast-a', 'lunch-chicken', 'snack-whey', 'dinner-wrap', 'daily-adjustment'] },
   { weekday: 5, label: '‏جمعه', activity: '‏استراحت انعطاف‌پذیر', mealIds: ['breakfast-c', 'lunch-beef', 'snack-yogurt', 'dinner-tuna', 'daily-adjustment'], note: '‏یک وعده انعطاف‌پذیر، نه یک روز آزاد؛ پروتئین روزانه حفظ شود.' },
 ]
 
-export const workouts: WorkoutDay[] = [
+const legacyWorkouts: WorkoutDay[] = [
   {
     id: 'upper-a',
     weekday: 6,
@@ -273,6 +277,133 @@ export const workouts: WorkoutDay[] = [
     ],
   },
 ]
+
+export const legacyWorkoutTitles: Record<string, string> = Object.fromEntries(
+  legacyWorkouts.map((workout) => [workout.id, workout.title]),
+)
+
+export const legacyExerciseNames: Record<string, string> = Object.fromEntries(
+  legacyWorkouts.flatMap((workout) => workout.exercises.map((exercise) => [exercise.id, exercise.name])),
+)
+
+export const workoutPlan = {
+  title: '‏برنامه تمرینی کات - ۴ روز در هفته',
+  goal: '‏کاهش چربی شکم، حفظ حجم عضله و حفظ قدرت تمرینی',
+  rules: {
+    restHeavy: '‏90-120 ثانیه',
+    restIsolation: '‏45-75 ثانیه',
+    intensity: '‏اکثر ست‌ها با 1 تا 2 تکرار ذخیره (RIR 1-2)',
+    progression: {
+      dumbbell: '‏+2.5kg هر دست',
+      machine: '‏+5kg',
+      reviewPeriod: '‏هر 2 تا 3 هفته',
+    },
+    cardio: {
+      duration: '‏15-25 دقیقه',
+      intensity: '‏متوسط',
+      timing: '‏بعد از تمرین',
+    },
+  },
+  days: [
+    {
+      id: 1,
+      title: '‏سینه + سرشانه + پشت بازو',
+      muscles: ['‏سینه', '‏سرشانه', '‏پشت بازو'],
+      exercises: [
+        { name: '‏بالا سینه دمبل', sets: 4, reps: '8-12' },
+        { name: '‏پرس سینه دمبل', sets: 4, reps: '8-12' },
+        { name: '‏فلای سینه', sets: 3, reps: '12-15' },
+        { name: '‏نشر جانب', sets: 4, reps: '12-15' },
+        { name: '‏نشر بغل', sets: 3, reps: '12-15' },
+        { name: '‏پشت بازو سیمکش', sets: 4, reps: '10-12' },
+        { name: '‏پشت بازو دستگاه', sets: 3, reps: '10-12' },
+      ],
+    },
+    {
+      id: 2,
+      title: '‏پشت + زیر بغل + جلو بازو',
+      muscles: ['‏پشت', '‏زیر بغل', '‏جلو بازو'],
+      exercises: [
+        { name: '‏لت سیمکش', sets: 4, reps: '8-12' },
+        { name: '‏پارویی', sets: 4, reps: '8-12' },
+        { name: '‏فلای پشت', sets: 3, reps: '12-15' },
+        { name: '‏جلو بازو هالتر چسبیده به بدن', sets: 3, reps: '8-12' },
+        { name: '‏جلو بازو لاری', sets: 3, reps: '10-12' },
+        { name: '‏جلو بازو چکشی', sets: 3, reps: '10-12' },
+      ],
+    },
+    {
+      id: 3,
+      title: '‏پا + شکم',
+      muscles: ['‏چهارسر', '‏همسترینگ', '‏ساق', '‏شکم'],
+      exercises: [
+        { name: '‏اسکوات دستگاه', sets: 4, reps: '8-12' },
+        { name: '‏پرس پا', sets: 4, reps: '10-12' },
+        { name: '‏جلو ران دستگاه', sets: 3, reps: '12-15' },
+        { name: '‏پشت پا دستگاه', sets: 3, reps: '10-15' },
+        { name: '‏داخل ران دستگاه', sets: 3, reps: '12-15' },
+        { name: '‏خارج ران دستگاه', sets: 3, reps: '12-15' },
+        { name: '‏ساق پا دستگاه', sets: 4, reps: '12-20' },
+      ],
+      abs: {
+        duration: '‏10-15 دقیقه',
+        exercises: ['‏کرانچ', '‏بالا آوردن پا', '‏پلانک'],
+      },
+    },
+    {
+      id: 4,
+      title: '‏بازو + حرکات کمکی',
+      muscles: ['‏جلو بازو', '‏پشت بازو', '‏سرشانه'],
+      exercises: [
+        { name: '‏جلو بازو هالتر', sets: 3, reps: '8-12' },
+        { name: '‏جلو بازو دمبل تناوبی', sets: 3, reps: '10-12' },
+        { name: '‏پشت بازو سیمکش', sets: 4, reps: '10-12' },
+        { name: '‏پشت بازو دستگاه', sets: 3, reps: '10-12' },
+        { name: '‏نشر جانب سبک', sets: 3, reps: '12-15' },
+        { name: '‏فلای پشت', sets: 3, reps: '12-15' },
+      ],
+    },
+  ],
+} as const
+
+const workoutWeekdays = [6, 0, 2, 4]
+const workoutDayLabels = ['‏شنبه', '‏یکشنبه', '‏سه‌شنبه', '‏پنجشنبه']
+const heavyExercisePattern = /پرس|اسکوات|پارویی|لت/
+
+function getExerciseEquipment(name: string): ExerciseEquipment {
+  if (name.includes('دمبل')) return 'dumbbell'
+  if (name.includes('هالتر')) return 'barbell'
+  if (name.includes('سیمکش')) return 'cable'
+  if (name.includes('دستگاه') || name.includes('پارویی') || name.includes('فلای')) return 'machine'
+  return 'dumbbell'
+}
+
+function getMaxReps(reps: string): number {
+  const values = reps.match(/\d+/g)?.map(Number) ?? []
+  return values.length ? Math.max(...values) : 0
+}
+
+export const workouts: WorkoutDay[] = workoutPlan.days.map((day, dayIndex) => ({
+  id: `cut-day-${day.id}`,
+  weekday: workoutWeekdays[dayIndex],
+  label: workoutDayLabels[dayIndex],
+  title: day.title,
+  targetMuscles: day.muscles.join('، '),
+  note: `${workoutPlan.rules.intensity} · هوازی ${workoutPlan.rules.cardio.duration} ${workoutPlan.rules.cardio.timing}`,
+  exercises: day.exercises.map((exercise, exerciseIndex) => ({
+    id: `cut-${day.id}-${exerciseIndex + 1}`,
+    name: exercise.name,
+    sets: exercise.sets,
+    reps: exercise.reps,
+    maxReps: getMaxReps(exercise.reps),
+    rest: heavyExercisePattern.test(exercise.name) ? workoutPlan.rules.restHeavy : workoutPlan.rules.restIsolation,
+    equipment: getExerciseEquipment(exercise.name),
+    note: workoutPlan.rules.intensity,
+  })),
+  abs: 'abs' in day
+    ? { duration: day.abs.duration, exercises: [...day.abs.exercises] }
+    : undefined,
+}))
 
 export const shoppingList = [
   { title: '‏پروتئین‌ها', items: ['‏مرغ بدون پوست', '‏گوشت کم‌چرب', '‏ماهی و تن ماهی', '‏تخم‌مرغ و سفیده', '‏ماست یونانی و پنیر کم‌چرب', '‏حبوبات'] },

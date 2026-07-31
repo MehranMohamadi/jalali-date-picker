@@ -19,7 +19,13 @@ import {
   X,
 } from 'lucide-vue-next'
 import { Chart, registerables, type ChartConfiguration } from 'chart.js'
-import { mealTiming, shoppingList, type WorkoutDay } from '../data/fitnessPlan'
+import {
+  legacyWorkoutTitles,
+  mealTiming,
+  shoppingList,
+  workoutPlan,
+  type WorkoutDay,
+} from '../data/fitnessPlan'
 import type { ExerciseLog, WorkoutSession } from '../composables/useFitnessPlan'
 
 Chart.register(...registerables)
@@ -97,7 +103,7 @@ const dailyTasks = computed(() => {
     return [
       { id: 'workout', label: `‏تمرین ${todayWorkout.value.title}`, detail: todayWorkout.value.targetMuscles, icon: Dumbbell },
       ...nutritionTasks,
-      { id: 'cardio', label: '‏هوازی پس از تمرین', detail: '‏۱۵ دقیقه با شدت سبک تا متوسط', icon: HeartPulse },
+      { id: 'cardio', label: '‏هوازی پس از تمرین', detail: '‏۱۵ تا ۲۵ دقیقه با شدت متوسط', icon: HeartPulse },
       waterTask,
     ]
   }
@@ -218,13 +224,15 @@ function submitWorkout(workout: WorkoutDay): void {
 }
 
 function getWorkoutTitle(workoutId: string): string {
-  return workouts.find((workout) => workout.id === workoutId)?.title ?? '‏جلسه تمرین'
+  return workouts.find((workout) => workout.id === workoutId)?.title ?? legacyWorkoutTitles[workoutId] ?? '‏جلسه تمرین'
 }
 
-function getExerciseName(workoutId: string, exerciseId: string): string {
-  return workouts
-    .find((workout) => workout.id === workoutId)
-    ?.exercises.find((exercise) => exercise.id === exerciseId)?.name ?? '‏حرکت ثبت‌شده'
+function getExerciseName(workoutId: string, exerciseId: string, savedName?: string): string {
+  return savedName || (
+    workouts
+      .find((workout) => workout.id === workoutId)
+      ?.exercises.find((exercise) => exercise.id === exerciseId)?.name ?? '‏حرکت ثبت‌شده'
+  )
 }
 
 function getExerciseTarget(workoutId: string, exerciseId: string): string {
@@ -629,12 +637,18 @@ onBeforeUnmount(() => {
     <div v-else-if="activeTab === 'workout'" class="fitness-section-stack">
       <article class="glass-panel fitness-card">
         <div class="section-title compact">
-          <div><h2>‏برنامه ۴ روزه تمرین</h2><p>‏بیشتر ست‌ها را با ۱ تا ۳ تکرار ذخیره و فرم صحیح اجرا کن.</p></div>
+          <div><h2>{{ workoutPlan.title }}</h2><p>{{ workoutPlan.goal }}</p></div>
         </div>
         <div class="fitness-overload">
-          <span><Dumbbell :size="18" /><b>‏دمبل</b><small>‏افزایش ۲٫۵ کیلو برای هر دست</small></span>
-          <span><Activity :size="18" /><b>‏دستگاه</b><small>‏افزایش ۵ کیلو</small></span>
-          <span><Target :size="18" /><b>‏بازبینی</b><small>‏هر ۲ تا ۳ هفته</small></span>
+          <span><Dumbbell :size="18" /><b>‏دمبل</b><small>{{ workoutPlan.rules.progression.dumbbell }}</small></span>
+          <span><Activity :size="18" /><b>‏دستگاه</b><small>{{ workoutPlan.rules.progression.machine }}</small></span>
+          <span><Target :size="18" /><b>‏بازبینی</b><small>{{ workoutPlan.rules.progression.reviewPeriod }}</small></span>
+        </div>
+        <div class="fitness-workout-rules">
+          <span><small>‏استراحت حرکات سنگین</small><b>{{ toPersianNumber(workoutPlan.rules.restHeavy) }}</b></span>
+          <span><small>‏استراحت حرکات تک‌مفصلی</small><b>{{ toPersianNumber(workoutPlan.rules.restIsolation) }}</b></span>
+          <span><small>‏شدت تمرین</small><b>{{ toPersianNumber(workoutPlan.rules.intensity) }}</b></span>
+          <span><small>‏هوازی</small><b>{{ toPersianNumber(workoutPlan.rules.cardio.duration) }} · {{ workoutPlan.rules.cardio.intensity }} · {{ workoutPlan.rules.cardio.timing }}</b></span>
         </div>
       </article>
 
@@ -645,6 +659,12 @@ onBeforeUnmount(() => {
         </button>
         <div v-if="openWorkoutId === workout.id" class="fitness-workout-body">
           <p class="fitness-workout-note">{{ workout.note }}</p>
+          <div v-if="workout.abs" class="fitness-abs-plan">
+            <span><strong>‏تمرین شکم</strong><small>{{ toPersianNumber(workout.abs.duration) }}</small></span>
+            <div>
+              <b v-for="exercise in workout.abs.exercises" :key="exercise">{{ exercise }}</b>
+            </div>
+          </div>
           <div class="fitness-exercise-list">
             <article v-for="exercise in workout.exercises" :key="exercise.id" class="fitness-exercise">
               <div class="fitness-exercise-head">
@@ -722,7 +742,7 @@ onBeforeUnmount(() => {
                   <article v-for="exercise in sessionEditDraft.exercises" :key="exercise.exerciseId" class="fitness-session-exercise editing">
                     <div class="fitness-session-exercise-head">
                       <span>
-                        <strong>{{ getExerciseName(session.workoutId, exercise.exerciseId) }}</strong>
+                        <strong>{{ getExerciseName(session.workoutId, exercise.exerciseId, exercise.exerciseName) }}</strong>
                         <small>{{ getExerciseTarget(session.workoutId, exercise.exerciseId) }}</small>
                       </span>
                     </div>
@@ -749,7 +769,7 @@ onBeforeUnmount(() => {
                   <article v-for="exercise in session.exercises" :key="exercise.exerciseId" class="fitness-session-exercise">
                     <div class="fitness-session-exercise-head">
                       <span>
-                        <strong>{{ getExerciseName(session.workoutId, exercise.exerciseId) }}</strong>
+                        <strong>{{ getExerciseName(session.workoutId, exercise.exerciseId, exercise.exerciseName) }}</strong>
                         <small>{{ getExerciseTarget(session.workoutId, exercise.exerciseId) }}</small>
                       </span>
                     </div>
@@ -779,7 +799,7 @@ onBeforeUnmount(() => {
     <div v-else-if="activeTab === 'cardio'" class="fitness-section-stack">
       <article class="glass-panel fitness-card">
         <div class="section-title compact">
-          <div><h2>‏ثبت هوازی</h2><p>‏پیشنهاد شروع: ۱۵ دقیقه بعد از تمرین؛ شدت قابل گفت‌وگوی کوتاه.</p></div>
+          <div><h2>‏ثبت هوازی</h2><p>‏۱۵ تا ۲۵ دقیقه بعد از تمرین با شدت متوسط.</p></div>
         </div>
         <form class="fitness-cardio-form" @submit.prevent="submitCardio">
           <label><span>‏مدت (دقیقه)</span><input v-model.number="cardioForm.duration" type="number" min="1" inputmode="numeric" /></label>
@@ -798,11 +818,11 @@ onBeforeUnmount(() => {
       </article>
 
       <article class="glass-panel fitness-card">
-        <div class="section-title compact"><div><h2>‏روند ۸ هفته‌ای</h2><p>‏افزایش تدریجی بدون آسیب به تمرین مقاومتی</p></div></div>
+        <div class="section-title compact"><div><h2>‏قواعد هوازی برنامه</h2><p>‏هوازی را بعد از تمرین مقاومتی و بدون افت کیفیت تمرین انجام بده.</p></div></div>
         <div class="fitness-cardio-phases">
-          <span><b>‏هفته ۱–۲</b><small>‏۲ نوبت، ۱۵–۲۰ دقیقه · ۷۰۰۰ قدم</small></span>
-          <span><b>‏هفته ۳–۵</b><small>‏۲ تا ۳ نوبت، ۲۰–۲۵ دقیقه · ۸۰۰۰ قدم</small></span>
-          <span><b>‏هفته ۶–۸</b><small>‏۳ نوبت، ۲۰–۳۰ دقیقه در صورت نیاز · ۹۰۰۰ قدم</small></span>
+          <span><b>‏مدت</b><small>{{ toPersianNumber(workoutPlan.rules.cardio.duration) }}</small></span>
+          <span><b>‏شدت</b><small>{{ workoutPlan.rules.cardio.intensity }}</small></span>
+          <span><b>‏زمان اجرا</b><small>{{ workoutPlan.rules.cardio.timing }}</small></span>
         </div>
       </article>
 
