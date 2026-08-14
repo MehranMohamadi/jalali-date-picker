@@ -3659,6 +3659,48 @@ body.budgetyar-light .analysis-note-grid p {
   border-color: #dbeafe;
 }
 
+body.budgetyar-light .weekly-category-list em,
+body.budgetyar-light .mobile-category-list em {
+  color: #92400e;
+}
+
+body.budgetyar-light .goal-unit-summary {
+  color: #155e75;
+}
+
+body.budgetyar-light .recent-expense-row b,
+body.budgetyar-light .installment-item.overdue .installment-item-head > span,
+body.budgetyar-light .market-rates-error,
+body.budgetyar-light .health-detail.danger strong,
+body.budgetyar-light .transaction-type-switch button:first-child.active svg {
+  color: #be123c;
+}
+
+body.budgetyar-light .weekly-overanalysis > strong,
+body.budgetyar-light .weekly-overanalysis-list em,
+body.budgetyar-light .installment-item.upcoming .installment-item-head > span,
+body.budgetyar-light .health-detail.warning strong {
+  color: #92400e;
+}
+
+body.budgetyar-light .installment-item-head > span,
+body.budgetyar-light .planning-list-title b,
+body.budgetyar-light .compact-item b,
+body.budgetyar-light .app-version strong,
+body.budgetyar-light .credit-settings-inline strong,
+body.budgetyar-light .market-rates-list b {
+  color: #155e75;
+}
+
+body.budgetyar-light .health-detail.positive strong,
+body.budgetyar-light .transaction-type-switch button:last-child.active svg {
+  color: #166534;
+}
+
+body.budgetyar-light .planning-details summary {
+  color: var(--muted-2);
+}
+
 body.budgetyar-light .nav-item {
   color: #334155;
 }

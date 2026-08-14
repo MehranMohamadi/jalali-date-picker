@@ -587,8 +587,14 @@ const categorizationRuleForm = reactive({
   applyToExisting: false,
 })
 const installmentAmountInWords = computed(() => formatMoneyWords(installmentForm.amount))
-const goalTargetAmountInWords = computed(() => formatMoneyWords(goalForm.targetAmount))
-const goalSavedAmountInWords = computed(() => formatMoneyWords(goalForm.savedAmount))
+const goalTargetAmountInWords = computed(() => formatGoalAmountWords(
+  goalForm.targetAmount,
+  goalForm.trackingMode === 'ASSET_FUNDING' ? 'irr' : goalForm.unit,
+))
+const goalSavedAmountInWords = computed(() => formatGoalAmountWords(
+  goalForm.savedAmount,
+  goalForm.trackingMode === 'ASSET_FUNDING' ? 'irr' : goalForm.unit,
+))
 const recurringAmountInWords = computed(() => formatMoneyWords(recurringForm.amount))
 const purchaseAmountInWords = computed(() => formatMoneyWords(purchaseForm.amount))
 const debtPrincipalAmountInWords = computed(() => formatMoneyWords(debtForm.principalAmount))
@@ -2235,6 +2241,13 @@ function getGoalUnitLabel(unit: GoalUnit = 'irr') {
   return unit === 'goldGram' ? 'گرم طلا' : unit === 'silverGram' ? 'گرم نقره' : unit === 'usd' ? 'دلار' : 'تومان'
 }
 
+function formatGoalAmountWords(value: number | string, unit: GoalUnit = 'irr') {
+  const amount = parseMoneyInput(value)
+  if (!amount) return ''
+
+  return `${numberToPersianWords(amount)} ${getGoalUnitLabel(unit)}`
+}
+
 function getGoalTransactionTypeLabel(type: BudgetyarGoalTransaction['type']) {
   const labels: Record<BudgetyarGoalTransaction['type'], string> = {
     DEPOSIT: 'واریز',
@@ -2249,7 +2262,13 @@ function getGoalTransactionTypeLabel(type: BudgetyarGoalTransaction['type']) {
 }
 
 function formatGoalAmount(amount: number, unit: GoalUnit = 'irr') {
-  return unit === 'irr' ? formatMoney(amount) : `${toPersianNumber(amount)} ${getGoalUnitLabel(unit)}`
+  const formattedAmount = new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 3 }).format(amount)
+  return unit === 'irr' ? formatMoney(amount) : `${formattedAmount} ${getGoalUnitLabel(unit)}`
+}
+
+function formatGoalTrackedAmount(goal: BudgetyarGoal, amount: number, compact = false) {
+  if (goal.trackingMode === 'ASSET_FUNDING') return compact ? formatCompact(amount) : formatMoney(amount)
+  return formatGoalAmount(amount, goal.unit)
 }
 
 function getGoalEstimatedValue(goal: BudgetyarGoal, amount = goal.savedAmount) {
@@ -4052,7 +4071,7 @@ export function useBudgetyar() {
     summaryLines, insights, dashboardCards, widgets, statsItems,
     getCategory, normalizeDigits, normalizeJalaliDate, getJalaliInputDay, getTrendDays, getPreviousMonthPrefix, addJalaliMonths, getInstallmentDueDate, getInstallmentStatus, getInstallmentStatusLabel, getCurrentWeekRange, getWeekdayLabel, getJalaliMonthPrefix, getCurrentJalaliDate, formatJalaliInputDate, formatDisplayJalaliDate, jalaliInputToIso, isoToJalaliInput, toPersianNumber, parseMoneyInput, formatMoneyInput, formatMoneyWords, formatMoney, formatCompact, progressPercent, getChangePercent, formatPercentHint, formatChangeSentence, getRiskLabel, getFinancialHealthLevelLabel,
     selectSection, openModal, editTransaction, saveTransaction, removeTransaction, refreshBankNotifications, openNotificationAccessSettings, updateSelectedBankPackage, acceptBankSuggestion, dismissBankSuggestion, formatSuggestionDate, updateMoneyInput, updateCreditLimit, recordCreditPayment, updateBudget, addCategory, deleteCategory, addInstallmentPlan, editInstallmentPlan, cancelInstallmentEdit, payInstallment, removeInstallmentPlan,
-    addGoal, editGoal, updateGoal, deleteGoal, archiveGoal, pauseGoal, resumeGoal, addGoalContribution, withdrawFromGoal, getGoalProgress, getGoalRemainingAmount, getGoalSuggestedMonthlySaving, getGoalSuggestedWeeklySaving, getGoalUnitLabel, getGoalTransactionTypeLabel, formatGoalAmount, getGoalEstimatedValue, getGoalTrackingModeLabel, getGoalHealthLabel, getGoalScenario, getGoalTransactions, getGoalSummary, getGoalSavedValue, getGoalTargetValue,
+    addGoal, editGoal, updateGoal, deleteGoal, archiveGoal, pauseGoal, resumeGoal, addGoalContribution, withdrawFromGoal, getGoalProgress, getGoalRemainingAmount, getGoalSuggestedMonthlySaving, getGoalSuggestedWeeklySaving, getGoalUnitLabel, getGoalTransactionTypeLabel, formatGoalAmount, formatGoalTrackedAmount, getGoalEstimatedValue, getGoalTrackingModeLabel, getGoalHealthLabel, getGoalScenario, getGoalTransactions, getGoalSummary, getGoalSavedValue, getGoalTargetValue,
     addRecurringItem, editRecurringItem, updateRecurringItem, deleteRecurringItem, toggleRecurringItem, getRecurringNextDueDate, markRecurringItemPaid, skipRecurringOccurrence, createTransactionFromRecurringItem, getRecurringStatusLabel, createPurchaseTransaction, setThemeMode, refreshMarketRates,
     addDebt, editDebt, updateDebt, deleteDebt, toggleDebt, recordDebtPayment, calculateDebtPayoffPlan,
     addCategorizationRule, editCategorizationRule, updateCategorizationRule, deleteCategorizationRule, toggleCategorizationRule, matchTransactionCategoryRule, applyCategorizationRulesToTransaction, applyCategorizationRulesToAllTransactions, suggestCategorizationRules, acceptSuggestedCategorizationRule, bulkUpdateTransactionCategory,

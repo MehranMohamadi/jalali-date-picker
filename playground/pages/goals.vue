@@ -7,6 +7,7 @@ const {
   goalTargetAmountInWords,
   goalSavedAmountInWords,
   formatGoalAmount,
+  formatGoalTrackedAmount,
   getGoalUnitLabel,
   getGoalTransactionTypeLabel,
   getGoalEstimatedValue,
@@ -26,7 +27,6 @@ const {
   formatMoneyInput,
   parseMoneyInput,
   formatMoney,
-  formatCompact,
   updateMoneyInput,
   addGoal,
   editGoal,
@@ -132,17 +132,17 @@ onMounted(() => {
         <input v-model="goalForm.title" type="text" placeholder="مثلا صندوق اضطراری" required />
       </label>
       <label>
-        <span>{{ goalForm.trackingMode === 'ASSET_HOLDING' ? 'مقدار هدف' : 'مبلغ هدف' }}</span>
+        <span>{{ goalForm.trackingMode === 'ASSET_FUNDING' || goalForm.unit === 'irr' ? 'مبلغ هدف' : 'مقدار هدف' }}</span>
         <input :value="formatMoneyInput(goalForm.targetAmount)" inputmode="numeric" required @input="updateMoneyInput(goalForm, 'targetAmount', $event)" />
         <small v-if="goalTargetAmountInWords" class="amount-in-words">{{ goalTargetAmountInWords }}</small>
       </label>
       <label>
-        <span>{{ goalForm.trackingMode === 'ASSET_HOLDING' ? 'مقدار فعلی' : 'پس‌انداز فعلی' }}</span>
+        <span>{{ goalForm.trackingMode === 'ASSET_FUNDING' || goalForm.unit === 'irr' ? 'پس‌انداز فعلی' : 'مقدار فعلی' }}</span>
         <input :value="formatMoneyInput(goalForm.savedAmount)" inputmode="numeric" @input="updateMoneyInput(goalForm, 'savedAmount', $event)" />
         <small v-if="goalSavedAmountInWords" class="amount-in-words">{{ goalSavedAmountInWords }}</small>
       </label>
       <label v-if="goalForm.trackingMode !== 'FIXED_MONEY'">
-        <span>مقدار دارایی</span>
+        <span>مقدار دارایی ({{ getGoalUnitLabel(goalForm.unit) }})</span>
         <input v-model.number="goalForm.targetQuantity" type="number" min="0" step="0.01" />
       </label>
       <label v-if="goalForm.trackingMode !== 'FIXED_MONEY'">
@@ -163,7 +163,7 @@ onMounted(() => {
         </BudgetyarSelect>
       </label>
       <label>
-        <span>واریز برنامه‌ای</span>
+        <span>{{ goalForm.trackingMode === 'ASSET_FUNDING' || goalForm.unit === 'irr' ? 'واریز برنامه‌ای' : `افزایش برنامه‌ای (${getGoalUnitLabel(goalForm.unit)})` }}</span>
         <input v-model.number="goalForm.plannedContribution" type="number" min="0" inputmode="numeric" />
       </label>
       <label>
@@ -232,24 +232,24 @@ onMounted(() => {
           </span>
           <span>نوع رهگیری: {{ getGoalTrackingModeLabel(goal) }}</span>
           <span>سلامت: {{ getGoalHealthLabel(goal) }}</span>
-          <span v-if="getGoalEstimatedValue(goal) !== null">ارزش تقریبی فعلی: {{ formatMoney(getGoalEstimatedValue(goal) || 0) }} تومان</span>
-          <span v-if="getGoalEstimatedValue(goal, goal.targetAmount) !== null">ارزش تقریبی هدف: {{ formatMoney(getGoalEstimatedValue(goal, goal.targetAmount) || 0) }} تومان</span>
+          <span v-if="getGoalEstimatedValue(goal) !== null">ارزش تقریبی فعلی: {{ formatMoney(getGoalEstimatedValue(goal) || 0) }}</span>
+          <span v-if="getGoalEstimatedValue(goal, goal.targetAmount) !== null">ارزش تقریبی هدف: {{ formatMoney(getGoalEstimatedValue(goal, goal.targetAmount) || 0) }}</span>
           <span>
             {{ goal.trackingMode === 'ASSET_HOLDING'
               ? `${formatGoalAmount(getGoalSummary(goal).currentQuantity, goal.unit)} از ${formatGoalAmount(getGoalSummary(goal).currentRequiredAmount ?? goal.targetAmount, goal.unit)}`
-              : `${formatMoney(getGoalSummary(goal).netSavedAmount)} از ${formatMoney(getGoalSummary(goal).currentRequiredAmount ?? goal.targetAmount)}`
+              : `${formatGoalTrackedAmount(goal, getGoalSummary(goal).netSavedAmount)} از ${formatGoalTrackedAmount(goal, getGoalSummary(goal).currentRequiredAmount ?? goal.targetAmount)}`
             }}
           </span>
-          <span>مانده: {{ formatMoney(getGoalRemainingAmount(goal)) }}</span>
-          <span>ماهیانه پیشنهادی: {{ formatCompact(getGoalSuggestedMonthlySaving(goal)) }}</span>
-          <span>هفتگی پیشنهادی: {{ formatCompact(getGoalSuggestedWeeklySaving(goal)) }}</span>
+          <span>مانده: {{ formatGoalTrackedAmount(goal, getGoalRemainingAmount(goal)) }}</span>
+          <span>ماهیانه پیشنهادی: {{ formatGoalTrackedAmount(goal, getGoalSuggestedMonthlySaving(goal), true) }}</span>
+          <span>هفتگی پیشنهادی: {{ formatGoalTrackedAmount(goal, getGoalSuggestedWeeklySaving(goal), true) }}</span>
           <span v-if="getGoalSummary(goal).currentMarketPrice">قیمت واحد: {{ formatMoney(getGoalSummary(goal).currentMarketPrice || 0) }}</span>
           <span v-if="getGoalSummary(goal).currentQuantity">موجودی فعلی: {{ formatGoalAmount(getGoalSummary(goal).currentQuantity, goal.unit) }}</span>
         </div>
         <p v-if="goal.note">{{ goal.note }}</p>
         <div class="goal-transfer-box">
           <label>
-            <span>مبلغ واریز یا برداشت</span>
+            <span>{{ goal.trackingMode === 'ASSET_FUNDING' || goal.unit === 'irr' ? 'مبلغ واریز یا برداشت' : `مقدار افزایش یا کاهش (${getGoalUnitLabel(goal.unit)})` }}</span>
             <input
               :value="goalTransferAmounts[goal.id] || ''"
               inputmode="numeric"
@@ -267,7 +267,7 @@ onMounted(() => {
           <div class="mobile-category-list goal-scenario-list">
             <span>
               <b>وضعیت فعلی</b>
-              <em>{{ getGoalScenario(goal).baseline.paceLevel === 'ahead' ? 'جلوتر' : getGoalScenario(goal).baseline.paceLevel === 'behind' ? 'عقب' : getGoalScenario(goal).baseline.paceLevel === 'overfunded' ? 'بیش‌از‌هدف' : 'هم‌مسیر' }} · {{ goal.trackingMode === 'ASSET_HOLDING' ? formatGoalAmount(getGoalScenario(goal).baseline.monthlyNeeded, goal.unit) : formatMoney(getGoalScenario(goal).baseline.monthlyNeeded) }} ماهانه</em>
+              <em>{{ getGoalScenario(goal).baseline.paceLevel === 'ahead' ? 'جلوتر' : getGoalScenario(goal).baseline.paceLevel === 'behind' ? 'عقب' : getGoalScenario(goal).baseline.paceLevel === 'overfunded' ? 'بیش‌از‌هدف' : 'هم‌مسیر' }} · {{ formatGoalTrackedAmount(goal, getGoalScenario(goal).baseline.monthlyNeeded) }} ماهانه</em>
             </span>
             <span>
               <b>شتاب بیشتر</b>
@@ -281,7 +281,7 @@ onMounted(() => {
           <div v-if="getGoalTransactions(goal.id).length" class="goal-ledger-list">
             <span v-for="tx in getGoalTransactions(goal.id)" :key="tx.id">
               <b>{{ getGoalTransactionTypeLabel(tx.type) }}</b>
-              <em>{{ formatMoney(tx.baseAmount) }} · {{ tx.occurredAt }}</em>
+              <em>{{ formatGoalTrackedAmount(goal, tx.quantity || tx.baseAmount) }} · {{ tx.occurredAt }}</em>
             </span>
           </div>
         </details>
@@ -302,7 +302,7 @@ onMounted(() => {
       <div class="mobile-category-list">
         <span v-for="goal in archivedGoals" :key="goal.id">
           <b>{{ goal.icon }} {{ goal.title }}</b>
-          <em>{{ formatCompact(goal.savedAmount) }}</em>
+          <em>{{ formatGoalTrackedAmount(goal, goal.savedAmount, true) }}</em>
         </span>
       </div>
     </details>
