@@ -6,10 +6,15 @@ const {
   latestExpenses,
   upcomingInstallments,
   overdueInstallments,
+  visibleCategoryTotals,
+  hasExpenseData,
+  expenseShareCanvas,
   getCategory,
   formatMoney,
   formatCompact,
   toPersianNumber,
+  scheduleChartSync,
+  destroyCharts,
 } = budgetyar
 
 const primaryWidgets = computed(() => widgets.value.slice(0, 4))
@@ -20,6 +25,8 @@ function cardValue(card: { value: number; suffix?: string }) {
   return card.suffix ? `${toPersianNumber(card.value)}${card.suffix}` : formatMoney(card.value)
 }
 
+onMounted(() => nextTick(scheduleChartSync))
+onBeforeUnmount(destroyCharts)
 </script>
 
 <template>
@@ -45,7 +52,32 @@ function cardValue(card: { value: number; suffix?: string }) {
     />
   </section>
 
-  <section class="dashboard-side-stack">
+  <section class="dashboard-focus-grid">
+    <article class="chart-card dashboard-spend-card glass-panel">
+      <div class="section-title compact">
+        <div>
+          <h2>‏ترکیب هزینه‌ها</h2>
+          <p>‏بیشترین سهم‌های خرج این ماه</p>
+        </div>
+      </div>
+
+      <div class="pie-wrap compact">
+        <div class="chart-canvas pie-chart" :class="{ empty: !hasExpenseData }">
+          <canvas ref="expenseShareCanvas" aria-label="‏نمودار سهم هزینه‌ها" role="img" />
+          <span v-if="!hasExpenseData">‏بدون داده</span>
+        </div>
+        <div class="legend compact">
+          <span v-for="item in visibleCategoryTotals.slice(0, 5)" :key="item.key">
+            <i :style="{ background: item.color }" />
+            {{ item.icon }} {{ item.label }} · {{ formatCompact(item.spent) }}
+          </span>
+          <span v-if="!hasExpenseData">‏بعد از ثبت هزینه، سهم دسته‌ها اینجا دیده می‌شود.</span>
+        </div>
+      </div>
+
+    </article>
+
+    <div class="dashboard-side-stack">
       <section class="recent-expenses-card glass-panel">
         <div class="section-title compact">
           <div>
@@ -79,6 +111,7 @@ function cardValue(card: { value: number; suffix?: string }) {
           </span>
         </div>
       </section>
+    </div>
   </section>
 
 </template>

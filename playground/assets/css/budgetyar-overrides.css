@@ -230,10 +230,6 @@
   font-size: 1.2rem;
 }
 
-.dashboard-side-stack {
-  grid-template-columns: minmax(0, 1.35fr) minmax(280px, .65fr);
-}
-
 .recent-expenses-card,
 .installment-alert-card,
 .weekly-category-budget {
