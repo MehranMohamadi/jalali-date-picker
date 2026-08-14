@@ -1352,9 +1352,9 @@ const insights = computed(() => [
 ])
 
 const dashboardCards = computed(() => [
+  { label: 'مانده واقعی', value: balanceAfterCommitments.value, icon: '💵', hint: 'بعد از اعتبار و قسط‌های سررسید', className: 'card-blue' },
   { label: 'خرج هفتگی', value: weeklyExpense.value, icon: '💸', hint: `${toPersianNumber(currentWeekTransactions.value.length)} تراکنش در هفته جاری`, className: 'card-cyan' },
   { label: 'هزینه ماه', value: totalExpense.value, icon: '💸', hint: formatPercentHint(expenseChangePercent.value, 'ماه قبل'), className: 'card-violet' },
-  { label: 'مانده واقعی', value: balanceAfterCommitments.value, icon: '💵', hint: 'بعد از اعتبار و قسط‌های سررسید', className: 'card-blue' },
   { label: 'پرداخت اعتبار', value: creditExpense.value, icon: '💳', hint: 'جمع خرج‌های اعتباری این ماه', className: 'card-pink' },
   { label: 'خرج امن امروز', value: safeDailySpend.value, icon: '🧭', hint: getRiskLabel(cashflowRiskLevel.value), className: 'card-cyan' },
   { label: 'هدف‌های مالی', value: totalGoalsSaved.value, icon: '🎯', hint: `${formatCompact(totalGoalsRemaining.value)} مانده`, className: 'card-violet' },

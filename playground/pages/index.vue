@@ -7,16 +7,10 @@ const {
   upcomingInstallments,
   overdueInstallments,
   weeklyCategoryBudgets,
-  visibleCategoryTotals,
-  hasExpenseData,
-  isMobileViewport,
-  expenseShareCanvas,
   getCategory,
   formatMoney,
   formatCompact,
   toPersianNumber,
-  scheduleChartSync,
-  destroyCharts,
 } = budgetyar
 
 const primaryWidgets = computed(() => widgets.value.slice(0, 4))
@@ -28,8 +22,6 @@ function cardValue(card: { value: number; suffix?: string }) {
   return card.suffix ? `${toPersianNumber(card.value)}${card.suffix}` : formatMoney(card.value)
 }
 
-onMounted(() => nextTick(scheduleChartSync))
-onBeforeUnmount(destroyCharts)
 </script>
 
 <template>
@@ -59,39 +51,7 @@ onBeforeUnmount(destroyCharts)
     />
   </section>
 
-  <section class="dashboard-focus-grid">
-    <article class="chart-card dashboard-spend-card glass-panel">
-      <div class="section-title compact">
-        <div>
-          <h2>‏ترکیب هزینه‌ها</h2>
-          <p>‏بیشترین سهم‌های خرج این ماه</p>
-        </div>
-      </div>
-
-      <div v-if="!isMobileViewport" class="pie-wrap compact">
-        <div class="chart-canvas pie-chart" :class="{ empty: !hasExpenseData }">
-          <canvas ref="expenseShareCanvas" aria-label="‏نمودار سهم هزینه‌ها" role="img" />
-          <span v-if="!hasExpenseData">‏بدون داده</span>
-        </div>
-        <div class="legend compact">
-          <span v-for="item in visibleCategoryTotals.slice(0, 5)" :key="item.key">
-            <i :style="{ background: item.color }" />
-            {{ item.icon }} {{ item.label }} · {{ formatCompact(item.spent) }}
-          </span>
-          <span v-if="!hasExpenseData">‏بعد از ثبت هزینه، سهم دسته‌ها اینجا دیده می‌شود.</span>
-        </div>
-      </div>
-
-      <div v-else-if="hasExpenseData" class="mobile-category-list">
-        <span v-for="item in visibleCategoryTotals.slice(0, 5)" :key="item.key">
-          <b><i :style="{ background: item.color }" /> {{ item.icon }} {{ item.label }}</b>
-          <em>{{ formatCompact(item.spent) }}</em>
-        </span>
-      </div>
-      <p v-else class="empty-inline">‏هنوز هزینه‌ای ثبت نشده</p>
-    </article>
-
-    <div class="dashboard-side-stack">
+  <section class="dashboard-side-stack">
       <section class="recent-expenses-card glass-panel">
         <div class="section-title compact">
           <div>
@@ -125,7 +85,6 @@ onBeforeUnmount(destroyCharts)
           </span>
         </div>
       </section>
-    </div>
   </section>
 
   <section class="weekly-category-budget glass-panel compact">
