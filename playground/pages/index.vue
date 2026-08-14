@@ -6,7 +6,6 @@ const {
   latestExpenses,
   upcomingInstallments,
   overdueInstallments,
-  weeklyCategoryBudgets,
   getCategory,
   formatMoney,
   formatCompact,
@@ -14,8 +13,7 @@ const {
 } = budgetyar
 
 const primaryWidgets = computed(() => widgets.value.slice(0, 4))
-const primaryCards = computed(() => dashboardCards.value.slice(0, 4))
-const highlightedBudgets = computed(() => weeklyCategoryBudgets.value.slice(0, 8))
+const primaryCards = computed(() => dashboardCards.value.slice(0, 2))
 const visibleInstallments = computed(() => [...overdueInstallments.value, ...upcomingInstallments.value].slice(0, 3))
 
 function cardValue(card: { value: number; suffix?: string }) {
@@ -26,10 +24,6 @@ function cardValue(card: { value: number; suffix?: string }) {
 
 <template>
   <section class="dashboard-hero glass-panel">
-    <div>
-      <small>‏نمای امروز</small>
-      <h1>‏پولدار</h1>
-    </div>
     <div class="dashboard-quick-strip">
       <span v-for="widget in primaryWidgets" :key="widget.label">
         <i aria-hidden="true">{{ widget.icon }}</i>
@@ -87,16 +81,4 @@ function cardValue(card: { value: number; suffix?: string }) {
       </section>
   </section>
 
-  <section class="weekly-category-budget glass-panel compact">
-    <div class="weekly-category-head">
-      <strong>‏بودجه هفتگی بخش‌ها</strong>
-      <small>‏نمای کوتاه</small>
-    </div>
-    <div class="weekly-category-list compact">
-      <span v-for="item in highlightedBudgets" :key="item.key">
-        <b>{{ item.icon }} {{ item.label }}</b>
-        <em>{{ formatCompact(item.weeklyBudget) }}</em>
-      </span>
-    </div>
-  </section>
 </template>
