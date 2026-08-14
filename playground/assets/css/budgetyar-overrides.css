@@ -272,3 +272,88 @@ body.budgetyar-light .dashboard-metrics .card-blue {
     grid-template-columns: 1fr;
   }
 }
+
+/* Light theme: keep all text roles readable on white and soft panels. */
+body.budgetyar-light {
+  --muted: #52657d;
+  --muted-2: #28384d;
+}
+
+body.budgetyar-light .app-shell,
+body.budgetyar-light .app-shell :is(label, legend, summary, th, td, .transaction-meta, .installment-meta) {
+  color: var(--text);
+}
+
+body.budgetyar-light .app-shell :is(small, .muted, .empty-inline, .health-explanation, .planning-list-item small) {
+  color: var(--muted);
+}
+
+body.budgetyar-light :is(
+  .icon-action.danger,
+  .delete-category,
+  .transaction-compact-actions .icon-action.danger,
+  .recent-expense-row b,
+  .budget-item em,
+  .weekly-overanalysis-list small,
+  .installment-item.overdue .installment-item-head > span,
+  .cashflow-timeline span.danger strong,
+  .compact-item.overdue b,
+  .market-rates-error
+) {
+  color: #be123c;
+}
+
+body.budgetyar-light :is(
+  .insights span,
+  .cashflow-timeline strong,
+  .planning-goals-panel .section-title > strong,
+  .empty-state div,
+  .transaction-modal__header small,
+  .rule-suggestion-confirmed,
+  .amount-in-words
+) {
+  color: #0f766e;
+}
+
+body.budgetyar-light :is(
+  .weekly-overanalysis > strong,
+  .weekly-overanalysis-list em,
+  .nonessential-mark,
+  .nonessential-meta,
+  .installment-item.upcoming .installment-item-head > span,
+  .health-detail.warning strong
+) {
+  color: #92400e;
+}
+
+body.budgetyar-light :is(
+  .installment-item-head > span,
+  .planning-list-title b,
+  .compact-item b,
+  .app-version strong,
+  .credit-settings-inline strong,
+  .market-rates-list b,
+  .goal-unit-summary
+) {
+  color: #155e75;
+}
+
+body.budgetyar-light :is(
+  .pill.income,
+  .transaction-compact-amount.income strong,
+  .health-detail.positive strong,
+  .transaction-type-switch button:last-child.active svg
+) {
+  color: #166534;
+}
+
+body.budgetyar-light :is(
+  .pill.expense,
+  .transaction-compact-amount.expense strong,
+  .category-expense-summary__head strong,
+  .category-expense-chip b,
+  .transaction-type-switch button:first-child.active svg,
+  .health-detail.danger strong
+) {
+  color: #be123c;
+}
