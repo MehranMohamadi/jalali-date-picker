@@ -677,7 +677,14 @@ const weeklyExpenseTransactions = computed(() => currentWeekTransactions.value.f
 const weeklyIncomeTransactions = computed(() => currentWeekTransactions.value.filter((item) => item.type === 'income'))
 const previousExpense = computed(() => previousMonthTransactions.value.filter((item) => item.type === 'expense').reduce((sum, item) => sum + item.amount, 0))
 const previousIncome = computed(() => previousMonthTransactions.value.filter((item) => item.type === 'income').reduce((sum, item) => sum + item.amount, 0))
-const previousMonthRemainder = computed(() => previousIncome.value - previousExpense.value)
+const carriedBalance = computed(() =>
+  transactions.value.reduce((sum, item) => {
+    const date = normalizeJalaliDate(item.date)
+    if (!date || date >= currentMonthStartKey) return sum
+
+    return sum + (item.type === 'income' ? item.amount : -item.amount)
+  }, 0),
+)
 const totalIncome = computed(() => incomeTransactions.value.reduce((sum, item) => sum + item.amount, 0))
 const totalExpense = computed(() => expenseTransactions.value.reduce((sum, item) => sum + item.amount, 0))
 const creditPurchases = computed(() => expenseTransactions.value.filter((item) => item.paymentMethod === 'credit').reduce((sum, item) => sum + item.amount, 0))
@@ -686,7 +693,7 @@ const creditExpense = computed(() => Math.max(creditPurchases.value - creditPaym
 const creditRemaining = computed(() => Math.max(creditLimit.value - creditExpense.value, 0))
 const cashExpense = computed(() => expenseTransactions.value.filter((item) => item.paymentMethod !== 'credit').reduce((sum, item) => sum + item.amount, 0))
 const cashBeforeCreditPayment = computed(() => totalIncome.value - cashExpense.value)
-const balanceAfterCreditPayment = computed(() => previousMonthRemainder.value + cashBeforeCreditPayment.value - creditExpense.value)
+const balanceAfterCreditPayment = computed(() => carriedBalance.value + cashBeforeCreditPayment.value - creditExpense.value)
 const loanedExpense = computed(() => expenseTransactions.value.filter((item) => item.isLoan).reduce((sum, item) => sum + item.amount, 0))
 const essentialExpense = computed(() => expenseTransactions.value.filter((item) => item.isEssential !== false).reduce((sum, item) => sum + item.amount, 0))
 const nonEssentialExpense = computed(() => expenseTransactions.value.filter((item) => item.isEssential === false).reduce((sum, item) => sum + item.amount, 0))
@@ -697,7 +704,7 @@ const weeklyBalance = computed(() => weeklyIncome.value - weeklyExpense.value)
 const totalBudget = computed(() => budgets.value.reduce((sum, item) => sum + item.budget, 0))
 const currentMonthWeekCount = computed(() => Math.ceil(currentMonthLength / 7))
 const weeklyBudgetAllowance = computed(() => Math.round(totalBudget.value / Math.max(currentMonthWeekCount.value, 1)))
-const balance = computed(() => previousMonthRemainder.value + totalIncome.value - totalExpense.value)
+const balance = computed(() => carriedBalance.value + totalIncome.value - totalExpense.value)
 const budgetUsage = computed(() => Math.round((totalExpense.value / Math.max(totalBudget.value, 1)) * 100))
 const savingsPercent = computed(() => Math.max(0, Math.round((balance.value / Math.max(totalIncome.value, 1)) * 100)))
 
@@ -808,7 +815,7 @@ const commitmentInstallmentDue = computed(() =>
     .filter((item) => item.nextDueDate <= currentMonthEndKey)
     .reduce((sum, item) => sum + item.amount, 0),
 )
-const balanceAfterCommitments = computed(() => previousMonthRemainder.value + cashBeforeCreditPayment.value - creditExpense.value - commitmentInstallmentDue.value)
+const balanceAfterCommitments = computed(() => carriedBalance.value + cashBeforeCreditPayment.value - creditExpense.value - commitmentInstallmentDue.value)
 const activeGoals = computed(() => goals.value.filter((goal) => !goal.isArchived))
 const archivedGoals = computed(() => goals.value.filter((goal) => goal.isArchived))
 const activeGoalSnapshots = computed(() =>
