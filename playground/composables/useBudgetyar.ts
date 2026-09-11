@@ -1,4 +1,4 @@
-﻿import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from 'vue'
 
 import {
   Chart,
@@ -836,10 +836,14 @@ const recurringSummaries = computed(() =>
     .map((item) => {
       const nextDueDate = getRecurringNextDueDate(item)
       const status = getRecurringStatus(item)
+      const daysUntilDue = nextDueDate ? getDaysUntilDue(nextDueDate) : null
+      const monthlyAmount = getMonthlyRecurringAmount(item)
 
       return {
         ...item,
         nextDueDate,
+        daysUntilDue,
+        monthlyAmount,
         status,
         statusLabel: getRecurringStatusLabel(status),
       }
@@ -856,6 +860,11 @@ const upcomingRecurringItems = computed(() => recurringSummaries.value.filter((i
 const monthlyRecurringIncomeTotal = computed(() => activeRecurringItems.value.filter((item) => item.type === 'income').reduce((sum, item) => sum + getMonthlyRecurringAmount(item), 0))
 const monthlyRecurringExpenseTotal = computed(() => activeRecurringItems.value.filter((item) => item.type === 'expense').reduce((sum, item) => sum + getMonthlyRecurringAmount(item), 0))
 const monthlySubscriptionsTotal = computed(() => activeRecurringItems.value.filter((item) => item.type === 'expense' && item.isSubscription).reduce((sum, item) => sum + getMonthlyRecurringAmount(item), 0))
+const annualSubscriptionsTotal = computed(() => monthlySubscriptionsTotal.value * 12)
+const subscriptionSummaries = computed(() => recurringSummaries.value.filter((item) => item.isSubscription))
+const generalRecurringSummaries = computed(() => recurringSummaries.value.filter((item) => !item.isSubscription))
+const activeSubscriptionSummaries = computed(() => subscriptionSummaries.value.filter((item) => item.isActive))
+const nearDueSubscriptions = computed(() => subscriptionSummaries.value.filter((item) => item.status === 'due' || item.status === 'upcoming' || item.status === 'overdue'))
 const cashflowForecastDays = computed<CashflowForecastDay[]>(() =>
   buildCashflowTimeline({
     startDate: todayKey,
@@ -2343,7 +2352,7 @@ async function refreshMarketRates() {
   }
 }
 
-function resetRecurringForm() {
+function resetRecurringForm(isSubscription = false) {
   editingRecurringItemId.value = null
   Object.assign(recurringForm, {
     title: '',
@@ -2355,7 +2364,7 @@ function resetRecurringForm() {
     endDate: '',
     dueDay: currentJalaliDate.day,
     paymentMethod: 'cash',
-    isSubscription: false,
+    isSubscription: Boolean(isSubscription),
     isActive: true,
     reminderDaysBefore: 3,
     note: '',
@@ -2377,7 +2386,9 @@ function addRecurringItem() {
     frequency: recurringForm.frequency,
     startDate: normalizeJalaliDate(recurringForm.startDate),
     endDate: recurringForm.endDate ? normalizeJalaliDate(recurringForm.endDate) : undefined,
-    dueDay: recurringForm.frequency === 'monthly' ? Math.min(31, Math.max(1, Math.trunc(Number(recurringForm.dueDay) || 1))) : undefined,
+    dueDay: (recurringForm.frequency === 'monthly' || recurringForm.frequency === 'quarterly' || recurringForm.frequency === 'biannual')
+      ? Math.min(31, Math.max(1, Math.trunc(Number(recurringForm.dueDay) || 1)))
+      : undefined,
     paymentMethod: recurringForm.type === 'expense' ? recurringForm.paymentMethod : undefined,
     isSubscription: Boolean(recurringForm.isSubscription),
     isActive: Boolean(recurringForm.isActive),
@@ -2389,9 +2400,10 @@ function addRecurringItem() {
     updatedAt: todayKey,
   }
 
+  const isSub = Boolean(recurringForm.isSubscription)
   recurringItems.value = existing ? recurringItems.value.map((entry) => (entry.id === existing.id ? item : entry)) : [item, ...recurringItems.value]
-  resetRecurringForm()
-  pushToast(existing ? 'پرداخت تکراری ویرایش شد ✅' : 'پرداخت تکراری اضافه شد ✅')
+  resetRecurringForm(isSub)
+  pushToast(existing ? (isSub ? 'اشتراک ویرایش شد ✅' : 'پرداخت تکراری ویرایش شد ✅') : (isSub ? 'اشتراک اضافه شد ✅' : 'پرداخت تکراری اضافه شد ✅'))
 }
 
 function editRecurringItem(item: BudgetyarRecurringItem) {
@@ -2406,7 +2418,7 @@ function editRecurringItem(item: BudgetyarRecurringItem) {
     endDate: item.endDate ?? '',
     dueDay: item.dueDay ?? currentJalaliDate.day,
     paymentMethod: item.paymentMethod ?? 'cash',
-    isSubscription: item.isSubscription,
+    isSubscription: Boolean(item.isSubscription),
     isActive: item.isActive,
     reminderDaysBefore: item.reminderDaysBefore,
     note: item.note ?? '',
@@ -2419,9 +2431,11 @@ function updateRecurringItem(id: string, patch: Partial<BudgetyarRecurringItem>)
 }
 
 function deleteRecurringItem(id: string) {
-  recurringItems.value = recurringItems.value.filter((item) => item.id !== id)
-  if (editingRecurringItemId.value === id) resetRecurringForm()
-  pushToast('آیتم تکراری حذف شد')
+  const item = recurringItems.value.find((entry) => entry.id === id)
+  const isSub = Boolean(item?.isSubscription)
+  recurringItems.value = recurringItems.value.filter((entry) => entry.id !== id)
+  if (editingRecurringItemId.value === id) resetRecurringForm(isSub)
+  pushToast(isSub ? 'اشتراک حذف شد' : 'آیتم تکراری حذف شد')
 }
 
 function toggleRecurringItem(id: string) {
@@ -2453,7 +2467,7 @@ function markRecurringItemPaid(item: BudgetyarRecurringItem, dueDate = getRecurr
 
   transactions.value = [createTransactionFromRecurringItem(item, dueDate), ...transactions.value]
   updateRecurringItem(item.id, { lastAppliedDate: dueDate })
-  pushToast('نوبت تکراری به تراکنش تبدیل شد ✅')
+  pushToast(item.isSubscription ? 'تمدید اشتراک با موفقیت ثبت شد ✅' : 'نوبت تکراری به تراکنش تبدیل شد ✅')
 }
 
 function skipRecurringOccurrence(item: BudgetyarRecurringItem, dueDate = getRecurringNextDueDate(item)) {
@@ -2509,6 +2523,8 @@ function getMonthlyRecurringAmount(item: BudgetyarRecurringItem) {
   if (item.frequency === 'daily') return item.amount * 30
   if (item.frequency === 'weekly') return item.amount * 4
   if (item.frequency === 'yearly') return Math.round(item.amount / 12)
+  if (item.frequency === 'biannual') return Math.round(item.amount / 6)
+  if (item.frequency === 'quarterly') return Math.round(item.amount / 3)
 
   return item.amount
 }
@@ -2569,6 +2585,14 @@ function getNextRecurringDateAfter(item: BudgetyarRecurringItem, date: string) {
   if (!parsed) return ''
   if (item.frequency === 'daily') return formatJalaliInputDate(addJalaliDays(parsed, 1))
   if (item.frequency === 'weekly') return formatJalaliInputDate(addJalaliDays(parsed, 7))
+  if (item.frequency === 'quarterly') {
+    const nextMonth = addJalaliMonths(parsed, 3)
+    return formatJalaliInputDate({ ...nextMonth, day: Math.min(item.dueDay ?? parsed.day, getJalaliMonthLength(nextMonth.year, nextMonth.month)) })
+  }
+  if (item.frequency === 'biannual') {
+    const nextMonth = addJalaliMonths(parsed, 6)
+    return formatJalaliInputDate({ ...nextMonth, day: Math.min(item.dueDay ?? parsed.day, getJalaliMonthLength(nextMonth.year, nextMonth.month)) })
+  }
   if (item.frequency === 'yearly') {
     const nextYear = parsed.year + 1
     return formatJalaliInputDate({ year: nextYear, month: parsed.month, day: Math.min(parsed.day, getJalaliMonthLength(nextYear, parsed.month)) })
@@ -2587,6 +2611,15 @@ function getJalaliDateDistance(startDate: string, endDate: string) {
   const endIso = toGregorian(end.year, end.month, end.day)
 
   return Math.ceil((Date.parse(`${endIso}T00:00:00.000Z`) - Date.parse(`${startIso}T00:00:00.000Z`)) / 86400000)
+}
+
+function getDaysUntilDue(dueDate: string) {
+  if (!dueDate) return 0
+  if (dueDate === todayKey) return 0
+  if (dueDate < todayKey) {
+    return -getJalaliDateDistance(dueDate, todayKey)
+  }
+  return getJalaliDateDistance(todayKey, dueDate)
 }
 
 function buildPurchaseDecision() {
@@ -4059,7 +4092,7 @@ export function useBudgetyar() {
     categoryTotals, weeklyCategoryBudgets, weeklyBudgetAnalysis, sortedCategoryTotals, visibleCategoryTotals, safeMaxCategory, highestExpense, lowestExpense, todayExpense, todayIncome, averageDailyExpense, latestExpenses, latestLoans,
     installmentSummaries, activeInstallmentSummaries, overdueInstallments, upcomingInstallments, dueInstallmentsThisMonth, monthlyInstallmentDue, commitmentInstallmentDue,
     activeGoals, archivedGoals, totalGoalsTarget, totalGoalsSaved, totalGoalsRemaining, nearestGoal,
-    activeRecurringItems, recurringSummaries, upcomingRecurringItems, dueRecurringItems, overdueRecurringItems, monthlyRecurringIncomeTotal, monthlyRecurringExpenseTotal, monthlySubscriptionsTotal,
+    activeRecurringItems, recurringSummaries, upcomingRecurringItems, dueRecurringItems, overdueRecurringItems, monthlyRecurringIncomeTotal, monthlyRecurringExpenseTotal, monthlySubscriptionsTotal, annualSubscriptionsTotal, subscriptionSummaries, generalRecurringSummaries, activeSubscriptionSummaries, nearDueSubscriptions,
     cashflowForecastDays, projectedEndOfMonthBalance, lowestProjectedBalance, cashflowRiskLevel, cashflowWarnings, safeDailySpend, safeWeeklySpend,
     activeDebts, totalDebtRemaining, totalMinimumDebtPayments, totalExtraDebtPayments, snowballDebtPlan, avalancheDebtPlan, selectedDebtPayoffPlan, recommendedDebtStrategy, debtFreedomDate, estimatedInterestSavings, nextDebtDue,
     activeCategorizationRules, suggestedCategorizationRules,
@@ -4070,7 +4103,7 @@ export function useBudgetyar() {
     getCategory, normalizeDigits, normalizeJalaliDate, getJalaliInputDay, getTrendDays, getPreviousMonthPrefix, addJalaliMonths, getInstallmentDueDate, getInstallmentStatus, getInstallmentStatusLabel, getCurrentWeekRange, getWeekdayLabel, getJalaliMonthPrefix, getCurrentJalaliDate, formatJalaliInputDate, formatDisplayJalaliDate, jalaliInputToIso, isoToJalaliInput, toPersianNumber, parseMoneyInput, formatMoneyInput, formatMoneyWords, formatMoney, formatCompact, progressPercent, getChangePercent, formatPercentHint, formatChangeSentence, getRiskLabel, getFinancialHealthLevelLabel,
     selectSection, openModal, editTransaction, saveTransaction, removeTransaction, refreshBankNotifications, openNotificationAccessSettings, updateSelectedBankPackage, acceptBankSuggestion, dismissBankSuggestion, formatSuggestionDate, updateMoneyInput, updateCreditLimit, recordCreditPayment, updateBudget, addCategory, deleteCategory, addInstallmentPlan, editInstallmentPlan, cancelInstallmentEdit, payInstallment, removeInstallmentPlan,
     addGoal, editGoal, updateGoal, deleteGoal, archiveGoal, pauseGoal, resumeGoal, addGoalContribution, withdrawFromGoal, getGoalProgress, getGoalRemainingAmount, getGoalSuggestedMonthlySaving, getGoalSuggestedWeeklySaving, getGoalUnitLabel, getGoalTransactionTypeLabel, formatGoalAmount, formatGoalTrackedAmount, getGoalEstimatedValue, getGoalTrackingModeLabel, getGoalHealthLabel, getGoalScenario, getGoalTransactions, getGoalSummary, getGoalSavedValue, getGoalTargetValue,
-    addRecurringItem, editRecurringItem, updateRecurringItem, deleteRecurringItem, toggleRecurringItem, getRecurringNextDueDate, markRecurringItemPaid, skipRecurringOccurrence, createTransactionFromRecurringItem, getRecurringStatusLabel, createPurchaseTransaction, setThemeMode, refreshMarketRates,
+    addRecurringItem, editRecurringItem, updateRecurringItem, deleteRecurringItem, toggleRecurringItem, getRecurringNextDueDate, markRecurringItemPaid, skipRecurringOccurrence, createTransactionFromRecurringItem, getRecurringStatusLabel, createPurchaseTransaction, setThemeMode, refreshMarketRates, getDaysUntilDue, resetRecurringForm,
     addDebt, editDebt, updateDebt, deleteDebt, toggleDebt, recordDebtPayment, calculateDebtPayoffPlan,
     addCategorizationRule, editCategorizationRule, updateCategorizationRule, deleteCategorizationRule, toggleCategorizationRule, matchTransactionCategoryRule, applyCategorizationRulesToTransaction, applyCategorizationRulesToAllTransactions, suggestCategorizationRules, acceptSuggestedCategorizationRule, bulkUpdateTransactionCategory,
     updateIncomeSettings, applyRecommendedBudgetPlan,

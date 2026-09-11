@@ -357,3 +357,173 @@ body.budgetyar-light :is(
 ) {
   color: #be123c;
 }
+
+/* Subscriptions & Recurring Enhancements */
+.subscriptions-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 4px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+}
+
+.subscriptions-tabs button {
+  flex: 1;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted-2);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.subscriptions-tabs button.active {
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.3), rgba(37, 99, 235, 0.22));
+  color: #ffffff;
+  border-color: rgba(94, 234, 212, 0.45);
+  box-shadow: 0 4px 14px rgba(20, 184, 166, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.subscriptions-tabs button:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+}
+
+.subscriptions-tabs .tab-badge {
+  background: rgba(255, 255, 255, 0.14);
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.subscriptions-tabs button.active .tab-badge {
+  background: rgba(94, 234, 212, 0.25);
+  color: #5eead4;
+}
+
+.monthly-equivalent-badge {
+  display: block;
+  margin-top: 5px;
+  color: #38bdf8;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.subscription-countdown-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.subscription-countdown-pill.badge-due {
+  background: rgba(239, 68, 68, 0.22);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.45);
+}
+
+.subscription-countdown-pill.badge-overdue {
+  background: rgba(220, 38, 38, 0.28);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.55);
+}
+
+.subscription-countdown-pill.badge-upcoming {
+  background: rgba(245, 158, 11, 0.22);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+}
+
+.subscription-countdown-pill.badge-active {
+  background: rgba(16, 185, 129, 0.18);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.subscription-countdown-pill.badge-inactive {
+  background: rgba(148, 163, 184, 0.14);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+}
+
+.sub-cycle-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+  border-radius: 6px;
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.sub-equivalent {
+  color: #a5f3fc;
+  font-weight: 600;
+}
+
+.installment-edit-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: rgba(37, 99, 235, 0.18);
+  border: 1px solid rgba(96, 165, 250, 0.38);
+  border-radius: 10px;
+  margin-bottom: 12px;
+  width: 100%;
+}
+
+.installment-edit-banner button {
+  background: transparent;
+  border: none;
+  color: #93c5fd;
+  font-size: 0.82rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+body.budgetyar-light .subscriptions-tabs {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+body.budgetyar-light .subscriptions-tabs button.active {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: rgba(20, 184, 166, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+body.budgetyar-light .subscriptions-tabs button.active .tab-badge {
+  background: rgba(20, 184, 166, 0.15);
+  color: #0f766e;
+}
+
+body.budgetyar-light .monthly-equivalent-badge {
+  color: #0284c7;
+}
+
+body.budgetyar-light .sub-cycle-badge {
+  background: rgba(2, 132, 199, 0.1);
+  color: #0369a1;
+  border-color: rgba(2, 132, 199, 0.25);
+}
+
+body.budgetyar-light .sub-equivalent {
+  color: #0891b2;
+}
+

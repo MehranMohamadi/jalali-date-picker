@@ -36,6 +36,26 @@ describe('budgetyar planning utilities', () => {
     }, '1403/01/01')).toBe('1403/02/05')
   })
 
+  it('calculates quarterly and biannual recurring next due dates correctly', () => {
+    expect(getRecurringNextDueDate({
+      amount: 300_000,
+      type: 'expense',
+      frequency: 'quarterly',
+      startDate: '1403/01/10',
+      dueDay: 10,
+      lastAppliedDate: '1403/01/10',
+    }, '1403/01/01')).toBe('1403/04/10')
+
+    expect(getRecurringNextDueDate({
+      amount: 600_000,
+      type: 'expense',
+      frequency: 'biannual',
+      startDate: '1403/02/15',
+      dueDay: 15,
+      lastAppliedDate: '1403/02/15',
+    }, '1403/02/01')).toBe('1403/08/15')
+  })
+
   it('projects a cashflow timeline and risk level', () => {
     const days = buildCashflowTimeline({
       startDate: '1403/01/01',

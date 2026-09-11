@@ -1,6 +1,6 @@
 import { addJalaliDays, addJalaliMonths, getJalaliMonthLength, parseJalaliInput, toGregorian } from './jalali'
 
-export type RecurringFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly'
+export type RecurringFrequency = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'biannual' | 'yearly'
 export type CashflowRiskLevel = 'safe' | 'watch' | 'danger'
 export type PurchaseDecisionLevel = 'safe' | 'caution' | 'risky'
 
@@ -220,7 +220,7 @@ export function getPurchaseDecision(input: PurchaseDecisionInput): PurchaseDecis
 }
 
 function nextOccurrenceOnOrAfter(item: RecurringItemLike, date: string) {
-  if (item.frequency !== 'monthly') return date
+  if (item.frequency !== 'monthly' && item.frequency !== 'quarterly' && item.frequency !== 'biannual') return date
 
   const parsed = parseJalaliInput(date)
   if (!parsed) return ''
@@ -240,6 +240,16 @@ function addFrequency(date: string, frequency: RecurringFrequency, dueDay?: numb
   if (frequency === 'daily') return addDaysToKey(date, 1)
   if (frequency === 'weekly') return addDaysToKey(date, 7)
   if (frequency === 'yearly') return normalizePlanningDate(`${parsed.year + 1}/${parsed.month}/${Math.min(parsed.day, getJalaliMonthLength(parsed.year + 1, parsed.month))}`)
+  if (frequency === 'quarterly') {
+    const next = addJalaliMonths(parsed, 3)
+    const nextDay = Math.min(Math.max(1, Math.trunc(dueDay || parsed.day)), getJalaliMonthLength(next.year, next.month))
+    return normalizePlanningDate(`${next.year}/${next.month}/${nextDay}`)
+  }
+  if (frequency === 'biannual') {
+    const next = addJalaliMonths(parsed, 6)
+    const nextDay = Math.min(Math.max(1, Math.trunc(dueDay || parsed.day)), getJalaliMonthLength(next.year, next.month))
+    return normalizePlanningDate(`${next.year}/${next.month}/${nextDay}`)
+  }
 
   const next = addJalaliMonths(parsed, 1)
   const nextDay = Math.min(Math.max(1, Math.trunc(dueDay || parsed.day)), getJalaliMonthLength(next.year, next.month))
