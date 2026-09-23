@@ -333,6 +333,7 @@ const DEBTS_STORAGE_KEY = 'budgetyar-debts-v1'
 const CATEGORIZATION_RULES_STORAGE_KEY = 'budgetyar-categorization-rules-v1'
 const DELETED_DEFAULT_CATEGORIZATION_RULES_STORAGE_KEY = 'budgetyar-deleted-default-categorization-rules-v1'
 const INCOME_SETTINGS_STORAGE_KEY = 'budgetyar-income-settings-v1'
+const CLOUD_SETTINGS_STORAGE_KEY = 'budgetyar-cloud-settings-v1'
 const navItems = ['داشبورد', 'درآمدها', 'هزینه‌ها', 'بودجه‌ها', 'قسط‌ها', 'گزارش‌ها', 'آمار', 'اعلان‌ها', 'تنظیمات']
 const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند']
 const currentJalaliDate = getCurrentJalaliDate()
@@ -428,6 +429,12 @@ const pickerDateRange = computed({
 const isModalOpen = ref(false)
 const formType = ref<TransactionType>('expense')
 const toasts = ref<ToastMessage[]>([])
+const cloudApiUrl = ref('')
+const cloudApiToken = ref('')
+const cloudSnapshotVersion = ref(0)
+const cloudSyncStatus = ref<'idle' | 'working' | 'success' | 'error'>('idle')
+const cloudSyncMessage = ref('')
+let cloudConfiguredApiUrl = ''
 const editingId = ref<number | null>(null)
 const expenseShareCanvas = ref<HTMLCanvasElement | null>(null)
 const categoryBarCanvas = ref<HTMLCanvasElement | null>(null)
@@ -3235,6 +3242,123 @@ function buildBackupJson() {
   }, null, 2)
 }
 
+function normalizeCloudApiUrl(value: string) {
+  return value.trim().replace(/\/+$/, '')
+}
+
+function restoreCloudConfiguration() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CLOUD_SETTINGS_STORAGE_KEY) ?? '{}') as Record<string, unknown>
+    cloudApiUrl.value = typeof saved.apiUrl === 'string' ? saved.apiUrl : ''
+    cloudConfiguredApiUrl = cloudApiUrl.value
+    cloudApiToken.value = typeof saved.apiToken === 'string' ? saved.apiToken : ''
+    cloudSnapshotVersion.value = typeof saved.version === 'number' ? Math.max(0, saved.version) : 0
+  } catch {
+    localStorage.removeItem(CLOUD_SETTINGS_STORAGE_KEY)
+  }
+}
+
+function saveCloudConfiguration() {
+  const apiUrl = normalizeCloudApiUrl(cloudApiUrl.value)
+  if (!/^https:\/\//.test(apiUrl) && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(apiUrl)) {
+    throw new Error('نشانی بک‌اند باید با https:// شروع شود')
+  }
+  if (cloudApiToken.value.trim().length < 32) throw new Error('توکن اتصال باید حداقل ۳۲ نویسه باشد')
+  if (cloudConfiguredApiUrl && cloudConfiguredApiUrl !== apiUrl) cloudSnapshotVersion.value = 0
+  cloudApiUrl.value = apiUrl
+  cloudConfiguredApiUrl = apiUrl
+  cloudApiToken.value = cloudApiToken.value.trim()
+  localStorage.setItem(CLOUD_SETTINGS_STORAGE_KEY, JSON.stringify({
+    apiUrl: cloudApiUrl.value,
+    apiToken: cloudApiToken.value,
+    version: cloudSnapshotVersion.value,
+  }))
+}
+
+function persistCloudVersion(version: number) {
+  cloudSnapshotVersion.value = Math.max(0, version)
+  saveCloudConfiguration()
+}
+
+async function cloudRequest(path: string, init: RequestInit = {}) {
+  saveCloudConfiguration()
+  return fetch(`${cloudApiUrl.value}${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${cloudApiToken.value}`,
+      'Content-Type': 'application/json',
+      ...init.headers,
+    },
+  })
+}
+
+async function uploadCloudSnapshot() {
+  cloudSyncStatus.value = 'working'
+  cloudSyncMessage.value = 'در حال ارسال داده‌ها…'
+  try {
+    const response = await cloudRequest('/api/sync', {
+      method: 'PUT',
+      body: JSON.stringify({
+        expectedVersion: cloudSnapshotVersion.value,
+        data: JSON.parse(buildBackupJson()),
+      }),
+    })
+    const result = await response.json() as { version?: number, error?: string }
+    if (!response.ok) throw new Error(result.error || 'ارسال داده‌ها ناموفق بود')
+    persistCloudVersion(Number(result.version) || 0)
+    cloudSyncStatus.value = 'success'
+    cloudSyncMessage.value = 'داده‌ها با فضای ابری همگام شدند'
+    pushToast('همگام‌سازی ابری انجام شد ✅')
+  } catch (error) {
+    cloudSyncStatus.value = 'error'
+    cloudSyncMessage.value = error instanceof Error ? error.message : 'همگام‌سازی ابری ناموفق بود'
+    pushToast(cloudSyncMessage.value)
+  }
+}
+
+function applyBackupRecord(backup: Record<string, unknown>) {
+  if (backup.app !== 'budgetyar') throw new Error('این فایل بکاپ پولدار نیست')
+  const summary = isRecord(backup.summary) ? backup.summary : {}
+  transactions.value = restoreTransactions(backup.transactions)
+  categories.value = restoreCategories(backup.categories)
+  budgets.value = restoreBudgets(backup.budgets)
+  installments.value = restoreInstallments(backup.installments)
+  goals.value = restoreGoals(backup.goals)
+  goalTransactions.value = restoreGoalTransactions(backup.goalTransactions)
+  goals.value.forEach((goal) => refreshGoalState(goal.id))
+  recurringItems.value = restoreRecurringItems(backup.recurringItems)
+  debts.value = restoreDebts(backup.debts)
+  categorizationRules.value = restoreCategorizationRules(backup.categorizationRules)
+  incomeSettings.value = restoreIncomeSettings(backup.incomeSettings)
+  creditLimit.value = Math.max(0, Number(backup.creditLimit ?? summary.creditLimit ?? 0) || 0)
+  selectedCategory.value = 'همه'
+  selectedType.value = 'همه'
+  query.value = ''
+  dateRange.start = ''
+  dateRange.end = ''
+}
+
+async function downloadCloudSnapshot() {
+  if (!window.confirm('داده‌های ابری جایگزین داده‌های فعلی این دستگاه شوند؟')) return
+  cloudSyncStatus.value = 'working'
+  cloudSyncMessage.value = 'در حال دریافت داده‌ها…'
+  try {
+    const response = await cloudRequest('/api/sync')
+    const result = await response.json() as { version?: number, data?: unknown, error?: string }
+    if (!response.ok) throw new Error(result.error || 'دریافت داده‌ها ناموفق بود')
+    if (!isRecord(result.data)) throw new Error('پاسخ بک‌اند معتبر نیست')
+    applyBackupRecord(result.data)
+    persistCloudVersion(Number(result.version) || 0)
+    cloudSyncStatus.value = 'success'
+    cloudSyncMessage.value = 'داده‌های ابری روی این دستگاه بازیابی شدند'
+    pushToast('داده‌های ابری بازیابی شدند ✅')
+  } catch (error) {
+    cloudSyncStatus.value = 'error'
+    cloudSyncMessage.value = error instanceof Error ? error.message : 'دریافت داده‌ها ناموفق بود'
+    pushToast(cloudSyncMessage.value)
+  }
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value))
 }
@@ -3465,25 +3589,7 @@ async function importBackup(event: Event) {
       pushToast('این فایل بکاپ پولدار نیست')
       return
     }
-
-    const summary = isRecord(backup.summary) ? backup.summary : {}
-    transactions.value = restoreTransactions(backup.transactions)
-    categories.value = restoreCategories(backup.categories)
-    budgets.value = restoreBudgets(backup.budgets)
-    installments.value = restoreInstallments(backup.installments)
-    goals.value = restoreGoals(backup.goals)
-    goalTransactions.value = restoreGoalTransactions((backup as Record<string, unknown>).goalTransactions)
-    goals.value.forEach((goal) => refreshGoalState(goal.id))
-    recurringItems.value = restoreRecurringItems(backup.recurringItems)
-    debts.value = restoreDebts(backup.debts)
-    categorizationRules.value = restoreCategorizationRules(backup.categorizationRules)
-    incomeSettings.value = restoreIncomeSettings(backup.incomeSettings)
-    creditLimit.value = Math.max(0, Number(backup.creditLimit ?? summary.creditLimit ?? 0) || 0)
-    selectedCategory.value = 'همه'
-    selectedType.value = 'همه'
-    query.value = ''
-    dateRange.start = ''
-    dateRange.end = ''
+    applyBackupRecord(backup)
     pushToast('بکاپ با موفقیت بازیابی شد ✅')
   } catch {
     pushToast('خواندن بکاپ ناموفق بود')
@@ -4083,6 +4189,7 @@ export function useBudgetyar() {
   return {
     activeSection, isMobileMenuOpen, isMobileViewport, navItems, months, years, today, todayKey, currentMonthYear, currentJalaliDate, currentMonthLength,
     categories, transactions, budgets, installments, goals, goalTransactions, recurringItems, debts, categorizationRules, incomeSettings, creditLimit, cashFlowMode, themeMode, cashflowForecastPeriod, selectedDebtStrategy, marketRates, marketRatesLoading, marketRatesError,
+    cloudApiUrl, cloudApiToken, cloudSnapshotVersion, cloudSyncStatus, cloudSyncMessage,
     query, selectedMonth, selectedYear, selectedCategory, selectedType, dateRange, pickerDateRange,
     isModalOpen, formType, form, formAmountInWords, formDatePickerValue, editingId, toasts,
     categoryForm, installmentForm, editingInstallmentId, installmentAmountInWords, installmentStartDatePickerValue,
@@ -4115,6 +4222,7 @@ export function useBudgetyar() {
     addCategorizationRule, editCategorizationRule, updateCategorizationRule, deleteCategorizationRule, toggleCategorizationRule, matchTransactionCategoryRule, applyCategorizationRulesToTransaction, applyCategorizationRulesToAllTransactions, suggestCategorizationRules, acceptSuggestedCategorizationRule, bulkUpdateTransactionCategory,
     updateIncomeSettings, applyRecommendedBudgetPlan,
     getTransactionCategoryLabel, getPaymentMethodLabel, getNecessityLabel, buildCsvReport, buildExcelReport, buildBackupJson, importBackup, createExportFile, saveBlobToDevice, exportReport, installApp, pushToast,
+    saveCloudConfiguration, uploadCloudSnapshot, downloadCloudSnapshot,
     createCharts, syncCharts, scheduleChartSync, destroyCharts,
   }
 }
@@ -4125,6 +4233,7 @@ export function startBudgetyar() {
   budgetyarStarted = true
   onMounted(() => {
     bindMobileViewport()
+    restoreCloudConfiguration()
     isStandalone.value = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as Navigator & { standalone?: boolean }).standalone === true
     isAndroidNative.value = Capacitor.getPlatform() === 'android'
   

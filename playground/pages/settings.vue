@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Download, Smartphone } from 'lucide-vue-next'
+import { CloudDownload, CloudUpload, Download, Smartphone } from 'lucide-vue-next'
 import { APP_VERSION } from '../version'
 
 const budgetyar = useBudgetyar()
@@ -9,12 +9,19 @@ const {
   creditRemaining,
   themeMode,
   isStandalone,
+  cloudApiUrl,
+  cloudApiToken,
+  cloudSnapshotVersion,
+  cloudSyncStatus,
+  cloudSyncMessage,
   formatMoneyInput,
   updateCreditLimit,
   setThemeMode,
   exportReport,
   importBackup,
   installApp,
+  uploadCloudSnapshot,
+  downloadCloudSnapshot,
 } = budgetyar
 
 function updateThemeMode(event: Event) {
@@ -62,6 +69,34 @@ function updateThemeMode(event: Event) {
         <span>نصب نسخه PWA</span>
       </button>
       <div class="app-version">نسخه برنامه: <strong>{{ APP_VERSION }}</strong></div>
+    </div>
+  </section>
+  <section class="glass-panel settings-card" data-section="اتصال هوش مصنوعی">
+    <div class="section-title">
+      <div>
+        <h2>اتصال ابری و هوش مصنوعی</h2>
+        <p>ارسال رمزگذاری‌شده داده‌ها به بک‌اند شخصی و Remote MCP</p>
+      </div>
+    </div>
+    <div class="settings-grid settings-general-grid">
+      <label>نشانی بک‌اند
+        <input v-model.trim="cloudApiUrl" type="url" inputmode="url" dir="ltr" placeholder="https://budgetyar-api.vercel.app" autocomplete="url" />
+      </label>
+      <label>توکن اتصال
+        <input v-model.trim="cloudApiToken" type="password" dir="ltr" placeholder="توکن حداقل ۳۲ نویسه" autocomplete="off" />
+      </label>
+      <label>نسخه ابری
+        <input :value="cloudSnapshotVersion || 'هنوز ارسال نشده'" type="text" readonly />
+      </label>
+      <button class="primary-button pwa-install" type="button" :disabled="cloudSyncStatus === 'working'" @click="uploadCloudSnapshot">
+        <CloudUpload :size="18" aria-hidden="true" />
+        <span>ارسال داده‌ها به فضای ابری</span>
+      </button>
+      <button class="primary-button pwa-install" type="button" :disabled="cloudSyncStatus === 'working'" @click="downloadCloudSnapshot">
+        <CloudDownload :size="18" aria-hidden="true" />
+        <span>بازیابی داده‌های ابری</span>
+      </button>
+      <p v-if="cloudSyncMessage" class="app-version" role="status">{{ cloudSyncMessage }}</p>
     </div>
   </section>
 </template>
