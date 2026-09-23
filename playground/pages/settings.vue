@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CloudDownload, CloudUpload, Download, Smartphone } from 'lucide-vue-next'
+import { CloudDownload, CloudUpload, Download, PlugZap, Smartphone } from 'lucide-vue-next'
 import { APP_VERSION } from '../version'
 
 const budgetyar = useBudgetyar()
@@ -14,19 +14,27 @@ const {
   cloudSnapshotVersion,
   cloudSyncStatus,
   cloudSyncMessage,
+  storageMode,
+  cloudDirty,
   formatMoneyInput,
   updateCreditLimit,
   setThemeMode,
   exportReport,
   importBackup,
   installApp,
-  uploadCloudSnapshot,
+  setStorageMode,
+  testCloudConnection,
+  migrateLocalDataToCloud,
   downloadCloudSnapshot,
 } = budgetyar
 
 function updateThemeMode(event: Event) {
   const value = (event.target as HTMLSelectElement).value
   setThemeMode(value === 'light' ? 'light' : value === 'forest' ? 'forest' : 'dark')
+}
+
+function updateStorageMode(event: Event) {
+  setStorageMode((event.target as HTMLSelectElement).value === 'cloud' ? 'cloud' : 'local')
 }
 </script>
 
@@ -79,24 +87,37 @@ function updateThemeMode(event: Event) {
       </div>
     </div>
     <div class="settings-grid settings-general-grid">
-      <label>نشانی بک‌اند
+      <label>محل ذخیره‌سازی
+        <BudgetyarSelect :value="storageMode" @change="updateStorageMode">
+          <option value="local">فقط روی دستگاه (پیش‌فرض)</option>
+          <option value="cloud">فضای ابری</option>
+        </BudgetyarSelect>
+      </label>
+      <p v-if="storageMode === 'local'" class="app-version">
+        اطلاعات فعلی بدون تغییر در همین دستگاه باقی می‌مانند.
+      </p>
+      <label v-if="storageMode === 'cloud'">نشانی بک‌اند
         <input v-model.trim="cloudApiUrl" type="url" inputmode="url" dir="ltr" placeholder="https://budgetyar-api.vercel.app" autocomplete="url" />
       </label>
-      <label>توکن اتصال
+      <label v-if="storageMode === 'cloud'">توکن اتصال
         <input v-model.trim="cloudApiToken" type="password" dir="ltr" placeholder="توکن حداقل ۳۲ نویسه" autocomplete="off" />
       </label>
-      <label>نسخه ابری
-        <input :value="cloudSnapshotVersion || 'هنوز ارسال نشده'" type="text" readonly />
+      <label v-if="storageMode === 'cloud'">وضعیت داده ابری
+        <input :value="cloudDirty ? 'در انتظار همگام‌سازی' : cloudSnapshotVersion ? `نسخه ${cloudSnapshotVersion}` : 'هنوز منتقل نشده'" type="text" readonly />
       </label>
-      <button class="primary-button pwa-install" type="button" :disabled="cloudSyncStatus === 'working'" @click="uploadCloudSnapshot">
+      <button v-if="storageMode === 'cloud'" class="primary-button pwa-install" type="button" :disabled="cloudSyncStatus === 'working'" @click="testCloudConnection">
+        <PlugZap :size="18" aria-hidden="true" />
+        <span>تست اتصال بک‌اند</span>
+      </button>
+      <button v-if="storageMode === 'cloud'" class="primary-button pwa-install" type="button" :disabled="cloudSyncStatus === 'working'" @click="migrateLocalDataToCloud">
         <CloudUpload :size="18" aria-hidden="true" />
-        <span>ارسال داده‌ها به فضای ابری</span>
+        <span>انتقال داده‌های این دستگاه به ابر</span>
       </button>
-      <button class="primary-button pwa-install" type="button" :disabled="cloudSyncStatus === 'working'" @click="downloadCloudSnapshot">
+      <button v-if="storageMode === 'cloud'" class="primary-button pwa-install" type="button" :disabled="cloudSyncStatus === 'working'" @click="downloadCloudSnapshot">
         <CloudDownload :size="18" aria-hidden="true" />
-        <span>بازیابی داده‌های ابری</span>
+        <span>دریافت داده‌های ابری روی این دستگاه</span>
       </button>
-      <p v-if="cloudSyncMessage" class="app-version" role="status">{{ cloudSyncMessage }}</p>
+      <p v-if="storageMode === 'cloud' && cloudSyncMessage" class="app-version" role="status">{{ cloudSyncMessage }}</p>
     </div>
   </section>
 </template>

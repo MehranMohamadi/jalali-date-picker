@@ -48,6 +48,7 @@ export type TransactionType = 'income' | 'expense'
 export type PaymentMethod = 'cash' | 'credit'
 export type CashFlowMode = 'regular' | 'afterCredit' | 'afterCommitments'
 export type ThemeMode = 'dark' | 'light' | 'forest'
+export type StorageMode = 'local' | 'cloud'
 export type GoalPriority = 'low' | 'medium' | 'high'
 export type GoalUnit = 'irr' | 'goldGram' | 'silverGram' | 'usd'
 export type GoalStatus = 'active' | 'paused' | 'completed' | 'archived'
@@ -434,7 +435,12 @@ const cloudApiToken = ref('')
 const cloudSnapshotVersion = ref(0)
 const cloudSyncStatus = ref<'idle' | 'working' | 'success' | 'error'>('idle')
 const cloudSyncMessage = ref('')
+const storageMode = ref<StorageMode>('local')
+const cloudDirty = ref(false)
 let cloudConfiguredApiUrl = ''
+let cloudReadyForAutoSync = false
+let cloudAutoSyncTimer: ReturnType<typeof setTimeout> | null = null
+let cloudLastSnapshotJson = ''
 const editingId = ref<number | null>(null)
 const expenseShareCanvas = ref<HTMLCanvasElement | null>(null)
 const categoryBarCanvas = ref<HTMLCanvasElement | null>(null)
@@ -3246,6 +3252,22 @@ function normalizeCloudApiUrl(value: string) {
   return value.trim().replace(/\/+$/, '')
 }
 
+function buildCloudSnapshotJson() {
+  const snapshot = JSON.parse(buildBackupJson()) as Record<string, unknown>
+  delete snapshot.exportedAt
+  return JSON.stringify(snapshot)
+}
+
+function persistCloudConfiguration() {
+  localStorage.setItem(CLOUD_SETTINGS_STORAGE_KEY, JSON.stringify({
+    apiUrl: cloudApiUrl.value,
+    apiToken: cloudApiToken.value,
+    version: cloudSnapshotVersion.value,
+    storageMode: storageMode.value,
+    dirty: cloudDirty.value,
+  }))
+}
+
 function restoreCloudConfiguration() {
   try {
     const saved = JSON.parse(localStorage.getItem(CLOUD_SETTINGS_STORAGE_KEY) ?? '{}') as Record<string, unknown>
@@ -3253,8 +3275,12 @@ function restoreCloudConfiguration() {
     cloudConfiguredApiUrl = cloudApiUrl.value
     cloudApiToken.value = typeof saved.apiToken === 'string' ? saved.apiToken : ''
     cloudSnapshotVersion.value = typeof saved.version === 'number' ? Math.max(0, saved.version) : 0
+    storageMode.value = saved.storageMode === 'cloud' ? 'cloud' : 'local'
+    cloudDirty.value = saved.dirty === true
   } catch {
     localStorage.removeItem(CLOUD_SETTINGS_STORAGE_KEY)
+    storageMode.value = 'local'
+    cloudDirty.value = false
   }
 }
 
@@ -3264,20 +3290,35 @@ function saveCloudConfiguration() {
     throw new Error('نشانی بک‌اند باید با https:// شروع شود')
   }
   if (cloudApiToken.value.trim().length < 32) throw new Error('توکن اتصال باید حداقل ۳۲ نویسه باشد')
-  if (cloudConfiguredApiUrl && cloudConfiguredApiUrl !== apiUrl) cloudSnapshotVersion.value = 0
+  if (cloudConfiguredApiUrl && cloudConfiguredApiUrl !== apiUrl) {
+    cloudSnapshotVersion.value = 0
+    cloudDirty.value = false
+    cloudReadyForAutoSync = false
+  }
   cloudApiUrl.value = apiUrl
   cloudConfiguredApiUrl = apiUrl
   cloudApiToken.value = cloudApiToken.value.trim()
-  localStorage.setItem(CLOUD_SETTINGS_STORAGE_KEY, JSON.stringify({
-    apiUrl: cloudApiUrl.value,
-    apiToken: cloudApiToken.value,
-    version: cloudSnapshotVersion.value,
-  }))
+  persistCloudConfiguration()
 }
 
 function persistCloudVersion(version: number) {
   cloudSnapshotVersion.value = Math.max(0, version)
-  saveCloudConfiguration()
+  persistCloudConfiguration()
+}
+
+function setStorageMode(mode: StorageMode) {
+  storageMode.value = mode
+  if (mode === 'local') {
+    cloudReadyForAutoSync = false
+    if (cloudAutoSyncTimer) clearTimeout(cloudAutoSyncTimer)
+    cloudAutoSyncTimer = null
+    cloudSyncStatus.value = 'idle'
+    cloudSyncMessage.value = 'داده‌ها فقط روی همین دستگاه ذخیره می‌شوند'
+  } else {
+    cloudReadyForAutoSync = false
+    cloudSyncMessage.value = 'برای شروع، داده‌های این دستگاه را منتقل یا داده‌های ابری را دریافت کنید'
+  }
+  persistCloudConfiguration()
 }
 
 async function cloudRequest(path: string, init: RequestInit = {}) {
@@ -3292,28 +3333,65 @@ async function cloudRequest(path: string, init: RequestInit = {}) {
   })
 }
 
-async function uploadCloudSnapshot() {
+async function testCloudConnection() {
+  cloudSyncStatus.value = 'working'
+  cloudSyncMessage.value = 'در حال بررسی اتصال…'
+  try {
+    const response = await cloudRequest('/api/sync')
+    const result = await response.json() as { error?: string }
+    if (!response.ok && response.status !== 404) throw new Error(result.error || 'اتصال به بک‌اند ناموفق بود')
+    cloudSyncStatus.value = 'success'
+    cloudSyncMessage.value = response.status === 404
+      ? 'اتصال برقرار است؛ هنوز داده‌ای در فضای ابری وجود ندارد'
+      : 'اتصال به بک‌اند و دیتابیس برقرار است'
+    pushToast('اتصال ابری برقرار است ✅')
+  } catch (error) {
+    cloudSyncStatus.value = 'error'
+    cloudSyncMessage.value = error instanceof Error ? error.message : 'اتصال به بک‌اند ناموفق بود'
+    pushToast(cloudSyncMessage.value)
+  }
+}
+
+async function syncCloudSnapshot(silent = false, activateCloud = false) {
   cloudSyncStatus.value = 'working'
   cloudSyncMessage.value = 'در حال ارسال داده‌ها…'
   try {
+    const snapshotJson = buildCloudSnapshotJson()
     const response = await cloudRequest('/api/sync', {
       method: 'PUT',
       body: JSON.stringify({
         expectedVersion: cloudSnapshotVersion.value,
-        data: JSON.parse(buildBackupJson()),
+        data: JSON.parse(snapshotJson),
       }),
     })
     const result = await response.json() as { version?: number, error?: string }
     if (!response.ok) throw new Error(result.error || 'ارسال داده‌ها ناموفق بود')
+    if (activateCloud) storageMode.value = 'cloud'
+    cloudReadyForAutoSync = storageMode.value === 'cloud'
+    cloudDirty.value = false
+    cloudLastSnapshotJson = snapshotJson
     persistCloudVersion(Number(result.version) || 0)
     cloudSyncStatus.value = 'success'
     cloudSyncMessage.value = 'داده‌ها با فضای ابری همگام شدند'
-    pushToast('همگام‌سازی ابری انجام شد ✅')
+    if (!silent) pushToast('همگام‌سازی ابری انجام شد ✅')
+    return true
   } catch (error) {
+    cloudDirty.value = true
+    persistCloudConfiguration()
     cloudSyncStatus.value = 'error'
     cloudSyncMessage.value = error instanceof Error ? error.message : 'همگام‌سازی ابری ناموفق بود'
-    pushToast(cloudSyncMessage.value)
+    if (!silent) pushToast(cloudSyncMessage.value)
+    return false
   }
+}
+
+async function uploadCloudSnapshot() {
+  await syncCloudSnapshot(false, storageMode.value === 'cloud')
+}
+
+async function migrateLocalDataToCloud() {
+  if (cloudSnapshotVersion.value > 0 && !window.confirm('داده‌های ابری با اطلاعات فعلی این دستگاه جایگزین شوند؟')) return
+  await syncCloudSnapshot(false, true)
 }
 
 function applyBackupRecord(backup: Record<string, unknown>) {
@@ -3338,8 +3416,8 @@ function applyBackupRecord(backup: Record<string, unknown>) {
   dateRange.end = ''
 }
 
-async function downloadCloudSnapshot() {
-  if (!window.confirm('داده‌های ابری جایگزین داده‌های فعلی این دستگاه شوند؟')) return
+async function fetchCloudSnapshot(confirmReplace: boolean, silent: boolean) {
+  if (confirmReplace && !window.confirm('داده‌های ابری جایگزین داده‌های فعلی این دستگاه شوند؟')) return false
   cloudSyncStatus.value = 'working'
   cloudSyncMessage.value = 'در حال دریافت داده‌ها…'
   try {
@@ -3348,15 +3426,39 @@ async function downloadCloudSnapshot() {
     if (!response.ok) throw new Error(result.error || 'دریافت داده‌ها ناموفق بود')
     if (!isRecord(result.data)) throw new Error('پاسخ بک‌اند معتبر نیست')
     applyBackupRecord(result.data)
+    storageMode.value = 'cloud'
+    cloudReadyForAutoSync = true
+    cloudDirty.value = false
+    cloudLastSnapshotJson = buildCloudSnapshotJson()
     persistCloudVersion(Number(result.version) || 0)
     cloudSyncStatus.value = 'success'
     cloudSyncMessage.value = 'داده‌های ابری روی این دستگاه بازیابی شدند'
-    pushToast('داده‌های ابری بازیابی شدند ✅')
+    if (!silent) pushToast('داده‌های ابری بازیابی شدند ✅')
+    return true
   } catch (error) {
+    cloudReadyForAutoSync = storageMode.value === 'cloud'
     cloudSyncStatus.value = 'error'
     cloudSyncMessage.value = error instanceof Error ? error.message : 'دریافت داده‌ها ناموفق بود'
-    pushToast(cloudSyncMessage.value)
+    if (!silent) pushToast(cloudSyncMessage.value)
+    return false
   }
+}
+
+async function downloadCloudSnapshot() {
+  await fetchCloudSnapshot(true, false)
+}
+
+function scheduleCloudAutoSync() {
+  if (storageMode.value !== 'cloud' || !cloudReadyForAutoSync) return
+  const snapshotJson = buildCloudSnapshotJson()
+  if (!cloudLastSnapshotJson || snapshotJson === cloudLastSnapshotJson) return
+  cloudDirty.value = true
+  persistCloudConfiguration()
+  if (cloudAutoSyncTimer) clearTimeout(cloudAutoSyncTimer)
+  cloudAutoSyncTimer = setTimeout(() => {
+    cloudAutoSyncTimer = null
+    void syncCloudSnapshot(true)
+  }, 1200)
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -4189,7 +4291,7 @@ export function useBudgetyar() {
   return {
     activeSection, isMobileMenuOpen, isMobileViewport, navItems, months, years, today, todayKey, currentMonthYear, currentJalaliDate, currentMonthLength,
     categories, transactions, budgets, installments, goals, goalTransactions, recurringItems, debts, categorizationRules, incomeSettings, creditLimit, cashFlowMode, themeMode, cashflowForecastPeriod, selectedDebtStrategy, marketRates, marketRatesLoading, marketRatesError,
-    cloudApiUrl, cloudApiToken, cloudSnapshotVersion, cloudSyncStatus, cloudSyncMessage,
+    cloudApiUrl, cloudApiToken, cloudSnapshotVersion, cloudSyncStatus, cloudSyncMessage, storageMode, cloudDirty,
     query, selectedMonth, selectedYear, selectedCategory, selectedType, dateRange, pickerDateRange,
     isModalOpen, formType, form, formAmountInWords, formDatePickerValue, editingId, toasts,
     categoryForm, installmentForm, editingInstallmentId, installmentAmountInWords, installmentStartDatePickerValue,
@@ -4222,7 +4324,7 @@ export function useBudgetyar() {
     addCategorizationRule, editCategorizationRule, updateCategorizationRule, deleteCategorizationRule, toggleCategorizationRule, matchTransactionCategoryRule, applyCategorizationRulesToTransaction, applyCategorizationRulesToAllTransactions, suggestCategorizationRules, acceptSuggestedCategorizationRule, bulkUpdateTransactionCategory,
     updateIncomeSettings, applyRecommendedBudgetPlan,
     getTransactionCategoryLabel, getPaymentMethodLabel, getNecessityLabel, buildCsvReport, buildExcelReport, buildBackupJson, importBackup, createExportFile, saveBlobToDevice, exportReport, installApp, pushToast,
-    saveCloudConfiguration, uploadCloudSnapshot, downloadCloudSnapshot,
+    saveCloudConfiguration, setStorageMode, testCloudConnection, uploadCloudSnapshot, migrateLocalDataToCloud, downloadCloudSnapshot,
     createCharts, syncCharts, scheduleChartSync, destroyCharts,
   }
 }
@@ -4393,6 +4495,18 @@ export function startBudgetyar() {
     if (isAndroidNative.value) {
       refreshBankNotifications()
     }
+
+    cloudLastSnapshotJson = buildCloudSnapshotJson()
+    if (storageMode.value === 'cloud') {
+      if (cloudDirty.value) {
+        cloudReadyForAutoSync = true
+        void syncCloudSnapshot(true)
+      } else if (cloudSnapshotVersion.value > 0) {
+        void fetchCloudSnapshot(false, true)
+      } else {
+        cloudSyncMessage.value = 'برای شروع، داده‌های این دستگاه را منتقل یا داده‌های ابری را دریافت کنید'
+      }
+    }
   
     nextTick(scheduleChartSync)
   })
@@ -4400,6 +4514,8 @@ export function startBudgetyar() {
   onBeforeUnmount(() => {
     unbindMobileViewport()
     destroyCharts()
+    if (cloudAutoSyncTimer) clearTimeout(cloudAutoSyncTimer)
+    cloudAutoSyncTimer = null
   })
   
   watch(
@@ -4500,6 +4616,12 @@ export function startBudgetyar() {
     (value) => {
       localStorage.setItem(INCOME_SETTINGS_STORAGE_KEY, JSON.stringify(value))
     },
+    { deep: true },
+  )
+
+  watch(
+    [transactions, categories, budgets, creditLimit, installments, goals, goalTransactions, recurringItems, debts, categorizationRules, incomeSettings],
+    scheduleCloudAutoSync,
     { deep: true },
   )
   
