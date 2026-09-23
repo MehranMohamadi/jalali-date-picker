@@ -5,8 +5,8 @@ import (
 	"errors"
 	"net/http"
 
-	"budgetyar-backend/internal/finance"
-	"budgetyar-backend/internal/platform"
+	"budgetyar-backend/pkg/finance"
+	"budgetyar-backend/pkg/platform"
 	"github.com/jackc/pgx/v5"
 )
 

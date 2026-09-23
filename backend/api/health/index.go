@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"os"
 
-	"budgetyar-backend/internal/platform"
+	"budgetyar-backend/pkg/platform"
 )
 
 func Handler(w http.ResponseWriter, r *http.Request) {
