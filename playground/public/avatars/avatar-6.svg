@@ -1,32 +1,52 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
   <defs>
-    <linearGradient id="bg6" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0d9488"/>
-      <stop offset="100%" stop-color="#115e59"/>
+    <linearGradient id="fbg6" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#475569"/>
+      <stop offset="100%" stop-color="#0f172a"/>
     </linearGradient>
-    <linearGradient id="bearfur" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#78350f"/>
-      <stop offset="100%" stop-color="#451a03"/>
+    <linearGradient id="fskin6" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fee2e2"/>
+      <stop offset="100%" stop-color="#fed7aa"/>
     </linearGradient>
   </defs>
-  <!-- Background -->
-  <circle cx="60" cy="60" r="56" fill="url(#bg6)"/>
-  <!-- Ears -->
-  <circle cx="34" cy="34" r="13" fill="url(#bearfur)"/>
-  <circle cx="34" cy="34" r="7" fill="#fbbf24"/>
-  <circle cx="86" cy="34" r="13" fill="url(#bearfur)"/>
-  <circle cx="86" cy="34" r="7" fill="#fbbf24"/>
-  <!-- Head -->
-  <circle cx="60" cy="64" r="36" fill="url(#bearfur)"/>
-  <!-- Muzzle -->
-  <ellipse cx="60" cy="74" rx="18" ry="14" fill="#fde68a"/>
-  <!-- Eyes -->
-  <circle cx="46" cy="58" r="4.5" fill="#0f172a"/>
-  <circle cx="47.5" cy="56.5" r="1.5" fill="#ffffff"/>
-  <circle cx="74" cy="58" r="4.5" fill="#0f172a"/>
-  <circle cx="75.5" cy="56.5" r="1.5" fill="#ffffff"/>
-  <!-- Nose -->
-  <ellipse cx="60" cy="69" rx="7" ry="5" fill="#0f172a"/>
-  <!-- Mouth -->
-  <path d="M 55,75 Q 60,80 65,75" fill="none" stroke="#0f172a" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="60" cy="60" r="56" fill="url(#fbg6)"/>
+  <circle cx="60" cy="60" r="55" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="1.5"/>
+
+  <!-- Back Hair (Short bob haircut) -->
+  <path d="M 33,52 C 30,68 32,84 38,94 C 42,86 42,76 38,62 Z" fill="#292524"/>
+  <path d="M 87,52 C 90,68 88,84 82,94 C 78,86 78,76 82,62 Z" fill="#292524"/>
+
+  <!-- Neck & Blazer -->
+  <path d="M 51,76 L 69,76 L 69,92 L 51,92 Z" fill="url(#fskin6)"/>
+  <path d="M 28,114 C 28,94 42,90 60,90 C 78,90 92,94 92,114 Z" fill="#1e1b4b"/>
+
+  <!-- Inner Silk Top (Emerald) -->
+  <polygon points="60,98 48,86 72,86" fill="#047857"/>
+
+  <!-- Lapels -->
+  <polygon points="46,90 56,108 38,114 32,102" fill="#312e81"/>
+  <polygon points="74,90 64,108 82,114 88,102" fill="#312e81"/>
+
+  <!-- Gold Brooch Pin -->
+  <circle cx="43" cy="98" r="2.5" fill="#facc15"/>
+
+  <!-- Ears & Face -->
+  <circle cx="36" cy="63" r="5" fill="url(#fskin6)"/>
+  <circle cx="84" cy="63" r="5" fill="url(#fskin6)"/>
+  <ellipse cx="60" cy="61" rx="21" ry="24" fill="url(#fskin6)"/>
+
+  <!-- Hair -->
+  <path d="M 36,50 C 35,32 46,24 60,24 C 74,24 85,32 84,50 C 80,40 70,36 58,38 C 46,40 39,44 36,50 Z" fill="#292524"/>
+
+  <!-- Eyes & Eyebrows -->
+  <path d="M 43,51 Q 48,48 53,51" fill="none" stroke="#292524" stroke-width="2" stroke-linecap="round"/>
+  <path d="M 67,51 Q 72,48 77,51" fill="none" stroke="#292524" stroke-width="2" stroke-linecap="round"/>
+  <ellipse cx="48" cy="59" rx="3.2" ry="4" fill="#1c1917"/>
+  <circle cx="49" cy="57.8" r="1.1" fill="#ffffff"/>
+  <ellipse cx="72" cy="59" rx="3.2" ry="4" fill="#1c1917"/>
+  <circle cx="73" cy="57.8" r="1.1" fill="#ffffff"/>
+
+  <!-- Nose & Smile -->
+  <path d="M 60,60 L 59,65 L 62,65" fill="none" stroke="#b45309" stroke-width="1.4" stroke-linecap="round" opacity="0.5"/>
+  <path d="M 54,72 Q 60,76 66,72" fill="none" stroke="#b91c1c" stroke-width="2.4" stroke-linecap="round"/>
 </svg>

@@ -1,27 +1,36 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
   <defs>
-    <linearGradient id="bg8" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#2aa89a"/>
-      <stop offset="100%" stop-color="#0f766e"/>
+    <linearGradient id="fbg8" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#020617"/>
     </linearGradient>
-    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#fef08a"/>
-      <stop offset="50%" stop-color="#f59e0b"/>
-      <stop offset="100%" stop-color="#b45309"/>
+    <linearGradient id="fdia-top" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#bae6fd"/>
+      <stop offset="100%" stop-color="#e0f2fe"/>
     </linearGradient>
   </defs>
-  <!-- Background -->
-  <circle cx="60" cy="60" r="56" fill="url(#bg8)"/>
-  <!-- Glowing Coin -->
-  <circle cx="60" cy="60" r="40" fill="url(#gold)" stroke="#fef08a" stroke-width="2"/>
-  <circle cx="60" cy="60" r="34" fill="none" stroke="#fef08a" stroke-dasharray="3,3" stroke-width="2"/>
-  <!-- Crown Icon in center -->
-  <polygon points="40,68 44,50 52,60 60,44 68,60 76,50 80,68" fill="#ffffff" stroke="#b45309" stroke-width="1.5"/>
-  <circle cx="44" cy="48" r="2.5" fill="#f43f5e"/>
-  <circle cx="60" cy="42" r="3" fill="#38bdf8"/>
-  <circle cx="76" cy="48" r="2.5" fill="#f43f5e"/>
-  <rect x="42" y="70" width="36" height="4" rx="2" fill="#ffffff"/>
-  <!-- Sparkles -->
-  <polygon points="86,34 88,38 92,40 88,42 86,46 84,42 80,40 84,38" fill="#fef08a"/>
-  <polygon points="32,78 33,81 36,82 33,83 32,86 31,83 28,82 31,81" fill="#fef08a"/>
+  <circle cx="60" cy="60" r="56" fill="url(#fbg8)"/>
+  <circle cx="60" cy="60" r="55" fill="none" stroke="rgba(56,189,248,0.25)" stroke-width="1.5"/>
+
+  <!-- Glowing Aura behind diamond -->
+  <circle cx="60" cy="60" r="28" fill="#0284c7" opacity="0.25" filter="blur(6px)"/>
+
+  <!-- 3D Geometric Diamond Facets -->
+  <!-- Top Table -->
+  <polygon points="46,42 74,42 86,54 34,54" fill="url(#fdia-top)" stroke="#e0f2fe" stroke-width="0.8"/>
+  <polygon points="46,42 60,54 74,42" fill="#f0f9ff" opacity="0.9"/>
+  <polygon points="46,42 34,54 60,54" fill="#7dd3fc"/>
+  <polygon points="74,42 60,54 86,54" fill="#38bdf8"/>
+
+  <!-- Bottom Pavilion Facets -->
+  <polygon points="34,54 60,54 60,86" fill="#0284c7"/>
+  <polygon points="86,54 60,54 60,86" fill="#0369a1"/>
+  <polygon points="34,54 44,54 60,86" fill="#38bdf8"/>
+  <polygon points="86,54 76,54 60,86" fill="#0284c7"/>
+  <polygon points="44,54 60,54 60,86" fill="#bae6fd" opacity="0.8"/>
+  <polygon points="76,54 60,54 60,86" fill="#7dd3fc" opacity="0.8"/>
+
+  <!-- Diamond Sparkle Reflection -->
+  <polygon points="42,38 44,42 48,44 44,46 42,50 40,46 36,44 40,42" fill="#ffffff"/>
+  <polygon points="78,70 79,72 82,73 79,74 78,77 77,74 74,73 77,72" fill="#ffffff" opacity="0.75"/>
 </svg>

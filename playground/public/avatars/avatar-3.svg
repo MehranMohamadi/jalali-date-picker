@@ -1,37 +1,68 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
   <defs>
-    <linearGradient id="bg3" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#10b981"/>
-      <stop offset="100%" stop-color="#059669"/>
+    <linearGradient id="fbg3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#334155"/>
+      <stop offset="100%" stop-color="#090d16"/>
+    </linearGradient>
+    <linearGradient id="fskin3" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fed7aa"/>
+      <stop offset="100%" stop-color="#fba874"/>
+    </linearGradient>
+    <linearGradient id="fsuit3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </linearGradient>
+    <linearGradient id="ftie3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#d97706"/>
+      <stop offset="100%" stop-color="#b45309"/>
     </linearGradient>
   </defs>
-  <!-- Background -->
-  <circle cx="60" cy="60" r="56" fill="url(#bg3)"/>
-  <!-- Ears -->
-  <polygon points="28,24 16,56 46,48" fill="#f8fafc"/>
-  <polygon points="30,30 22,50 42,46" fill="#f43f5e"/>
-  <polygon points="92,24 104,56 74,48" fill="#f8fafc"/>
-  <polygon points="90,30 98,50 78,46" fill="#f43f5e"/>
-  <!-- Head -->
-  <ellipse cx="60" cy="66" rx="38" ry="34" fill="#f8fafc"/>
-  <!-- Inner eye patch -->
-  <path d="M 28,52 Q 40,42 50,56" fill="#fcd34d" opacity="0.6"/>
-  <!-- Eyes (Happy wink & open eye) -->
-  <ellipse cx="44" cy="62" rx="4.5" ry="6" fill="#0f172a"/>
-  <circle cx="45.5" cy="60" r="1.8" fill="#ffffff"/>
-  <path d="M 70,64 Q 76,58 82,64" fill="none" stroke="#0f172a" stroke-width="3" stroke-linecap="round"/>
-  <!-- Cheeks -->
-  <ellipse cx="36" cy="72" rx="5" ry="3" fill="#f43f5e" opacity="0.4"/>
-  <ellipse cx="84" cy="72" rx="5" ry="3" fill="#f43f5e" opacity="0.4"/>
-  <!-- Nose & Mouth -->
-  <polygon points="60,67 57,71 63,71" fill="#f43f5e"/>
-  <path d="M 54,73 Q 60,77 66,73" fill="none" stroke="#334155" stroke-width="2" stroke-linecap="round"/>
-  <!-- Whiskers -->
-  <line x1="22" y1="68" x2="32" y2="70" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
-  <line x1="22" y1="74" x2="32" y2="74" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
-  <line x1="88" y1="70" x2="98" y2="68" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
-  <line x1="88" y1="74" x2="98" y2="74" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
-  <!-- Golden Bell / Collar -->
-  <rect x="42" y="94" width="36" height="6" rx="3" fill="#e11d48"/>
-  <circle cx="60" cy="100" r="5" fill="#f59e0b" stroke="#b45309" stroke-width="1"/>
+  <circle cx="60" cy="60" r="56" fill="url(#fbg3)"/>
+  <circle cx="60" cy="60" r="55" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="1.5"/>
+
+  <!-- Neck -->
+  <path d="M 49,78 L 71,78 L 71,92 L 49,92 Z" fill="url(#fskin3)"/>
+
+  <!-- Suit Body -->
+  <path d="M 26,114 C 26,92 42,88 60,88 C 78,88 94,92 94,114 Z" fill="url(#fsuit3)"/>
+
+  <!-- Pocket Square -->
+  <polygon points="36,104 42,99 44,105 38,107" fill="#f8fafc"/>
+  <line x1="34" y1="106" x2="44" y2="106" stroke="#475569" stroke-width="1.5"/>
+
+  <!-- Collar & Tie -->
+  <polygon points="60,102 46,86 56,86" fill="#f8fafc"/>
+  <polygon points="60,102 74,86 64,86" fill="#f8fafc"/>
+  <polygon points="57,88 63,88 64,114 60,118 56,114" fill="url(#ftie3)"/>
+  <polygon points="57,88 63,88 62,94 58,94" fill="#92400e"/>
+
+  <!-- Lapels -->
+  <polygon points="46,88 56,104 36,114 30,102" fill="#334155"/>
+  <polygon points="74,88 64,104 84,114 90,102" fill="#334155"/>
+
+  <!-- Ears & Face -->
+  <circle cx="35" cy="62" r="6" fill="url(#fskin3)"/>
+  <circle cx="85" cy="62" r="6" fill="url(#fskin3)"/>
+  <ellipse cx="60" cy="60" rx="22" ry="24" fill="url(#fskin3)"/>
+
+  <!-- Neat Beard & Mustache -->
+  <path d="M 38,59 C 38,82 46,92 60,92 C 74,92 82,82 82,59 C 80,72 74,84 60,84 C 46,84 40,72 38,59 Z" fill="#1e293b"/>
+  <path d="M 49,76 C 49,89 54,91 60,91 C 66,91 71,89 71,76 C 65,80 55,80 49,76 Z" fill="#1e293b"/>
+  <path d="M 48,71 C 52,68 56,68 60,71 C 64,68 68,68 72,71 C 67,74 64,74 60,72 C 56,74 53,74 48,71 Z" fill="#1e293b"/>
+
+  <!-- Hair -->
+  <path d="M 36,50 C 35,32 46,24 60,24 C 74,24 85,32 84,50 C 81,38 72,34 60,35 C 48,35 40,41 36,50 Z" fill="#1e293b"/>
+  <path d="M 38,40 C 45,28 62,25 76,30 C 84,34 83,44 83,48 C 75,36 64,34 50,38 C 43,40 40,44 38,40 Z" fill="#334155"/>
+
+  <!-- Eyes & Eyebrows -->
+  <path d="M 43,48 Q 49,46 55,49" fill="none" stroke="#1e293b" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M 65,49 Q 71,46 77,48" fill="none" stroke="#1e293b" stroke-width="2.6" stroke-linecap="round"/>
+  <ellipse cx="49" cy="56" rx="3.2" ry="3.8" fill="#0f172a"/>
+  <circle cx="50" cy="55" r="1.1" fill="#ffffff"/>
+  <ellipse cx="71" cy="56" rx="3.2" ry="3.8" fill="#0f172a"/>
+  <circle cx="72" cy="55" r="1.1" fill="#ffffff"/>
+
+  <!-- Nose & Smile -->
+  <path d="M 60,58 L 58,65 L 62,65" fill="none" stroke="#b45309" stroke-width="1.6" stroke-linecap="round" opacity="0.6"/>
+  <path d="M 54,75 Q 60,79 66,75" fill="none" stroke="#f8fafc" stroke-width="2" stroke-linecap="round"/>
 </svg>

@@ -14,17 +14,17 @@ export interface AvatarOption {
 }
 
 export const DEFAULT_AVATARS: AvatarOption[] = [
-  { id: 'avatar-9', title: '\u200Fآرش (مرد جوان)', src: '/avatars/avatar-9.svg' },
-  { id: 'avatar-10', title: '\u200Fسارا (بانوی جوان)', src: '/avatars/avatar-10.svg' },
-  { id: 'avatar-11', title: '\u200Fپویا (مدیر باوقار)', src: '/avatars/avatar-11.svg' },
-  { id: 'avatar-1', title: '\u200Fروباه زیرک', src: '/avatars/avatar-1.svg' },
-  { id: 'avatar-2', title: '\u200Fجغد دانا', src: '/avatars/avatar-2.svg' },
-  { id: 'avatar-3', title: '\u200Fپیشی خوش‌شانس', src: '/avatars/avatar-3.svg' },
-  { id: 'avatar-4', title: '\u200Fشیر مقتدر', src: '/avatars/avatar-4.svg' },
-  { id: 'avatar-5', title: '\u200Fفضانورد آینده‌نگر', src: '/avatars/avatar-5.svg' },
-  { id: 'avatar-6', title: '\u200Fخرس صبور', src: '/avatars/avatar-6.svg' },
-  { id: 'avatar-7', title: '\u200Fپاندای آرام', src: '/avatars/avatar-7.svg' },
-  { id: 'avatar-8', title: '\u200Fتاج طلا', src: '/avatars/avatar-8.svg' },
+  { id: 'avatar-1', title: '\u200Fآرش', src: '/avatars/avatar-1.svg' },
+  { id: 'avatar-2', title: '\u200Fسارا', src: '/avatars/avatar-2.svg' },
+  { id: 'avatar-3', title: '\u200Fپویا', src: '/avatars/avatar-3.svg' },
+  { id: 'avatar-4', title: '\u200Fمریم', src: '/avatars/avatar-4.svg' },
+  { id: 'avatar-5', title: '\u200Fامید', src: '/avatars/avatar-5.svg' },
+  { id: 'avatar-6', title: '\u200Fنیلوفر', src: '/avatars/avatar-6.svg' },
+  { id: 'avatar-7', title: '\u200Fطلا', src: '/avatars/avatar-7.svg' },
+  { id: 'avatar-8', title: '\u200Fالماس', src: '/avatars/avatar-8.svg' },
+  { id: 'avatar-9', title: '\u200Fسپر', src: '/avatars/avatar-9.svg' },
+  { id: 'avatar-10', title: '\u200Fرشد', src: '/avatars/avatar-10.svg' },
+  { id: 'avatar-11', title: '\u200Fستاره', src: '/avatars/avatar-11.svg' },
 ]
 
 interface AuthResult {
