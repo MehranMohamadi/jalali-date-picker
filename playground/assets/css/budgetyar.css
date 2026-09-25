@@ -1423,6 +1423,27 @@ textarea {
   white-space: nowrap;
 }
 
+.category-title-actions,
+.category-rename {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+
+.category-title-actions {
+  flex: 0 0 auto;
+}
+
+.category-rename {
+  flex: 1;
+}
+
+.category-rename input {
+  min-width: 0;
+  width: 100%;
+}
+
 .budget-item span,
 .budget-item small,
 .installment-item p,

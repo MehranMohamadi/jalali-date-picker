@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Plus, Trash2, X } from 'lucide-vue-next'
+import { Check, Pencil, Plus, Trash2, X } from 'lucide-vue-next'
 
 const budgetyar = useBudgetyar()
 const {
@@ -12,6 +12,7 @@ const {
   updateMoneyInput,
   updateBudget,
   addCategory,
+  renameCategory,
   deleteCategory,
   progressPercent,
 } = budgetyar
@@ -55,6 +56,20 @@ const availableSuggestedCategories = computed(() => {
 const existingCategoryLabels = computed(() => new Set(categories.value.map((category) => category.label.trim().toLocaleLowerCase('fa'))))
 
 const isSuggestedCategoriesOpen = ref(false)
+const editingCategoryKey = ref<string | null>(null)
+const editingCategoryLabel = ref('')
+
+function startCategoryRename(key: string, label: string) {
+  editingCategoryKey.value = key
+  editingCategoryLabel.value = label
+}
+
+function saveCategoryRename() {
+  if (editingCategoryKey.value && renameCategory(editingCategoryKey.value, editingCategoryLabel.value)) {
+    editingCategoryKey.value = null
+    editingCategoryLabel.value = ''
+  }
+}
 
 function addSuggestedCategory(suggestion: (typeof suggestedCategories)[number]) {
   Object.assign(categoryForm, {
@@ -143,11 +158,21 @@ function addSuggestedCategory(suggestion: (typeof suggestedCategories)[number]) 
     <div class="budget-grid">
       <article v-for="item in categoryTotals" :key="item.key" class="budget-item">
         <div>
-          <strong>{{ item.icon }} {{ item.label }}</strong>
-          <button v-if="item.key !== 'other'" class="delete-category" type="button" aria-label="حذف دسته" @click="deleteCategory(item.key)">
-            <Trash2 :size="15" aria-hidden="true" />
-            <span>حذف</span>
-          </button>
+          <form v-if="editingCategoryKey === item.key" class="category-rename" @submit.prevent="saveCategoryRename">
+            <input v-model="editingCategoryLabel" type="text" :aria-label="`نام جدید دسته ${item.label}`" maxlength="80" @keydown.esc.prevent="editingCategoryKey = null" />
+            <button class="icon-button" type="submit" aria-label="ذخیره نام دسته"><Check :size="17" aria-hidden="true" /></button>
+            <button class="icon-button" type="button" aria-label="لغو ویرایش نام دسته" @click="editingCategoryKey = null"><X :size="17" aria-hidden="true" /></button>
+          </form>
+          <template v-else>
+            <strong>{{ item.icon }} {{ item.label }}</strong>
+            <div class="category-title-actions">
+              <button class="icon-button" type="button" :aria-label="`ویرایش نام دسته ${item.label}`" @click="startCategoryRename(item.key, item.label)"><Pencil :size="15" aria-hidden="true" /></button>
+              <button v-if="item.key !== 'other'" class="delete-category" type="button" aria-label="حذف دسته" @click="deleteCategory(item.key)">
+                <Trash2 :size="15" aria-hidden="true" />
+                <span>حذف</span>
+              </button>
+            </div>
+          </template>
         </div>
         <span>بودجه: {{ formatMoney(item.budget) }}</span>
         <label class="budget-edit">

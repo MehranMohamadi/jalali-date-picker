@@ -341,17 +341,17 @@ const INCOME_SETTINGS_STORAGE_KEY = 'budgetyar-income-settings-v1'
 const CLOUD_SETTINGS_STORAGE_KEY = 'budgetyar-cloud-settings-v1'
 const navItems = ['داشبورد', 'درآمدها', 'هزینه‌ها', 'بودجه‌ها', 'قسط‌ها', 'گزارش‌ها', 'آمار', 'اعلان‌ها', 'تنظیمات']
 const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند']
-const currentJalaliDate = getCurrentJalaliDate()
-const todayKey = formatJalaliInputDate(currentJalaliDate)
-const currentMonthPrefix = getJalaliMonthPrefix(currentJalaliDate)
-const currentMonthLength = getJalaliMonthLength(currentJalaliDate.year, currentJalaliDate.month)
-const currentMonthStartKey = formatJalaliInputDate({ ...currentJalaliDate, day: 1 })
-const currentMonthEndKey = formatJalaliInputDate({ ...currentJalaliDate, day: currentMonthLength })
-const currentWeekRange = getCurrentWeekRange(currentJalaliDate)
-const currentWeekStartKey = formatJalaliInputDate(currentWeekRange.start)
-const currentWeekEndKey = formatJalaliInputDate(currentWeekRange.end)
-const currentMonthYear = `${months[currentJalaliDate.month - 1]} ${toPersianNumber(currentJalaliDate.year)}`
-const years = [currentJalaliDate.year - 1, currentJalaliDate.year, currentJalaliDate.year + 1].map(toPersianNumber)
+const currentJalaliDate = reactive(getCurrentJalaliDate())
+const todayKey = computed(() => formatJalaliInputDate(currentJalaliDate))
+const currentMonthPrefix = computed(() => getJalaliMonthPrefix(currentJalaliDate))
+const currentMonthLength = computed(() => getJalaliMonthLength(currentJalaliDate.year, currentJalaliDate.month))
+const currentMonthStartKey = computed(() => formatJalaliInputDate({ ...currentJalaliDate, day: 1 }))
+const currentMonthEndKey = computed(() => formatJalaliInputDate({ ...currentJalaliDate, day: currentMonthLength.value }))
+const currentWeekRange = computed(() => getCurrentWeekRange(currentJalaliDate))
+const currentWeekStartKey = computed(() => formatJalaliInputDate(currentWeekRange.value.start))
+const currentWeekEndKey = computed(() => formatJalaliInputDate(currentWeekRange.value.end))
+const currentMonthYear = computed(() => `${months[currentJalaliDate.month - 1]} ${toPersianNumber(currentJalaliDate.year)}`)
+const years = computed(() => [currentJalaliDate.year - 1, currentJalaliDate.year, currentJalaliDate.year + 1].map(toPersianNumber))
 const defaultCategorizationRuleTemplates = [
   { id: 'snap', title: 'اسنپ', pattern: 'اسنپ', preferredCategory: 'حمل و نقل', fallbackCategory: 'transport' },
   { id: 'tapsi', title: 'تپسی', pattern: 'تپسی', preferredCategory: 'حمل و نقل', fallbackCategory: 'transport' },
@@ -413,7 +413,7 @@ const defaultIncomeSettings: BudgetyarIncomeSettings = {
   essentialPercent: 60,
   savingPercent: 20,
   flexiblePercent: 20,
-  updatedAt: todayKey,
+  updatedAt: todayKey.value,
 }
 const query = ref('')
 const selectedMonth = ref(months[currentJalaliDate.month - 1])
@@ -477,7 +477,7 @@ let mobileViewportListener: ((event: MediaQueryListEvent) => void) | null = null
 const form = reactive({
   amount: 0,
   title: '',
-  date: todayKey,
+  date: todayKey.value,
   category: 'food' as CategoryKey,
   description: '',
   paymentMethod: 'cash' as PaymentMethod,
@@ -519,7 +519,7 @@ const installmentForm = reactive({
   title: '',
   amount: 0,
   category: 'other' as CategoryKey,
-  startDate: todayKey,
+  startDate: todayKey.value,
   dueDay: currentJalaliDate.day,
   totalCount: 12,
   description: '',
@@ -555,7 +555,7 @@ const recurringForm = reactive({
   amount: 0,
   categoryId: 'other' as CategoryKey,
   frequency: 'monthly' as RecurringFrequency,
-  startDate: todayKey,
+  startDate: todayKey.value,
   endDate: '',
   dueDay: currentJalaliDate.day,
   paymentMethod: 'cash' as PaymentMethod,
@@ -567,7 +567,7 @@ const recurringForm = reactive({
 const purchaseForm = reactive({
   amount: 0,
   categoryId: 'other' as CategoryKey,
-  date: todayKey,
+  date: todayKey.value,
   isEssential: false,
   paymentMethod: 'cash' as PaymentMethod,
   note: '',
@@ -581,7 +581,7 @@ const debtForm = reactive({
   minimumMonthlyPayment: 0,
   extraMonthlyPayment: 0,
   dueDay: currentJalaliDate.day,
-  startDate: todayKey,
+  startDate: todayKey.value,
   targetPayoffDate: '',
   linkedInstallmentId: '',
   creditorName: '',
@@ -646,13 +646,13 @@ const recurringEndDatePickerValue = computed({
 const purchaseDatePickerValue = computed({
   get: () => jalaliInputToIso(purchaseForm.date),
   set: (value: string | null) => {
-    purchaseForm.date = value ? isoToJalaliInput(value) : todayKey
+    purchaseForm.date = value ? isoToJalaliInput(value) : todayKey.value
   },
 })
 const debtStartDatePickerValue = computed({
   get: () => jalaliInputToIso(debtForm.startDate),
   set: (value: string | null) => {
-    debtForm.startDate = value ? isoToJalaliInput(value) : todayKey
+    debtForm.startDate = value ? isoToJalaliInput(value) : todayKey.value
   },
 })
 const debtTargetPayoffDatePickerValue = computed({
@@ -677,15 +677,15 @@ const bankNotificationStatus = reactive<BankNotificationStatus>({
   selectedPackage: '',
   selectedAppLabel: '',
 })
-const today = formatDisplayJalaliDate(currentJalaliDate)
+const today = computed(() => formatDisplayJalaliDate(currentJalaliDate))
 
-const previousMonthPrefix = getPreviousMonthPrefix(currentJalaliDate)
-const currentMonthTransactions = computed(() => transactions.value.filter((item) => normalizeJalaliDate(item.date).startsWith(currentMonthPrefix)))
-const previousMonthTransactions = computed(() => transactions.value.filter((item) => normalizeJalaliDate(item.date).startsWith(previousMonthPrefix)))
+const previousMonthPrefix = computed(() => getPreviousMonthPrefix(currentJalaliDate))
+const currentMonthTransactions = computed(() => transactions.value.filter((item) => normalizeJalaliDate(item.date).startsWith(currentMonthPrefix.value)))
+const previousMonthTransactions = computed(() => transactions.value.filter((item) => normalizeJalaliDate(item.date).startsWith(previousMonthPrefix.value)))
 const currentWeekTransactions = computed(() =>
   transactions.value.filter((item) => {
     const date = normalizeJalaliDate(item.date)
-    return date >= currentWeekStartKey && date <= currentWeekEndKey
+    return date >= currentWeekStartKey.value && date <= currentWeekEndKey.value
   }),
 )
 const expenseTransactions = computed(() => currentMonthTransactions.value.filter((item) => item.type === 'expense' && item.sourceType !== 'credit-payment'))
@@ -696,7 +696,7 @@ const previousExpense = computed(() => previousMonthTransactions.value.filter((i
 const previousIncome = computed(() => previousMonthTransactions.value.filter((item) => item.type === 'income').reduce((sum, item) => sum + item.amount, 0))
 const totalIncome = computed(() => incomeTransactions.value.reduce((sum, item) => sum + item.amount, 0))
 const totalExpense = computed(() => expenseTransactions.value.reduce((sum, item) => sum + item.amount, 0))
-const postedTransactions = computed(() => transactions.value.filter((item) => normalizeJalaliDate(item.date) <= todayKey))
+const postedTransactions = computed(() => transactions.value.filter((item) => normalizeJalaliDate(item.date) <= todayKey.value))
 const creditMonths = computed(() => getCreditMonths(postedTransactions.value))
 const creditExpense = computed(() => creditMonths.value.reduce((sum, month) => sum + month.remaining, 0))
 const creditRemaining = computed(() => Math.max(creditLimit.value - creditExpense.value, 0))
@@ -711,7 +711,7 @@ const weeklyExpense = computed(() => weeklyExpenseTransactions.value.reduce((sum
 const weeklyCreditExpense = computed(() => weeklyExpenseTransactions.value.filter((item) => item.paymentMethod === 'credit').reduce((sum, item) => sum + item.amount, 0))
 const weeklyBalance = computed(() => weeklyIncome.value - weeklyExpense.value)
 const totalBudget = computed(() => budgets.value.reduce((sum, item) => sum + item.budget, 0))
-const currentMonthWeekCount = computed(() => Math.ceil(currentMonthLength / 7))
+const currentMonthWeekCount = computed(() => Math.ceil(currentMonthLength.value / 7))
 const weeklyBudgetAllowance = computed(() => Math.round(totalBudget.value / Math.max(currentMonthWeekCount.value, 1)))
 const balance = computed(() => balanceAfterCreditPayment.value)
 const budgetUsage = computed(() => Math.round((totalExpense.value / Math.max(totalBudget.value, 1)) * 100))
@@ -765,7 +765,7 @@ const highestExpense = computed<Transaction>(() => [...expenseTransactions.value
   type: 'expense',
   title: 'بدون هزینه',
   amount: 0,
-  date: currentMonthStartKey,
+  date: currentMonthStartKey.value,
   category: 'other',
 })
 const lowestExpense = computed<Transaction>(() => [...expenseTransactions.value].sort((a, b) => a.amount - b.amount)[0] ?? {
@@ -773,11 +773,11 @@ const lowestExpense = computed<Transaction>(() => [...expenseTransactions.value]
   type: 'expense',
   title: 'بدون هزینه',
   amount: 0,
-  date: currentMonthStartKey,
+  date: currentMonthStartKey.value,
   category: 'other',
 })
-const todayExpense = computed(() => expenseTransactions.value.filter((item) => normalizeJalaliDate(item.date) === todayKey).reduce((sum, item) => sum + item.amount, 0))
-const todayIncome = computed(() => incomeTransactions.value.filter((item) => normalizeJalaliDate(item.date) === todayKey).reduce((sum, item) => sum + item.amount, 0))
+const todayExpense = computed(() => expenseTransactions.value.filter((item) => normalizeJalaliDate(item.date) === todayKey.value).reduce((sum, item) => sum + item.amount, 0))
+const todayIncome = computed(() => incomeTransactions.value.filter((item) => normalizeJalaliDate(item.date) === todayKey.value).reduce((sum, item) => sum + item.amount, 0))
 const averageDailyExpense = computed(() => Math.round(totalExpense.value / Math.max(currentJalaliDate.day, 1)))
 const latestExpenses = computed(() =>
   [...transactions.value]
@@ -868,12 +868,12 @@ const unpaidInstallmentOccurrences = computed(() =>
   installmentMonthlySchedule.value.flatMap((month) => month.items).filter((item) => !item.isPaid),
 )
 const dueInstallmentsThisMonth = computed(() =>
-  unpaidInstallmentOccurrences.value.filter((item) => item.dueDate >= currentMonthStartKey && item.dueDate <= currentMonthEndKey),
+  unpaidInstallmentOccurrences.value.filter((item) => item.dueDate >= currentMonthStartKey.value && item.dueDate <= currentMonthEndKey.value),
 )
 const monthlyInstallmentDue = computed(() => dueInstallmentsThisMonth.value.reduce((sum, item) => sum + item.amount, 0))
 const commitmentInstallmentDue = computed(() =>
   unpaidInstallmentOccurrences.value
-    .filter((item) => item.dueDate <= currentMonthEndKey)
+    .filter((item) => item.dueDate <= currentMonthEndKey.value)
     .reduce((sum, item) => sum + item.amount, 0),
 )
 const balanceAfterCommitments = computed(() => balanceAfterCreditPayment.value - commitmentInstallmentDue.value)
@@ -884,7 +884,7 @@ const balanceDeductionBreakdown = computed(() => [
     amount: month.remaining,
   })),
   ...unpaidInstallmentOccurrences.value
-    .filter((item) => item.dueDate <= currentMonthEndKey)
+    .filter((item) => item.dueDate <= currentMonthEndKey.value)
     .map((item) => ({
       label: `قسط پرداخت‌نشده «${item.title}» · ${item.dueDate}`,
       amount: item.amount,
@@ -895,13 +895,13 @@ const archivedGoals = computed(() => goals.value.filter((goal) => goal.isArchive
 const activeGoalSnapshots = computed(() =>
   activeGoals.value.map((goal) => ({
     goal,
-    snapshot: calculateGoalSnapshot(goal, goalTransactions.value, marketRates.value, todayKey),
+    snapshot: calculateGoalSnapshot(goal, goalTransactions.value, marketRates.value, todayKey.value),
   })),
 )
 const archivedGoalSnapshots = computed(() =>
   archivedGoals.value.map((goal) => ({
     goal,
-    snapshot: calculateGoalSnapshot(goal, goalTransactions.value, marketRates.value, todayKey),
+    snapshot: calculateGoalSnapshot(goal, goalTransactions.value, marketRates.value, todayKey.value),
   })),
 )
 const totalGoalsTarget = computed(() => activeGoalSnapshots.value.reduce((sum, item) => sum + (item.snapshot.currentRequiredAmount ?? item.goal.targetAmount), 0))
@@ -948,7 +948,7 @@ const activeSubscriptionSummaries = computed(() => subscriptionSummaries.value.f
 const nearDueSubscriptions = computed(() => subscriptionSummaries.value.filter((item) => item.status === 'due' || item.status === 'upcoming' || item.status === 'overdue'))
 const cashflowForecastDays = computed<CashflowForecastDay[]>(() =>
   buildCashflowTimeline({
-    startDate: todayKey,
+    startDate: todayKey.value,
     days: getForecastDayCount(),
     openingBalance: balanceAfterCreditPayment.value,
     events: getCashflowEvents(),
@@ -1010,11 +1010,14 @@ const recommendedSavingBudget = computed(() => irregularIncomeBudget.value.recom
 const recommendedFlexibleBudget = computed(() => irregularIncomeBudget.value.recommendedFlexibleBudget)
 const badMonthReserveSuggestion = computed(() => irregularIncomeBudget.value.badMonthReserveSuggestion)
 const irregularIncomeWarnings = computed(() => irregularIncomeBudget.value.warnings.map(getIncomeWarningLabel))
-const financialHealthScore = computed(() =>
-  calculateFinancialHealthScore({
-    monthlyIncome: totalIncome.value || averageMonthlyIncome.value,
-    monthlyExpense: totalExpense.value,
-    monthlySavings: Math.max(balance.value, 0),
+const financialHealthScore = computed(() => {
+  const monthlyPosted = postedTransactions.value.filter((item) => normalizeJalaliDate(item.date).startsWith(currentMonthPrefix.value))
+  const monthlyIncome = monthlyPosted.filter((item) => item.type === 'income').reduce((sum, item) => sum + item.amount, 0)
+  const monthlyExpense = monthlyPosted.filter((item) => item.type === 'expense' && item.sourceType !== 'credit-payment').reduce((sum, item) => sum + item.amount, 0)
+  return calculateFinancialHealthScore({
+    monthlyIncome: monthlyIncome || averageMonthlyIncome.value,
+    monthlyExpense,
+    monthlySavings: monthlyIncome - monthlyExpense,
     totalBudget: totalBudget.value,
     overBudgetCategoryCount: categoryTotals.value.filter((item) => item.budget > 0 && item.spent > item.budget).length,
     categoryCount: categoryTotals.value.filter((item) => item.budget > 0).length,
@@ -1022,8 +1025,8 @@ const financialHealthScore = computed(() =>
     projectedBalance: projectedEndOfMonthBalance.value,
     nonEssentialExpense: nonEssentialExpense.value,
     goalsSaved: totalGoalsSaved.value,
-  }, todayKey),
-)
+  }, todayKey.value)
+})
 const financialHealthLevel = computed(() => financialHealthScore.value.level)
 const financialHealthSuggestions = computed(() => financialHealthScore.value.suggestions)
 const financialHealthWarnings = computed(() => financialHealthScore.value.warnings)
@@ -1055,8 +1058,8 @@ const filteredTransactions = computed(() => {
 
 const dailyTrend = computed(() => {
   const days = getTrendDays()
-  const monthlyExpenses = expenseTransactions.value.filter((item) => normalizeJalaliDate(item.date).startsWith(currentMonthPrefix))
-  const monthlyIncomes = incomeTransactions.value.filter((item) => normalizeJalaliDate(item.date).startsWith(currentMonthPrefix))
+  const monthlyExpenses = expenseTransactions.value.filter((item) => normalizeJalaliDate(item.date).startsWith(currentMonthPrefix.value))
+  const monthlyIncomes = incomeTransactions.value.filter((item) => normalizeJalaliDate(item.date).startsWith(currentMonthPrefix.value))
 
   return days.map((day) => {
     const spent = monthlyExpenses
@@ -1147,9 +1150,9 @@ const trendLineChartData = computed<ChartData<'line'>>(() => ({
 }))
 
 const dailyExpensePoints = computed(() => {
-  const monthlyExpenses = expenseTransactions.value.filter((item) => normalizeJalaliDate(item.date).startsWith(currentMonthPrefix))
+  const monthlyExpenses = expenseTransactions.value.filter((item) => normalizeJalaliDate(item.date).startsWith(currentMonthPrefix.value))
 
-  return Array.from({ length: currentMonthLength }, (_, index) => {
+  return Array.from({ length: currentMonthLength.value }, (_, index) => {
     const day = index + 1
     const expense = monthlyExpenses
       .filter((item) => getJalaliInputDay(item.date) === day)
@@ -1161,7 +1164,7 @@ const dailyExpensePoints = computed(() => {
 
 const weeklyFlowPoints = computed(() =>
   Array.from({ length: 7 }, (_, index) => {
-    const date = addJalaliDays(currentWeekRange.start, index)
+    const date = addJalaliDays(currentWeekRange.value.start, index)
     const dateKey = formatJalaliInputDate(date)
     const label = getWeekdayLabel(date)
     const expense = weeklyExpenseTransactions.value
@@ -1310,7 +1313,7 @@ const statsCashFlowChartData = computed<ChartData<'bar'>>(() => {
     labels: ['درآمد', 'هزینه', 'پس‌انداز'],
     datasets: [
       {
-        label: currentMonthYear,
+        label: currentMonthYear.value,
         data: [totalIncome.value, totalExpense.value, Math.max(balance.value, 0)],
         backgroundColor: ['#34d399', '#fb7185', '#60a5fa'],
         borderRadius: 12,
@@ -1424,7 +1427,7 @@ const incomeChangePercent = computed(() => getChangePercent(totalIncome.value, p
 const expenseChangePercent = computed(() => getChangePercent(totalExpense.value, previousExpense.value))
 const projectedSavings = computed(() => {
   const elapsedDays = Math.max(currentJalaliDate.day, 1)
-  const projectedExpense = Math.round((totalExpense.value / elapsedDays) * currentMonthLength)
+  const projectedExpense = Math.round((totalExpense.value / elapsedDays) * currentMonthLength.value)
 
   return Math.max(0, totalIncome.value - projectedExpense)
 })
@@ -1459,7 +1462,7 @@ const dashboardCards = computed(() => [
 ])
 
 const widgets = computed(() => [
-  { label: 'امروز', value: today, icon: '📅' },
+  { label: 'امروز', value: today.value, icon: '📅' },
   { label: 'خرج امروز', value: formatMoney(todayExpense.value), icon: '💸' },
   { label: 'درآمد امروز', value: formatMoney(todayIncome.value), icon: '💰' },
   { label: 'اعتبار مانده', value: formatMoney(creditRemaining.value), icon: '💳' },
@@ -1518,7 +1521,7 @@ function getJalaliInputDay(value: string) {
 }
 
 function getTrendDays() {
-  return [...new Set([1, 5, 10, 15, 20, 25, currentMonthLength].filter((day) => day <= currentMonthLength))].sort((a, b) => a - b)
+  return [...new Set([1, 5, 10, 15, 20, 25, currentMonthLength.value].filter((day) => day <= currentMonthLength.value))].sort((a, b) => a - b)
 }
 
 function getPreviousMonthPrefix(date: ReturnType<typeof toJalali>) {
@@ -1567,7 +1570,7 @@ function getInstallmentStatus(plan: InstallmentPlan) {
   const dueDate = getInstallmentDueDate(plan, nextIndex)
   const upcomingLimit = formatJalaliInputDate(addJalaliDays(currentJalaliDate, 7))
 
-  if (dueDate < todayKey) return 'overdue'
+  if (dueDate < todayKey.value) return 'overdue'
   if (dueDate <= upcomingLimit) return 'upcoming'
 
   return 'active'
@@ -1720,7 +1723,7 @@ function recordCreditPayment(month: string) {
     type: 'expense',
     title: `تسویه اعتبار ${month}`,
     amount: value,
-    date: todayKey,
+    date: todayKey.value,
     category: 'other',
     description: `تسویه بدهی اعتبار ${month}`,
     paymentMethod: 'cash',
@@ -1728,7 +1731,7 @@ function recordCreditPayment(month: string) {
     isLoan: false,
     sourceType: 'credit-payment',
     sourceId: month,
-    sourceDate: todayKey,
+    sourceDate: todayKey.value,
   }, ...transactions.value]
   pushToast('پرداخت بدهی اعتبار ثبت شد ✅')
 }
@@ -1799,7 +1802,7 @@ function openModal(type: TransactionType) {
   Object.assign(form, {
     amount: 0,
     title: '',
-    date: todayKey,
+    date: todayKey.value,
     category: categories.value[0]?.key ?? 'other',
     description: '',
     paymentMethod: 'cash',
@@ -1850,11 +1853,23 @@ function saveTransaction() {
 
   if (editingId.value) {
     const previous = transactions.value.find((item) => item.id === editingId.value)
-    if (previous?.sourceType === 'installment' && payload.type === 'expense' && payload.date > todayKey) {
+    if (previous?.sourceType === 'installment' && payload.type === 'expense' && payload.date > todayKey.value) {
       pushToast('تاریخ پرداخت قسط نمی‌تواند در آینده باشد')
       return
     }
-    if (previous?.sourceType === 'credit-payment' && payload.type === 'expense' && payload.paymentMethod === 'cash') {
+    if (previous?.sourceType === 'credit-payment') {
+      if (payload.type !== 'expense' || payload.paymentMethod !== 'cash' || payload.date > todayKey.value) {
+        pushToast('تسویه اعتبار باید پرداخت نقدی با تاریخ غیرآینده باشد')
+        return
+      }
+      const otherTransactions = postedTransactions.value.filter((item) => item.id !== previous.id)
+      const available = previous.sourceId
+        ? getCreditMonths(otherTransactions).find((month) => month.month === previous.sourceId)?.remaining ?? 0
+        : getCreditMonths(otherTransactions).reduce((sum, month) => sum + month.remaining, 0)
+      if (payload.amount > available) {
+        pushToast('مبلغ تسویه از مانده اعتبار پرداخت‌نشده بیشتر است')
+        return
+      }
       payload = { ...payload, sourceType: previous.sourceType, sourceId: previous.sourceId, sourceDate: previous.sourceDate }
     }
     if (previous?.sourceType === 'installment') {
@@ -1934,7 +1949,7 @@ async function acceptBankSuggestion(suggestion: BankNotificationSuggestion) {
       ? 'shopping'
       : 'other'
 
-  const date = suggestion.postTime ? formatJalaliInputDate(toJalali(new Date(suggestion.postTime))) : todayKey
+  const date = suggestion.postTime ? formatJalaliInputDate(toJalali(new Date(suggestion.postTime))) : todayKey.value
   const payload: Transaction = {
     id: Date.now(),
     type: 'expense',
@@ -1974,7 +1989,7 @@ async function markBankSuggestion(id: string, action: 'accepted' | 'dismissed') 
 }
 
 function formatSuggestionDate(postTime: number) {
-  if (!postTime) return todayKey
+  if (!postTime) return todayKey.value
 
   return formatDisplayJalaliDate(toJalali(new Date(postTime)))
 }
@@ -2003,6 +2018,25 @@ function addCategory() {
   pushToast('دسته‌بندی اضافه شد ✅')
 }
 
+function renameCategory(key: CategoryKey, value: string) {
+  const category = categories.value.find((item) => item.key === key)
+  const label = value.trim()
+  if (!category || !label) {
+    pushToast('نام دسته را وارد کنید')
+    return false
+  }
+  if (categories.value.some((item) => item.key !== key && item.label.trim().toLocaleLowerCase('fa') === label.toLocaleLowerCase('fa'))) {
+    pushToast('دسته‌ای با این نام وجود دارد')
+    return false
+  }
+  if (category.label === label) return true
+
+  categories.value = categories.value.map((item) => item.key === key ? { ...item, label } : item)
+  if (selectedCategory.value === category.label) selectedCategory.value = label
+  pushToast('نام دسته و تراکنش‌های مرتبط به‌روزرسانی شد ✅')
+  return true
+}
+
 function deleteCategory(key: CategoryKey) {
   if (key === 'other') {
     pushToast('دسته سایر قابل حذف نیست')
@@ -2026,7 +2060,7 @@ function resetInstallmentForm() {
     title: '',
     amount: 0,
     category: 'other',
-    startDate: todayKey,
+    startDate: todayKey.value,
     dueDay: currentJalaliDate.day,
     totalCount: 12,
     description: '',
@@ -2108,7 +2142,7 @@ function payInstallment(plan: InstallmentPlan) {
     type: 'expense',
     title: `قسط: ${plan.title}`,
     amount: plan.amount,
-    date: todayKey,
+    date: todayKey.value,
     category: plan.category,
     description: [`سررسید قسط: ${dueDate}`, plan.description].filter(Boolean).join('\n'),
     paymentMethod: plan.paymentMethod,
@@ -2163,7 +2197,7 @@ function removeInstallmentPlan(id: number) {
 }
 
 function getGoalSnapshot(goal: BudgetyarGoal) {
-  return calculateGoalSnapshot(goal, goalTransactions.value, marketRates.value, todayKey)
+  return calculateGoalSnapshot(goal, goalTransactions.value, marketRates.value, todayKey.value)
 }
 
 function getGoalSummary(goal: BudgetyarGoal) {
@@ -2200,10 +2234,10 @@ function buildGoalTransaction(goal: BudgetyarGoal, type: BudgetyarGoalTransactio
     fee: 0,
     currency: goal.baseCurrency ?? 'irr',
     assetCode: goal.assetCode || goal.unit,
-    occurredAt: todayKey,
+    occurredAt: todayKey.value,
     note,
     idempotencyKey: `${goal.id}-${type}-${Date.now()}`,
-    createdAt: todayKey,
+    createdAt: todayKey.value,
   }
 }
 
@@ -2221,7 +2255,7 @@ function refreshGoalState(id: string) {
         : goal.targetAmount,
     savedAmount: goal.trackingMode === 'ASSET_HOLDING' ? snapshot.currentQuantity : snapshot.netSavedAmount,
     status: goal.isArchived ? 'archived' : snapshot.progressPercent >= 100 ? 'completed' : goal.status ?? 'active',
-    updatedAt: todayKey,
+    updatedAt: todayKey.value,
   }
 
   goals.value = goals.value.map((item) => (item.id === id ? nextGoal : item))
@@ -2291,10 +2325,10 @@ function addGoal() {
     note: goalForm.note.trim(),
     isArchived: existing?.isArchived ?? false,
     status: existing?.status ?? 'active',
-    createdAt: existing?.createdAt ?? todayKey,
-    updatedAt: todayKey,
+    createdAt: existing?.createdAt ?? todayKey.value,
+    updatedAt: todayKey.value,
   }
-  const snapshot = calculateGoalSnapshot(baseGoal, goalTransactions.value, marketRates.value, todayKey)
+  const snapshot = calculateGoalSnapshot(baseGoal, goalTransactions.value, marketRates.value, todayKey.value)
   const goal: BudgetyarGoal = {
     ...baseGoal,
     targetAmount: baseGoal.trackingMode === 'ASSET_FUNDING'
@@ -2351,7 +2385,7 @@ function editGoal(goal: BudgetyarGoal) {
 }
 
 function updateGoal(id: string, patch: Partial<BudgetyarGoal>) {
-  goals.value = goals.value.map((goal) => (goal.id === id ? { ...goal, ...patch, updatedAt: todayKey } : goal))
+  goals.value = goals.value.map((goal) => (goal.id === id ? { ...goal, ...patch, updatedAt: todayKey.value } : goal))
 }
 
 function deleteGoal(id: string) {
@@ -2483,7 +2517,7 @@ function getGoalHealthLabel(goal: BudgetyarGoal) {
 }
 
 function getGoalScenario(goal: BudgetyarGoal) {
-  return calculateGoalScenario(goal, goalTransactions.value, marketRates.value, todayKey)
+  return calculateGoalScenario(goal, goalTransactions.value, marketRates.value, todayKey.value)
 }
 
 function getGoalTransactions(goalId: string) {
@@ -2527,7 +2561,7 @@ function resetRecurringForm(isSubscription = false) {
     amount: 0,
     categoryId: 'other',
     frequency: 'monthly',
-    startDate: todayKey,
+    startDate: todayKey.value,
     endDate: '',
     dueDay: currentJalaliDate.day,
     paymentMethod: 'cash',
@@ -2563,8 +2597,8 @@ function addRecurringItem() {
     lastAppliedDate: existing?.lastAppliedDate,
     skippedDates: existing?.skippedDates ?? [],
     note: recurringForm.note.trim(),
-    createdAt: existing?.createdAt ?? todayKey,
-    updatedAt: todayKey,
+    createdAt: existing?.createdAt ?? todayKey.value,
+    updatedAt: todayKey.value,
   }
 
   const isSub = Boolean(recurringForm.isSubscription)
@@ -2594,7 +2628,7 @@ function editRecurringItem(item: BudgetyarRecurringItem) {
 }
 
 function updateRecurringItem(id: string, patch: Partial<BudgetyarRecurringItem>) {
-  recurringItems.value = recurringItems.value.map((item) => (item.id === id ? { ...item, ...patch, updatedAt: todayKey } : item))
+  recurringItems.value = recurringItems.value.map((item) => (item.id === id ? { ...item, ...patch, updatedAt: todayKey.value } : item))
 }
 
 function deleteRecurringItem(id: string) {
@@ -2618,8 +2652,8 @@ function getRecurringNextDueDate(item: BudgetyarRecurringItem) {
   for (let guard = 0; guard < 240 && cursor; guard += 1) {
     if (item.endDate && cursor > item.endDate) return ''
     const isHandled = item.lastAppliedDate === cursor || item.skippedDates?.includes(cursor)
-    if (!isHandled && cursor <= todayKey) return cursor
-    if (cursor > todayKey) return cursor
+    if (!isHandled && cursor <= todayKey.value) return cursor
+    if (cursor > todayKey.value) return cursor
     cursor = getNextRecurringDateAfter(item, cursor)
   }
 
@@ -2650,7 +2684,7 @@ function createTransactionFromRecurringItem(item: BudgetyarRecurringItem, dueDat
     type: item.type,
     title: item.title,
     amount: item.amount,
-    date: dueDate || todayKey,
+    date: dueDate || todayKey.value,
     category: item.type === 'expense' ? item.categoryId ?? 'other' : undefined,
     description: item.note,
     paymentMethod: item.type === 'expense' ? item.paymentMethod ?? 'cash' : undefined,
@@ -2658,7 +2692,7 @@ function createTransactionFromRecurringItem(item: BudgetyarRecurringItem, dueDat
     isLoan: item.type === 'expense' ? false : undefined,
     sourceType: 'recurring',
     sourceId: item.id,
-    sourceDate: dueDate || todayKey,
+    sourceDate: dueDate || todayKey.value,
   }
 }
 
@@ -2666,9 +2700,9 @@ function getRecurringStatus(item: BudgetyarRecurringItem) {
   const nextDue = getRecurringNextDueDate(item)
   if (!item.isActive) return 'inactive'
   if (!nextDue) return 'done'
-  if (nextDue < todayKey) return 'overdue'
-  if (nextDue === todayKey) return 'due'
-  if (getJalaliDateDistance(todayKey, nextDue) <= item.reminderDaysBefore) return 'upcoming'
+  if (nextDue < todayKey.value) return 'overdue'
+  if (nextDue === todayKey.value) return 'due'
+  if (getJalaliDateDistance(todayKey.value, nextDue) <= item.reminderDaysBefore) return 'upcoming'
 
   return 'active'
 }
@@ -2700,31 +2734,52 @@ function getForecastDayCount() {
   if (cashflowForecastPeriod.value === 'next30Days') return 30
   if (cashflowForecastPeriod.value === 'next90Days') return 90
 
-  return Math.max(1, getJalaliDateDistance(todayKey, currentMonthEndKey) + 1)
+  return Math.max(1, getJalaliDateDistance(todayKey.value, currentMonthEndKey.value) + 1)
 }
 
 function getCashflowEvents() {
   const events: Array<{ date: string; amount: number; kind: 'income' | 'expense'; source?: 'recurring' | 'installment' | 'budget' }> = []
-  const endDate = formatJalaliInputDate(addJalaliDays(currentJalaliDate, getForecastDayCount() - 1))
+  const forecastDays = getForecastDayCount()
+  const endDate = formatJalaliInputDate(addJalaliDays(currentJalaliDate, forecastDays - 1))
+  const lastMonth = parseJalaliInput(endDate)!
+  const planningEndDate = formatJalaliInputDate({ ...lastMonth, day: getJalaliMonthLength(lastMonth.year, lastMonth.month) })
+  const scheduledEvents: typeof events = []
 
-  events.push(...getForecastInstallmentEvents(unpaidInstallmentOccurrences.value, todayKey, endDate))
+  scheduledEvents.push(...getForecastInstallmentEvents(unpaidInstallmentOccurrences.value, todayKey.value, planningEndDate))
 
   activeRecurringItems.value.forEach((item) => {
-    getRecurringOccurrences(item, todayKey, endDate).forEach((date) => {
-      events.push({ date, amount: item.amount, kind: item.type, source: 'recurring' })
+    getRecurringOccurrences(item, todayKey.value, planningEndDate).forEach((date) => {
+      scheduledEvents.push({ date, amount: item.amount, kind: item.type, source: 'recurring' })
     })
   })
 
-  const remainingBudget = Math.max(totalBudget.value - totalExpense.value, 0)
-  const dailyPlannedExpense = Math.floor(remainingBudget / Math.max(getForecastDayCount(), 1))
-  if (dailyPlannedExpense > 0) {
-    for (let index = 0; index < getForecastDayCount(); index += 1) {
-      events.push({
-        date: formatJalaliInputDate(addJalaliDays(currentJalaliDate, index)),
-        amount: dailyPlannedExpense,
-        kind: 'expense',
-        source: 'budget',
-      })
+  events.push(...scheduledEvents.filter((item) => item.date <= endDate))
+  const scheduledByMonth = new Map<string, number>()
+  for (const event of scheduledEvents) {
+    if (event.kind !== 'expense') continue
+    const month = event.date.slice(0, 7)
+    scheduledByMonth.set(month, (scheduledByMonth.get(month) ?? 0) + event.amount)
+  }
+
+  const daysByMonth = new Map<string, string[]>()
+  for (let index = 0; index < forecastDays; index += 1) {
+    const date = formatJalaliInputDate(addJalaliDays(currentJalaliDate, index))
+    const month = date.slice(0, 7)
+    daysByMonth.set(month, [...(daysByMonth.get(month) ?? []), date])
+  }
+  for (const [month, days] of daysByMonth) {
+    const [year, monthNumber] = month.split('/').map(Number)
+    const monthEnd = formatJalaliInputDate({ year, month: monthNumber, day: getJalaliMonthLength(year, monthNumber) })
+    const spent = postedTransactions.value
+      .filter((item) => item.type === 'expense' && item.sourceType !== 'credit-payment' && normalizeJalaliDate(item.date).slice(0, 7) === month)
+      .reduce((sum, item) => sum + item.amount, 0)
+    const remaining = Math.max(0, totalBudget.value - spent - (scheduledByMonth.get(month) ?? 0))
+    const monthlyDaysRemaining = getJalaliDateDistance(days[0]!, monthEnd) + 1
+    const dailyAmount = Math.floor(remaining / monthlyDaysRemaining)
+    const remainder = remaining % monthlyDaysRemaining
+    for (const [index, date] of days.entries()) {
+      const amount = dailyAmount + (index < remainder ? 1 : 0)
+      if (amount > 0) events.push({ date, amount, kind: 'expense', source: 'budget' })
     }
   }
 
@@ -2733,10 +2788,13 @@ function getCashflowEvents() {
 
 function getRecurringOccurrences(item: BudgetyarRecurringItem, startDate: string, endDate: string) {
   const occurrences: string[] = []
+  const recordedDates = new Set(transactions.value
+    .filter((transaction) => transaction.sourceType === 'recurring' && transaction.sourceId === item.id)
+    .map((transaction) => transaction.sourceDate))
   let cursor = getPlanningRecurringNextDueDate({ ...item, lastAppliedDate: undefined }, startDate)
 
   for (let guard = 0; guard < 150 && cursor && cursor <= endDate; guard += 1) {
-    if ((!item.endDate || cursor <= item.endDate) && !item.skippedDates?.includes(cursor)) occurrences.push(cursor)
+    if ((!item.endDate || cursor <= item.endDate) && !item.skippedDates?.includes(cursor) && !recordedDates.has(cursor) && item.lastAppliedDate !== cursor) occurrences.push(cursor)
     cursor = getNextRecurringDateAfter(item, cursor)
   }
 
@@ -2778,11 +2836,11 @@ function getJalaliDateDistance(startDate: string, endDate: string) {
 
 function getDaysUntilDue(dueDate: string) {
   if (!dueDate) return 0
-  if (dueDate === todayKey) return 0
-  if (dueDate < todayKey) {
-    return -getJalaliDateDistance(dueDate, todayKey)
+  if (dueDate === todayKey.value) return 0
+  if (dueDate < todayKey.value) {
+    return -getJalaliDateDistance(dueDate, todayKey.value)
   }
-  return getJalaliDateDistance(todayKey, dueDate)
+  return getJalaliDateDistance(todayKey.value, dueDate)
 }
 
 function buildPurchaseDecision() {
@@ -2889,7 +2947,7 @@ function createPurchaseTransaction() {
     isLoan: false,
     sourceType: 'manual',
   }, ...transactions.value]
-  Object.assign(purchaseForm, { amount: 0, categoryId: 'other', date: todayKey, isEssential: false, paymentMethod: 'cash', note: '' })
+  Object.assign(purchaseForm, { amount: 0, categoryId: 'other', date: todayKey.value, isEssential: false, paymentMethod: 'cash', note: '' })
   pushToast('خرید به تراکنش تبدیل شد ✅')
 }
 
@@ -2904,7 +2962,7 @@ function resetDebtForm() {
     minimumMonthlyPayment: 0,
     extraMonthlyPayment: 0,
     dueDay: currentJalaliDate.day,
-    startDate: todayKey,
+    startDate: todayKey.value,
     targetPayoffDate: '',
     linkedInstallmentId: '',
     creditorName: '',
@@ -2937,8 +2995,8 @@ function addDebt() {
     priority: debtForm.priority,
     isActive: Boolean(debtForm.isActive),
     note: debtForm.note.trim(),
-    createdAt: existing?.createdAt ?? todayKey,
-    updatedAt: todayKey,
+    createdAt: existing?.createdAt ?? todayKey.value,
+    updatedAt: todayKey.value,
   }
 
   debts.value = existing ? debts.value.map((item) => (item.id === existing.id ? debt : item)) : [debt, ...debts.value]
@@ -2957,7 +3015,7 @@ function editDebt(debt: BudgetyarDebt) {
     minimumMonthlyPayment: debt.minimumMonthlyPayment,
     extraMonthlyPayment: debt.extraMonthlyPayment ?? 0,
     dueDay: debt.dueDay ?? currentJalaliDate.day,
-    startDate: debt.startDate ?? todayKey,
+    startDate: debt.startDate ?? todayKey.value,
     targetPayoffDate: debt.targetPayoffDate ?? '',
     linkedInstallmentId: debt.linkedInstallmentId ?? '',
     creditorName: debt.creditorName ?? '',
@@ -2969,7 +3027,7 @@ function editDebt(debt: BudgetyarDebt) {
 }
 
 function updateDebt(id: string, patch: Partial<BudgetyarDebt>) {
-  debts.value = debts.value.map((debt) => (debt.id === id ? { ...debt, ...patch, updatedAt: todayKey } : debt))
+  debts.value = debts.value.map((debt) => (debt.id === id ? { ...debt, ...patch, updatedAt: todayKey.value } : debt))
 }
 
 function deleteDebt(id: string) {
@@ -2984,9 +3042,13 @@ function toggleDebt(id: string) {
 }
 
 function recordDebtPayment(debt: BudgetyarDebt, amount = 0) {
-  const rawAmount = amount || Number(window.prompt('مبلغ پرداخت بدهی') || 0)
-  const value = Math.max(0, rawAmount)
-  if (!value) return
+  const rawAmount = amount || window.prompt('مبلغ پرداخت بدهی', formatMoneyInput(debt.remainingAmount))
+  if (rawAmount === null) return
+  const value = typeof rawAmount === 'number' ? rawAmount : parseMoneyInput(rawAmount)
+  if (!Number.isFinite(value) || value <= 0 || value > debt.remainingAmount) {
+    pushToast('مبلغ پرداخت باید بیشتر از صفر و حداکثر برابر مانده بدهی باشد')
+    return
+  }
 
   updateDebt(debt.id, { remainingAmount: Math.max(0, debt.remainingAmount - value) })
   transactions.value = [{
@@ -2994,7 +3056,7 @@ function recordDebtPayment(debt: BudgetyarDebt, amount = 0) {
     type: 'expense',
     title: `پرداخت بدهی: ${debt.title}`,
     amount: value,
-    date: todayKey,
+    date: todayKey.value,
     category: 'other',
     description: debt.note,
     paymentMethod: 'cash',
@@ -3002,7 +3064,7 @@ function recordDebtPayment(debt: BudgetyarDebt, amount = 0) {
     isLoan: false,
     sourceType: 'manual',
     sourceId: debt.id,
-    sourceDate: todayKey,
+    sourceDate: todayKey.value,
   }, ...transactions.value]
   pushToast('پرداخت بدهی ثبت شد ✅')
 }
@@ -3048,8 +3110,8 @@ function addCategorizationRule() {
     paymentMethod: categorizationRuleForm.paymentMethod || undefined,
     priority: Math.max(1, Math.trunc(Number(categorizationRuleForm.priority) || 10)),
     applyToExisting: Boolean(categorizationRuleForm.applyToExisting),
-    createdAt: existing?.createdAt ?? todayKey,
-    updatedAt: todayKey,
+    createdAt: existing?.createdAt ?? todayKey.value,
+    updatedAt: todayKey.value,
   }
 
   categorizationRules.value = existing ? categorizationRules.value.map((item) => (item.id === existing.id ? rule : item)) : [rule, ...categorizationRules.value]
@@ -3078,7 +3140,7 @@ function editCategorizationRule(rule: BudgetyarCategorizationRule) {
 }
 
 function updateCategorizationRule(id: string, patch: Partial<BudgetyarCategorizationRule>) {
-  categorizationRules.value = categorizationRules.value.map((rule) => (rule.id === id ? { ...rule, ...patch, updatedAt: todayKey } : rule))
+  categorizationRules.value = categorizationRules.value.map((rule) => (rule.id === id ? { ...rule, ...patch, updatedAt: todayKey.value } : rule))
 }
 
 function deleteCategorizationRule(id: string) {
@@ -3158,8 +3220,8 @@ function acceptSuggestedCategorizationRule(suggestion: { title: string; category
     categoryId: suggestion.categoryId,
     priority: 10,
     applyToExisting: false,
-    createdAt: todayKey,
-    updatedAt: todayKey,
+    createdAt: todayKey.value,
+    updatedAt: todayKey.value,
   }, ...categorizationRules.value]
   pushToast('پیشنهاد قانون پذیرفته شد ✅')
 }
@@ -3169,7 +3231,7 @@ function bulkUpdateTransactionCategory(ids: number[], categoryId: string) {
 }
 
 function updateIncomeSettings(patch: Partial<BudgetyarIncomeSettings>) {
-  incomeSettings.value = { ...incomeSettings.value, ...patch, updatedAt: todayKey }
+  incomeSettings.value = { ...incomeSettings.value, ...patch, updatedAt: todayKey.value }
 }
 
 function applyRecommendedBudgetPlan() {
@@ -3689,8 +3751,8 @@ function restoreGoals(value: unknown) {
     coolingOffPeriod: typeof item.coolingOffPeriod === 'number' ? item.coolingOffPeriod : 0,
     isArchived: Boolean(item.isArchived),
     status: item.status === 'paused' || item.status === 'completed' || item.status === 'archived' ? item.status : 'active',
-    createdAt: typeof item.createdAt === 'string' ? item.createdAt : todayKey,
-    updatedAt: typeof item.updatedAt === 'string' ? item.updatedAt : todayKey,
+    createdAt: typeof item.createdAt === 'string' ? item.createdAt : todayKey.value,
+    updatedAt: typeof item.updatedAt === 'string' ? item.updatedAt : todayKey.value,
   }))
 }
 
@@ -3747,8 +3809,8 @@ function restoreRecurringItems(value: unknown) {
     isActive: item.isActive !== false,
     reminderDaysBefore: Math.max(0, Number(item.reminderDaysBefore) || 0),
     skippedDates: Array.isArray(item.skippedDates) ? item.skippedDates.filter((date): date is string => typeof date === 'string') : [],
-    createdAt: typeof item.createdAt === 'string' ? item.createdAt : todayKey,
-    updatedAt: typeof item.updatedAt === 'string' ? item.updatedAt : todayKey,
+    createdAt: typeof item.createdAt === 'string' ? item.createdAt : todayKey.value,
+    updatedAt: typeof item.updatedAt === 'string' ? item.updatedAt : todayKey.value,
   }))
 }
 
@@ -3767,8 +3829,8 @@ function restoreDebts(value: unknown) {
     type: item.type ?? 'other',
     priority: item.priority ?? 'medium',
     isActive: item.isActive !== false,
-    createdAt: typeof item.createdAt === 'string' ? item.createdAt : todayKey,
-    updatedAt: typeof item.updatedAt === 'string' ? item.updatedAt : todayKey,
+    createdAt: typeof item.createdAt === 'string' ? item.createdAt : todayKey.value,
+    updatedAt: typeof item.updatedAt === 'string' ? item.updatedAt : todayKey.value,
   }))
 }
 
@@ -3786,8 +3848,8 @@ function restoreCategorizationRules(value: unknown) {
     isActive: item.isActive !== false,
     matchType: item.matchType ?? 'contains',
     applyToExisting: Boolean(item.applyToExisting),
-    createdAt: typeof item.createdAt === 'string' ? item.createdAt : todayKey,
-    updatedAt: typeof item.updatedAt === 'string' ? item.updatedAt : todayKey,
+    createdAt: typeof item.createdAt === 'string' ? item.createdAt : todayKey.value,
+    updatedAt: typeof item.updatedAt === 'string' ? item.updatedAt : todayKey.value,
   }))
 }
 
@@ -3806,8 +3868,8 @@ function buildDefaultCategorizationRules(): BudgetyarCategorizationRule[] {
       transactionType: 'expense',
       priority: 20,
       applyToExisting: false,
-      createdAt: todayKey,
-      updatedAt: todayKey,
+      createdAt: todayKey.value,
+      updatedAt: todayKey.value,
     }
   })
 }
@@ -3819,7 +3881,7 @@ function restoreIncomeSettings(value: unknown) {
     ...defaultIncomeSettings,
     ...value,
     historyMonths: value.historyMonths === 6 || value.historyMonths === 12 ? value.historyMonths : 3,
-    updatedAt: typeof value.updatedAt === 'string' ? value.updatedAt : todayKey,
+    updatedAt: typeof value.updatedAt === 'string' ? value.updatedAt : todayKey.value,
   } as BudgetyarIncomeSettings
 }
 
@@ -4460,7 +4522,7 @@ export function useBudgetyar() {
     filteredTransactions, dailyTrend, hasExpenseData, expenseShareChartData, categoryBarChartData, trendLineChartData, dailyExpensePoints, weeklyFlowPoints, budgetAnalysisItems, monthlyTrendPoints, hasMonthlyTrendData, commitmentTotal, flexibleAfterCommitments, statsExpenseMixChartData, statsBudgetUsageChartData, statsDailyExpenseChartData, statsWeeklyFlowChartData, statsCashFlowChartData, statsEssentialChartData, statsPaymentMethodChartData, statsMonthlyTrendChartData, statsCommitmentChartData,
     summaryLines, insights, dashboardCards, widgets, statsItems,
     getCategory, normalizeDigits, normalizeJalaliDate, getJalaliInputDay, getTrendDays, getPreviousMonthPrefix, addJalaliMonths, getInstallmentDueDate, getInstallmentStatus, getInstallmentStatusLabel, getCurrentWeekRange, getWeekdayLabel, getJalaliMonthPrefix, getCurrentJalaliDate, formatJalaliInputDate, formatDisplayJalaliDate, jalaliInputToIso, isoToJalaliInput, toPersianNumber, parseMoneyInput, formatMoneyInput, formatMoneyWords, formatMoney, formatCompact, progressPercent, getChangePercent, formatPercentHint, formatChangeSentence, getRiskLabel, getFinancialHealthLevelLabel,
-    selectSection, openModal, editTransaction, saveTransaction, removeTransaction, refreshBankNotifications, openNotificationAccessSettings, updateSelectedBankPackage, acceptBankSuggestion, dismissBankSuggestion, formatSuggestionDate, updateMoneyInput, updateCreditLimit, recordCreditPayment, updateBudget, addCategory, deleteCategory, addInstallmentPlan, editInstallmentPlan, cancelInstallmentEdit, payInstallment, undoInstallmentPayment, removeInstallmentPlan,
+    selectSection, openModal, editTransaction, saveTransaction, removeTransaction, refreshBankNotifications, openNotificationAccessSettings, updateSelectedBankPackage, acceptBankSuggestion, dismissBankSuggestion, formatSuggestionDate, updateMoneyInput, updateCreditLimit, recordCreditPayment, updateBudget, addCategory, renameCategory, deleteCategory, addInstallmentPlan, editInstallmentPlan, cancelInstallmentEdit, payInstallment, undoInstallmentPayment, removeInstallmentPlan,
     addGoal, editGoal, updateGoal, deleteGoal, archiveGoal, pauseGoal, resumeGoal, addGoalContribution, withdrawFromGoal, getGoalProgress, getGoalRemainingAmount, getGoalSuggestedMonthlySaving, getGoalSuggestedWeeklySaving, getGoalUnitLabel, getGoalTransactionTypeLabel, formatGoalAmount, formatGoalTrackedAmount, getGoalEstimatedValue, getGoalTrackingModeLabel, getGoalHealthLabel, getGoalScenario, getGoalTransactions, getGoalSummary, getGoalSavedValue, getGoalTargetValue,
     addRecurringItem, editRecurringItem, updateRecurringItem, deleteRecurringItem, toggleRecurringItem, getRecurringNextDueDate, markRecurringItemPaid, skipRecurringOccurrence, createTransactionFromRecurringItem, getRecurringStatusLabel, createPurchaseTransaction, setThemeMode, refreshMarketRates, getDaysUntilDue, resetRecurringForm,
     addDebt, editDebt, updateDebt, deleteDebt, toggleDebt, recordDebtPayment, calculateDebtPayoffPlan,
@@ -4473,10 +4535,47 @@ export function useBudgetyar() {
 }
 
 let budgetyarStarted = false
+let calendarRefreshTimer: ReturnType<typeof setTimeout> | null = null
+
+function refreshCurrentCalendar() {
+  const nextDate = getCurrentJalaliDate()
+  const oldDateKey = todayKey.value
+  const nextDateKey = formatJalaliInputDate(nextDate)
+  if (nextDateKey === oldDateKey) return
+
+  const wasViewingCurrentMonth = selectedMonth.value === months[currentJalaliDate.month - 1]
+    && selectedYear.value === toPersianNumber(currentJalaliDate.year)
+  if (!isModalOpen.value && form.date === oldDateKey) form.date = nextDateKey
+  Object.assign(currentJalaliDate, nextDate)
+  if (wasViewingCurrentMonth) {
+    selectedMonth.value = months[nextDate.month - 1]
+    selectedYear.value = toPersianNumber(nextDate.year)
+  }
+}
+
+function scheduleCalendarRefresh() {
+  if (calendarRefreshTimer) clearTimeout(calendarRefreshTimer)
+  const midnight = new Date()
+  midnight.setHours(24, 0, 0, 0)
+  calendarRefreshTimer = setTimeout(() => {
+    refreshCurrentCalendar()
+    scheduleCalendarRefresh()
+  }, Math.max(1000, midnight.getTime() - Date.now() + 100))
+}
+
+function refreshCalendarOnVisibilityChange() {
+  if (document.visibilityState !== 'visible') return
+  refreshCurrentCalendar()
+  scheduleCalendarRefresh()
+}
+
 export function startBudgetyar() {
   if (budgetyarStarted) return
   budgetyarStarted = true
   onMounted(() => {
+    refreshCurrentCalendar()
+    scheduleCalendarRefresh()
+    document.addEventListener('visibilitychange', refreshCalendarOnVisibilityChange)
     bindMobileViewport()
     restoreCloudConfiguration()
     isStandalone.value = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as Navigator & { standalone?: boolean }).standalone === true
@@ -4655,6 +4754,9 @@ export function startBudgetyar() {
   })
   
   onBeforeUnmount(() => {
+    document.removeEventListener('visibilitychange', refreshCalendarOnVisibilityChange)
+    if (calendarRefreshTimer) clearTimeout(calendarRefreshTimer)
+    calendarRefreshTimer = null
     unbindMobileViewport()
     destroyCharts()
     if (cloudAutoSyncTimer) clearTimeout(cloudAutoSyncTimer)
