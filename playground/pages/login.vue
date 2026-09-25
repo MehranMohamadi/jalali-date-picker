@@ -127,9 +127,7 @@ async function removeAccount() {
         <!-- Avatar Selection Section for logged-in profile -->
         <AvatarSelector
           :model-value="activeAvatar"
-          title="‏تغییر آواتار نمایه"
-          subtitle="‏یکی از تصاویر پیش‌فرض زیر را برای حساب خود انتخاب کنید:"
-          :show-preview="false"
+          title="‏انتخاب آواتار"
           @update:model-value="handleAvatarChange"
         />
 
@@ -169,8 +167,7 @@ async function removeAccount() {
           <AvatarSelector
             v-if="tab === 'signup'"
             v-model="signupAvatar"
-            title="‏انتخاب آواتار حساب"
-            subtitle="‏تصویر نمایه مورد علاقه خود را انتخاب کنید:"
+            title="‏انتخاب آواتار"
           />
 
           <label v-if="tab === 'signup'">‏نام نمایشی
