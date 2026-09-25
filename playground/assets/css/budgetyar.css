@@ -2144,17 +2144,10 @@ th {
   grid-template-columns: minmax(0, 1fr);
 }
 
-.financial-ai-advice > p,
-.financial-ai-access span {
+.financial-ai-advice > p {
   color: var(--muted);
   font-size: .82rem;
   line-height: 1.8;
-}
-
-.financial-ai-access {
-  display: grid;
-  gap: 6px;
-  max-width: 360px;
 }
 
 .financial-ai-advice > button {

@@ -4,6 +4,11 @@
   "installCommand": "npm install",
   "framework": null,
   "cleanUrls": true,
+  "functions": {
+    "api/financial-advice.ts": {
+      "maxDuration": 30
+    }
+  },
   "headers": [
     {
       "source": "/sw.js",

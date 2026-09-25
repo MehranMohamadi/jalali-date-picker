@@ -26,27 +26,12 @@ const {
   totalBudget,
 } = budgetyar
 
-const analysisAccessToken = ref('')
 const analysisText = ref('')
 const analysisError = ref('')
 const isAnalyzing = ref(false)
 
-onMounted(() => {
-  analysisAccessToken.value = localStorage.getItem('budgetyar-analysis-access-token-v1') ?? ''
-})
-
-function saveAnalysisAccessToken() {
-  if (analysisAccessToken.value.trim()) localStorage.setItem('budgetyar-analysis-access-token-v1', analysisAccessToken.value.trim())
-  else localStorage.removeItem('budgetyar-analysis-access-token-v1')
-}
-
 async function analyzeFinancialHealth() {
   if (isAnalyzing.value) return
-  if (!analysisAccessToken.value.trim()) {
-    analysisError.value = 'ابتدا رمز دسترسی تحلیل را وارد کنید.'
-    return
-  }
-  saveAnalysisAccessToken()
   isAnalyzing.value = true
   analysisError.value = ''
   analysisText.value = ''
@@ -75,7 +60,7 @@ async function analyzeFinancialHealth() {
   try {
     const response = await fetch('/api/financial-advice', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-budgetyar-analysis-token': analysisAccessToken.value.trim() },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(snapshot),
     })
     const result = await response.json() as { analysis?: string; error?: string; statusMessage?: string }
@@ -157,10 +142,6 @@ const healthDetails = computed(() => [
     <div class="weekly-category-budget glass-panel planning-inline financial-ai-advice">
       <div class="weekly-category-head"><strong>تحلیل هوشمند مالی</strong><small>با GapGPT</small></div>
       <p>فقط با زدن دکمه، خلاصهٔ عددی این ماه و نام دسته‌ها برای تحلیل ارسال می‌شود؛ جزئیات تراکنش‌ها ارسال نمی‌شود.</p>
-      <label class="financial-ai-access">
-        <span>رمز دسترسی تحلیل (جدا از کلید GapGPT)</span>
-        <input v-model="analysisAccessToken" type="password" autocomplete="off" placeholder="رمز تنظیم‌شده روی سرور" @change="saveAnalysisAccessToken" />
-      </label>
       <button class="primary-button" type="button" :disabled="isAnalyzing" @click="analyzeFinancialHealth">{{ isAnalyzing ? 'در حال تحلیل…' : 'تحلیل کن' }}</button>
       <p v-if="analysisError" class="financial-ai-error" role="alert">{{ analysisError }}</p>
       <div v-if="analysisText" class="financial-ai-result" aria-live="polite">{{ analysisText }}</div>

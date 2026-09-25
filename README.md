@@ -142,8 +142,7 @@ The Budgetyar playground can generate financial advice on demand from its Health
 
 ```text
 GAPGPT_API_KEY=your-gapgpt-api-key
-BUDGETYAR_ANALYSIS_TOKEN=a-separate-long-random-access-token
 GAPGPT_MODEL=gpt-4o
 ```
 
-Enter `BUDGETYAR_ANALYSIS_TOKEN` in the Health page's password field. This access token is saved only in that browser's local storage; never enter the GapGPT API key there. The provider key remains server-side. Analysis sends only current-month aggregate totals and category names, not individual transactions, and runs only when the button is clicked. A static-file preview alone cannot serve the API route; use the Nuxt dev server locally or deploy the frontend to Vercel.
+The GapGPT key remains server-side; never put it in a public Nuxt variable or browser form. Analysis sends only current-month aggregate totals and category names, not individual transactions, and runs only when the button is clicked. A static-file preview alone cannot serve the API route; use the Nuxt dev server locally or deploy the frontend to Vercel. The endpoint currently has no user authentication, so anyone who can reach the site can trigger paid API requests; add authentication before sharing it publicly.

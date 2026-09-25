@@ -1,5 +1,3 @@
-import { timingSafeEqual } from 'node:crypto'
-
 export interface FinancialAdviceSnapshot {
   date: string
   monthlyIncome: number
@@ -18,13 +16,6 @@ export class FinancialAdviceError extends Error {
   constructor(public status: number, message: string) {
     super(message)
   }
-}
-
-export function verifyFinancialAdviceAccess(provided: string | null | undefined, expected: string | undefined) {
-  if (!expected || !provided) return false
-  const received = Buffer.from(provided)
-  const configured = Buffer.from(expected)
-  return received.length === configured.length && timingSafeEqual(received, configured)
 }
 
 export function parseFinancialAdviceBody(raw: string) {

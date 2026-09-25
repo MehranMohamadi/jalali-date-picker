@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { FinancialAdviceError, generateFinancialAdvice, parseFinancialAdviceBody, validateFinancialAdviceSnapshot, verifyFinancialAdviceAccess } from '../src/utils/financialAdvice'
-import { POST } from '../api/financial-advice'
+import { FinancialAdviceError, generateFinancialAdvice, parseFinancialAdviceBody, validateFinancialAdviceSnapshot } from '../src/utils/financialAdvice'
+import handler, { analyzeFinancialAdviceBody } from '../api/financial-advice'
 
 const snapshot = {
   date: '1405/07/03',
@@ -24,12 +24,6 @@ describe('GapGPT financial advice', () => {
     expect(() => validateFinancialAdviceSnapshot({ ...snapshot, categories: [{ name: 'x'.repeat(61), spent: 0, budget: 0 }] })).toThrow(FinancialAdviceError)
   })
 
-  it('checks the separate access token', () => {
-    expect(verifyFinancialAdviceAccess('owner-token', 'owner-token')).toBe(true)
-    expect(verifyFinancialAdviceAccess('wrong-token', 'owner-token')).toBe(false)
-    expect(verifyFinancialAdviceAccess('owner-token', undefined)).toBe(false)
-  })
-
   it('sends only the validated summary to GapGPT when requested', async () => {
     const fetcher = vi.fn(async () => new Response(JSON.stringify({ choices: [{ message: { content: '  هزینه خوراک را کنترل کن.  ' } }] }), { status: 200 }))
     const advice = await generateFinancialAdvice({ ...snapshot, transactionDetails: 'private' }, 'provider-secret', 'gpt-4o', fetcher as typeof fetch)
@@ -46,15 +40,29 @@ describe('GapGPT financial advice', () => {
     expect(fetcher).not.toHaveBeenCalled()
   })
 
-  it('rejects requests without the server access token', async () => {
-    const previous = process.env.BUDGETYAR_ANALYSIS_TOKEN
-    process.env.BUDGETYAR_ANALYSIS_TOKEN = 'owner-token'
+  it('accepts requests without an access token and validates their body', async () => {
+    expect((await analyzeFinancialAdviceBody('x', '')).status).toBe(400)
+    expect((await analyzeFinancialAdviceBody(JSON.stringify(snapshot), '')).status).toBe(503)
+  })
+
+  it('serves a Vercel-style POST without an access header', async () => {
+    const originalKey = process.env.GAPGPT_API_KEY
+    const originalFetch = globalThis.fetch
+    process.env.GAPGPT_API_KEY = 'provider-test'
+    globalThis.fetch = vi.fn(async () => new Response(JSON.stringify({ choices: [{ message: { content: 'تحلیل آزمایشی' } }] }), { status: 200 })) as typeof fetch
+    const response = {
+      statusCode: 0,
+      setHeader: vi.fn(),
+      end: vi.fn(),
+    }
     try {
-      const response = await POST(new Request('https://example.test/api/financial-advice', { method: 'POST', body: JSON.stringify(snapshot) }))
-      expect(response.status).toBe(401)
+      await handler({ method: 'POST', body: snapshot } as Parameters<typeof handler>[0], response as unknown as Parameters<typeof handler>[1])
+      expect(response.statusCode).toBe(200)
+      expect(JSON.parse(response.end.mock.calls[0]![0] as string)).toEqual({ analysis: 'تحلیل آزمایشی' })
     } finally {
-      if (previous === undefined) delete process.env.BUDGETYAR_ANALYSIS_TOKEN
-      else process.env.BUDGETYAR_ANALYSIS_TOKEN = previous
+      globalThis.fetch = originalFetch
+      if (originalKey === undefined) delete process.env.GAPGPT_API_KEY
+      else process.env.GAPGPT_API_KEY = originalKey
     }
   })
 })
