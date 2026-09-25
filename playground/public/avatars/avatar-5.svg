@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <defs>
+    <linearGradient id="bg5" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0284c7"/>
+      <stop offset="100%" stop-color="#1e1b4b"/>
+    </linearGradient>
+    <linearGradient id="visor" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="50%" stop-color="#818cf8"/>
+      <stop offset="100%" stop-color="#c084fc"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <circle cx="60" cy="60" r="56" fill="url(#bg5)"/>
+  <!-- Little stars in background -->
+  <circle cx="28" cy="30" r="1.5" fill="#ffffff" opacity="0.8"/>
+  <circle cx="92" cy="36" r="1.5" fill="#ffffff" opacity="0.8"/>
+  <circle cx="86" cy="88" r="1.2" fill="#ffffff" opacity="0.8"/>
+  <circle cx="32" cy="84" r="1.2" fill="#ffffff" opacity="0.8"/>
+  <!-- Helmet Base -->
+  <ellipse cx="60" cy="60" rx="38" ry="36" fill="#f1f5f9"/>
+  <!-- Neck collar -->
+  <rect x="36" y="90" width="48" height="14" rx="7" fill="#cbd5e1"/>
+  <!-- Helmet Visor -->
+  <rect x="30" y="38" width="60" height="42" rx="20" fill="url(#visor)" stroke="#e2e8f0" stroke-width="2"/>
+  <!-- Visor Reflection -->
+  <ellipse cx="44" cy="48" rx="8" ry="4" fill="#ffffff" opacity="0.6" transform="rotate(-20 44 48)"/>
+  <ellipse cx="58" cy="45" rx="3" ry="1.5" fill="#ffffff" opacity="0.5" transform="rotate(-20 58 45)"/>
+  <!-- Headset antennas -->
+  <circle cx="21" cy="60" r="5" fill="#94a3b8"/>
+  <circle cx="99" cy="60" r="5" fill="#94a3b8"/>
+</svg>

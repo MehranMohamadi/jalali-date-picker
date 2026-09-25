@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <defs>
+    <linearGradient id="bg1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff7e5f"/>
+      <stop offset="100%" stop-color="#feb47b"/>
+    </linearGradient>
+    <linearGradient id="fur1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ea580c"/>
+      <stop offset="100%" stop-color="#c2410c"/>
+    </linearGradient>
+  </defs>
+  <!-- Background circle -->
+  <circle cx="60" cy="60" r="56" fill="url(#bg1)"/>
+  <!-- Ears -->
+  <polygon points="34,22 18,54 48,46" fill="url(#fur1)"/>
+  <polygon points="32,28 24,50 44,45" fill="#fef08a"/>
+  <polygon points="86,22 102,54 72,46" fill="url(#fur1)"/>
+  <polygon points="88,28 96,50 76,45" fill="#fef08a"/>
+  <!-- Head -->
+  <path d="M 22,64 C 22,90 40,104 60,104 C 80,104 98,90 98,64 C 98,42 80,36 60,36 C 40,36 22,42 22,64 Z" fill="url(#fur1)"/>
+  <!-- White cheeks -->
+  <path d="M 24,66 C 24,88 38,98 60,98 C 44,92 34,80 34,66 Z" fill="#ffffff" opacity="0.95"/>
+  <path d="M 96,66 C 96,88 82,98 60,98 C 76,92 86,80 86,66 Z" fill="#ffffff" opacity="0.95"/>
+  <!-- Eyes -->
+  <ellipse cx="44" cy="62" rx="5" ry="6.5" fill="#0f172a"/>
+  <circle cx="46" cy="60" r="2" fill="#ffffff"/>
+  <ellipse cx="76" cy="62" rx="5" ry="6.5" fill="#0f172a"/>
+  <circle cx="78" cy="60" r="2" fill="#ffffff"/>
+  <!-- Nose -->
+  <polygon points="60,74 54,68 66,68" fill="#1e293b"/>
+  <!-- Mouth -->
+  <path d="M 55,77 Q 60,82 65,77" fill="none" stroke="#1e293b" stroke-width="2.5" stroke-linecap="round"/>
+</svg>

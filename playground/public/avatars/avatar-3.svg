@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <defs>
+    <linearGradient id="bg3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <circle cx="60" cy="60" r="56" fill="url(#bg3)"/>
+  <!-- Ears -->
+  <polygon points="28,24 16,56 46,48" fill="#f8fafc"/>
+  <polygon points="30,30 22,50 42,46" fill="#f43f5e"/>
+  <polygon points="92,24 104,56 74,48" fill="#f8fafc"/>
+  <polygon points="90,30 98,50 78,46" fill="#f43f5e"/>
+  <!-- Head -->
+  <ellipse cx="60" cy="66" rx="38" ry="34" fill="#f8fafc"/>
+  <!-- Inner eye patch -->
+  <path d="M 28,52 Q 40,42 50,56" fill="#fcd34d" opacity="0.6"/>
+  <!-- Eyes (Happy wink & open eye) -->
+  <ellipse cx="44" cy="62" rx="4.5" ry="6" fill="#0f172a"/>
+  <circle cx="45.5" cy="60" r="1.8" fill="#ffffff"/>
+  <path d="M 70,64 Q 76,58 82,64" fill="none" stroke="#0f172a" stroke-width="3" stroke-linecap="round"/>
+  <!-- Cheeks -->
+  <ellipse cx="36" cy="72" rx="5" ry="3" fill="#f43f5e" opacity="0.4"/>
+  <ellipse cx="84" cy="72" rx="5" ry="3" fill="#f43f5e" opacity="0.4"/>
+  <!-- Nose & Mouth -->
+  <polygon points="60,67 57,71 63,71" fill="#f43f5e"/>
+  <path d="M 54,73 Q 60,77 66,73" fill="none" stroke="#334155" stroke-width="2" stroke-linecap="round"/>
+  <!-- Whiskers -->
+  <line x1="22" y1="68" x2="32" y2="70" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
+  <line x1="22" y1="74" x2="32" y2="74" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
+  <line x1="88" y1="70" x2="98" y2="68" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
+  <line x1="88" y1="74" x2="98" y2="74" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
+  <!-- Golden Bell / Collar -->
+  <rect x="42" y="94" width="36" height="6" rx="3" fill="#e11d48"/>
+  <circle cx="60" cy="100" r="5" fill="#f59e0b" stroke="#b45309" stroke-width="1"/>
+</svg>
