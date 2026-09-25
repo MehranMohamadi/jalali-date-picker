@@ -6,10 +6,21 @@ const snapshot = {
   date: '1405/07/03',
   monthlyIncome: 10000000,
   monthlyExpense: 6000000,
+  allTimeIncome: 30000000,
+  allTimeExpense: 21000000,
+  monthlyHistory: [
+    { month: '1405/05', income: 10000000, expense: 7000000 },
+    { month: '1405/06', income: 10000000, expense: 8000000 },
+    { month: '1405/07', income: 10000000, expense: 6000000 },
+  ],
+  allTimeCategories: [{ name: 'خوراک', spent: 9000000 }],
   availableBalance: 2000000,
   monthlyBudget: 8000000,
   unpaidCredit: 500000,
   dueInstallments: 1000000,
+  remainingInstallments: 5000000,
+  monthlyRecurringExpense: 750000,
+  remainingGoals: 2000000,
   totalDebt: 3000000,
   safeDailySpend: 100000,
   healthScore: 65,
@@ -19,9 +30,10 @@ const snapshot = {
 describe('GapGPT financial advice', () => {
   it('rejects malformed or oversized client summaries', () => {
     expect(() => parseFinancialAdviceBody('x')).toThrow(FinancialAdviceError)
-    expect(() => parseFinancialAdviceBody(' '.repeat(12001))).toThrow(FinancialAdviceError)
+    expect(() => parseFinancialAdviceBody(' '.repeat(100001))).toThrow(FinancialAdviceError)
     expect(() => validateFinancialAdviceSnapshot({ ...snapshot, monthlyExpense: -1 })).toThrow(FinancialAdviceError)
     expect(() => validateFinancialAdviceSnapshot({ ...snapshot, categories: [{ name: 'x'.repeat(61), spent: 0, budget: 0 }] })).toThrow(FinancialAdviceError)
+    expect(() => validateFinancialAdviceSnapshot({ ...snapshot, monthlyHistory: [{ month: '1405/06', income: -1, expense: 0 }] })).toThrow(FinancialAdviceError)
   })
 
   it('sends only the validated summary to GapGPT when requested', async () => {
@@ -32,6 +44,8 @@ describe('GapGPT financial advice', () => {
     expect(url).toBe('https://api.gapgpt.app/v1/chat/completions')
     expect((options.headers as Record<string, string>).Authorization).toBe('Bearer provider-secret')
     expect(options.body).not.toContain('private')
+    expect(options.body).toContain('1405/05')
+    expect(options.body).toContain('allTimeExpense')
   })
 
   it('does not call the provider without a configured key', async () => {
@@ -62,6 +76,8 @@ describe('GapGPT financial advice', () => {
       expect(JSON.parse(response.end.mock.calls[0]![0] as string)).toEqual({ analysis: 'تحلیل آزمایشی' })
       const requestBody = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0]![1].body as string
       expect(requestBody).not.toContain('private')
+      expect(requestBody).toContain('1405/05')
+      expect(requestBody).toContain('remainingGoals')
     } finally {
       globalThis.fetch = originalFetch
       if (originalKey === undefined) delete process.env.GAPGPT_API_KEY

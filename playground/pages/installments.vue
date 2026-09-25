@@ -158,6 +158,9 @@ const {
             <Check :size="16" aria-hidden="true" />
             <span>پرداخت شد</span>
           </button>
+          <button v-if="item.lastPaidIndex >= 0" class="soft-button" type="button" @click="undoInstallmentPayment(item.id, item.lastPaidIndex)">
+            <span>برگرداندن پرداخت آخر</span>
+          </button>
           <button class="soft-button" type="button" @click="editInstallmentPlan(item)">
             <Pencil :size="16" aria-hidden="true" />
             <span>ویرایش</span>

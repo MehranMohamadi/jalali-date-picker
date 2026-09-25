@@ -259,8 +259,56 @@
   white-space: nowrap;
 }
 
+.metric-detail-value {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.metric-detail-action {
+  background: rgba(15, 23, 42, .16);
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  color: var(--muted-2);
+  font-size: .68rem;
+  min-height: 25px;
+  padding: 2px 5px;
+}
+
 .installment-schedule {
   margin: 18px 0;
+}
+
+.installments-card,
+.installment-schedule,
+.installment-schedule .table-wrap,
+.installments-grid,
+.installment-item,
+.installment-form > label {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.installment-schedule .table-wrap {
+  overflow-x: auto;
+}
+
+.installment-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.installment-actions button {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.installment-actions button span {
+  white-space: normal;
 }
 
 .installment-schedule-table {
@@ -272,11 +320,52 @@
 }
 
 .credit-monthly-table {
-  min-width: 620px;
+  min-width: 760px;
+}
+
+.debts-page,
+.debts-page .report-grid,
+.debts-page .credit-settings-inline,
+.debts-page .credit-monthly-section,
+.debts-page .table-wrap,
+.debts-page .planning-form,
+.debts-page .planning-card-grid,
+.debts-page .installment-item {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.debts-page .credit-settings-inline {
+  grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(0, 1fr));
+}
+
+.debts-page .credit-settings-inline > *,
+.debts-page .planning-form > label,
+.debts-page .cashflow-timeline span {
+  min-width: 0;
+}
+
+.debts-page .credit-settings-inline strong,
+.debts-page .cashflow-timeline :is(b, em, strong) {
+  overflow-wrap: anywhere;
 }
 
 .credit-monthly-table .secondary-button {
   min-height: 34px;
+}
+
+.credit-month-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+}
+
+.credit-month-actions button {
+  min-height: 32px;
+  padding: 5px 7px;
+  white-space: normal;
 }
 
 .monthly-installment-items {
@@ -287,6 +376,14 @@
 .monthly-installment-items span {
   display: grid;
   gap: 2px;
+  min-width: 0;
+}
+
+.monthly-installment-items b,
+.monthly-installment-items small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .monthly-installment-items small {
@@ -316,12 +413,45 @@ body.budgetyar-light .monthly-installment-items .paid small {
 }
 
 @media (max-width: 760px) {
+  .debts-page .credit-monthly-table {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .debts-page .credit-monthly-table td {
+    grid-template-columns: minmax(66px, 84px) minmax(0, 1fr);
+    overflow-wrap: anywhere;
+  }
+
+  .debts-page .credit-settings-inline {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .installment-schedule-table {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .installment-schedule-table td {
+    grid-template-columns: minmax(66px, 84px) minmax(0, 1fr);
+  }
+
+  .installment-schedule-table td > * {
+    min-width: 0;
+  }
+
   .installment-schedule-table td::before {
     content: attr(data-label) !important;
   }
 
   .credit-monthly-table td::before {
     content: attr(data-label) !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .installment-actions {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

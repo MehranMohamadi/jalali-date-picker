@@ -5,8 +5,10 @@ defineProps<{
   icon?: string
   hint?: string
   className?: string
-  details?: Array<{ label: string; value: string }>
+  details?: Array<{ label: string; value: string; actionId?: string }>
 }>()
+
+const emit = defineEmits<{ detailAction: [id: string] }>()
 </script>
 
 <template>
@@ -22,7 +24,10 @@ defineProps<{
     <div v-if="details?.length" class="metric-details">
       <span v-for="detail in details" :key="detail.label">
         <small>{{ detail.label }}</small>
-        <b>− {{ detail.value }}</b>
+        <div class="metric-detail-value">
+          <b>− {{ detail.value }}</b>
+          <button v-if="detail.actionId" type="button" class="metric-detail-action" :aria-label="`نادیده گرفتن ${detail.label}`" @click="emit('detailAction', detail.actionId)">نادیده بگیر</button>
+        </div>
       </span>
     </div>
   </article>

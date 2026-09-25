@@ -14,6 +14,18 @@ export interface CreditMonth {
   remaining: number
 }
 
+export interface AdjustedCreditMonth extends CreditMonth {
+  ignored: number
+}
+
+export function applyCreditAdjustments(months: CreditMonth[], adjustments: Record<string, number>): AdjustedCreditMonth[] {
+  return months.map((month) => {
+    const amount = adjustments[month.month]
+    const ignored = Number.isFinite(amount) ? Math.min(month.remaining, Math.max(0, amount)) : 0
+    return { ...month, ignored, remaining: month.remaining - ignored }
+  })
+}
+
 export function getCreditMonths(transactions: CreditLedgerTransaction[]): CreditMonth[] {
   const months = new Map<string, CreditMonth>()
   const payments: CreditLedgerTransaction[] = []

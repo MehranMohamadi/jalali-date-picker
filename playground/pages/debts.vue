@@ -33,11 +33,13 @@ const {
   creditRemaining,
   updateCreditLimit,
   recordCreditPayment,
+  ignoreCreditMonth,
+  restoreIgnoredCredit,
 } = budgetyar
 </script>
 
 <template>
-  <section class="glass-panel settings-card">
+  <section class="glass-panel settings-card debts-page">
     <div class="section-title">
       <div>
         <h2>بدهی‌ها</h2>
@@ -64,22 +66,26 @@ const {
       <div class="section-title compact">
         <div>
           <h3>اعتبار به تفکیک ماه</h3>
-          <p>بدهی هر ماه را در همان ماه یا ماه‌های بعد، کامل یا بخشی تسویه کنید.</p>
+          <p>بدهی هر ماه را تسویه کنید یا ماندهٔ اشتباه را بدون تغییر تراکنش‌ها نادیده بگیرید؛ اصلاح دستی، تراکنش پرداخت نمی‌سازد.</p>
         </div>
       </div>
       <div v-if="creditMonths.length" class="table-wrap">
         <table class="credit-monthly-table">
-          <thead><tr><th>ماه خرید</th><th>مصرف اعتبار</th><th>تسویه‌شده</th><th>مانده</th><th>تسویه</th></tr></thead>
+          <thead><tr><th>ماه خرید</th><th>مصرف اعتبار</th><th>تسویه‌شده</th><th>اصلاح دستی</th><th>مانده</th><th>عملیات</th></tr></thead>
           <tbody>
             <tr v-for="month in creditMonths" :key="month.month">
               <td data-label="ماه خرید">{{ month.month }}</td>
               <td data-label="مصرف اعتبار">{{ formatMoney(month.purchases) }}</td>
               <td data-label="تسویه‌شده">{{ formatMoney(month.paid) }}</td>
+              <td data-label="اصلاح دستی">{{ formatMoney(month.ignored) }}</td>
               <td data-label="مانده">{{ formatMoney(month.remaining) }}</td>
-              <td data-label="تسویه">
-                <button class="secondary-button" type="button" :disabled="!month.remaining" @click="recordCreditPayment(month.month)">
-                  {{ month.remaining ? 'پرداخت' : 'تسویه‌شده' }}
-                </button>
+              <td data-label="عملیات">
+                <div class="credit-month-actions">
+                  <button v-if="month.remaining" class="secondary-button" type="button" @click="recordCreditPayment(month.month)">پرداخت</button>
+                  <button v-if="month.remaining" class="soft-button" type="button" @click="ignoreCreditMonth(month.month)">نادیده گرفتن مانده</button>
+                  <button v-if="month.ignored" class="soft-button" type="button" @click="restoreIgnoredCredit(month.month)">بازگردانی اصلاح</button>
+                  <span v-if="!month.remaining && !month.ignored">تسویه‌شده</span>
+                </div>
               </td>
             </tr>
           </tbody>

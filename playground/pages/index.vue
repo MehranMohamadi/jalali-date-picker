@@ -15,6 +15,7 @@ const {
   toPersianNumber,
   scheduleChartSync,
   destroyCharts,
+  ignoreCreditMonth,
 } = budgetyar
 
 const primaryWidgets = computed(() => widgets.value.slice(0, 4))
@@ -50,6 +51,7 @@ onBeforeUnmount(destroyCharts)
       :hint="card.hint"
       :class-name="card.className"
       :details="card.details"
+      @detail-action="ignoreCreditMonth"
     />
   </section>
 

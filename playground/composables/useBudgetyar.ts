@@ -9,7 +9,7 @@ import {
 } from 'chart.js'
 import { Capacitor, registerPlugin } from '@capacitor/core'
 import { addJalaliDays, getJalaliMonthLength, parseJalaliInput, toGregorian, toJalali } from '../../src/utils/jalali'
-import { getCreditMonths } from '../../src/utils/creditLedger'
+import { applyCreditAdjustments, getCreditMonths } from '../../src/utils/creditLedger'
 import { getForecastInstallmentEvents, getNextUnpaidInstallmentIndex, getPaidInstallmentIndexes, setInstallmentPaid } from '../../src/utils/installmentLedger'
 import {
   buildCashflowTimeline,
@@ -329,6 +329,7 @@ const STORAGE_KEY = 'budgetyar-transactions-v1'
 const CATEGORIES_STORAGE_KEY = 'budgetyar-categories-v1'
 const BUDGETS_STORAGE_KEY = 'budgetyar-budgets-v1'
 const CREDIT_STORAGE_KEY = 'budgetyar-credit-limit-v1'
+const CREDIT_ADJUSTMENTS_STORAGE_KEY = 'budgetyar-credit-adjustments-v1'
 const INSTALLMENTS_STORAGE_KEY = 'budgetyar-installments-v1'
 const THEME_STORAGE_KEY = 'budgetyar-theme-v1'
 const GOALS_STORAGE_KEY = 'budgetyar-goals-v1'
@@ -669,6 +670,7 @@ const bankApps = ref<BankAppOption[]>([])
 const bankSuggestions = ref<BankNotificationSuggestion[]>([])
 const selectedBankPackage = ref('')
 const creditLimit = ref(0)
+const creditAdjustments = ref<Record<string, number>>({})
 const cashFlowMode = ref<CashFlowMode>('regular')
 const themeMode = ref<ThemeMode>('dark')
 const bankNotificationStatus = reactive<BankNotificationStatus>({
@@ -697,7 +699,8 @@ const previousIncome = computed(() => previousMonthTransactions.value.filter((it
 const totalIncome = computed(() => incomeTransactions.value.reduce((sum, item) => sum + item.amount, 0))
 const totalExpense = computed(() => expenseTransactions.value.reduce((sum, item) => sum + item.amount, 0))
 const postedTransactions = computed(() => transactions.value.filter((item) => normalizeJalaliDate(item.date) <= todayKey.value))
-const creditMonths = computed(() => getCreditMonths(postedTransactions.value))
+const rawCreditMonths = computed(() => getCreditMonths(postedTransactions.value))
+const creditMonths = computed(() => applyCreditAdjustments(rawCreditMonths.value, creditAdjustments.value))
 const creditExpense = computed(() => creditMonths.value.reduce((sum, month) => sum + month.remaining, 0))
 const creditRemaining = computed(() => Math.max(creditLimit.value - creditExpense.value, 0))
 const cashExpense = computed(() => postedTransactions.value.filter((item) => item.type === 'expense' && item.paymentMethod !== 'credit').reduce((sum, item) => sum + item.amount, 0))
@@ -794,7 +797,8 @@ const latestLoans = computed(() =>
 const installmentSummaries = computed(() =>
   installments.value
     .map((plan) => {
-      const paidCount = getPaidInstallmentIndexes(plan).length
+      const paidIndexes = getPaidInstallmentIndexes(plan)
+      const paidCount = paidIndexes.length
       const remainingCount = Math.max(plan.totalCount - paidCount, 0)
       const nextIndex = getNextUnpaidInstallmentIndex(plan)
       const nextDueDate = nextIndex >= 0 ? getInstallmentDueDate(plan, nextIndex) : ''
@@ -803,6 +807,7 @@ const installmentSummaries = computed(() =>
       return {
         ...plan,
         paidCount,
+        lastPaidIndex: paidIndexes.at(-1) ?? -1,
         remainingCount,
         nextDueDate,
         status,
@@ -877,11 +882,12 @@ const commitmentInstallmentDue = computed(() =>
     .reduce((sum, item) => sum + item.amount, 0),
 )
 const balanceAfterCommitments = computed(() => balanceAfterCreditPayment.value - commitmentInstallmentDue.value)
-const balanceDeductionBreakdown = computed(() => [
+const balanceDeductionBreakdown = computed<Array<{ label: string; amount: number; creditMonth?: string }>>(() => [
   { label: 'هزینه‌ها و پرداخت‌های نقدی ثبت‌شده', amount: cashExpense.value },
   ...creditMonths.value.filter((month) => month.remaining > 0).map((month) => ({
     label: `اعتبار پرداخت‌نشده ${month.month}`,
     amount: month.remaining,
+    creditMonth: month.month,
   })),
   ...unpaidInstallmentOccurrences.value
     .filter((item) => item.dueDate <= currentMonthEndKey.value)
@@ -1451,7 +1457,7 @@ const dashboardCards = computed(() => [
     icon: '💵',
     hint: 'بعد از اعتبار و قسط‌های سررسید',
     className: 'card-blue',
-    details: balanceDeductionBreakdown.value.map((item) => ({ label: item.label, value: formatMoney(item.amount) })),
+    details: balanceDeductionBreakdown.value.map((item) => ({ label: item.label, value: formatMoney(item.amount), actionId: item.creditMonth })),
   },
   { label: 'هزینه ماه', value: totalExpense.value, icon: '💸', hint: formatPercentHint(expenseChangePercent.value, 'ماه قبل'), className: 'card-violet' },
   { label: 'پرداخت اعتبار', value: creditExpense.value, icon: '💳', hint: 'بدهی تسویه‌نشده همه ماه‌ها', className: 'card-pink' },
@@ -1556,10 +1562,14 @@ function getInstallmentPaymentIndex(transaction: Transaction, plan: InstallmentP
 
 function reopenInstallmentPayment(transaction: Transaction) {
   if (transaction.sourceType !== 'installment') return
+  const remainingTransactions = transactions.value.filter((item) => item.id !== transaction.id)
   installments.value = installments.value.map((plan) => {
     if (String(plan.id) !== transaction.sourceId) return plan
     const index = getInstallmentPaymentIndex(transaction, plan)
-    return index < 0 ? plan : { ...plan, ...setInstallmentPaid(plan, index, false) }
+    if (index < 0 || remainingTransactions.some((item) =>
+      item.type === 'expense' && item.sourceType === 'installment' && item.sourceId === String(plan.id)
+        && getInstallmentPaymentIndex(item, plan) === index)) return plan
+    return { ...plan, ...setInstallmentPaid(plan, index, false) }
   })
 }
 
@@ -1734,6 +1744,22 @@ function recordCreditPayment(month: string) {
     sourceDate: todayKey.value,
   }, ...transactions.value]
   pushToast('پرداخت بدهی اعتبار ثبت شد ✅')
+}
+
+function ignoreCreditMonth(month: string) {
+  const row = creditMonths.value.find((item) => item.month === month)
+  if (!row?.remaining) return
+  if (!window.confirm(`ماندهٔ ${formatMoney(row.remaining)} اعتبار ${month} از بدهی باز نادیده گرفته شود؟ تراکنش‌ها و آمار هزینه تغییر نمی‌کنند و این اصلاح قابل بازگردانی است.`)) return
+  creditAdjustments.value = { ...creditAdjustments.value, [month]: (creditAdjustments.value[month] ?? 0) + row.remaining }
+  pushToast('ماندهٔ اعتبار از بدهی باز کنار گذاشته شد')
+}
+
+function restoreIgnoredCredit(month: string) {
+  if (!creditAdjustments.value[month]) return
+  const next = { ...creditAdjustments.value }
+  delete next[month]
+  creditAdjustments.value = next
+  pushToast('اصلاح دستی اعتبار بازگردانده شد')
 }
 
 function applyTheme(mode = themeMode.value) {
@@ -2183,10 +2209,14 @@ function undoInstallmentPayment(planId: number, index: number) {
     : `وضعیت پرداخت قسط «${plan.title}» با سررسید ${dueDate} برگردانده شود؟`
   if (!window.confirm(message)) return
 
-  installments.value = installments.value.map((item) =>
-    item.id === planId ? { ...item, ...setInstallmentPaid(item, index, false) } : item,
-  )
-  if (payment) transactions.value = transactions.value.filter((item) => item.id !== payment.id)
+  if (payment) {
+    reopenInstallmentPayment(payment)
+    transactions.value = transactions.value.filter((item) => item.id !== payment.id)
+  } else {
+    installments.value = installments.value.map((item) =>
+      item.id === planId ? { ...item, ...setInstallmentPaid(item, index, false) } : item,
+    )
+  }
   pushToast('پرداخت قسط برگردانده شد')
 }
 
@@ -3428,6 +3458,7 @@ function buildBackupJson() {
     categorizationRules: categorizationRules.value,
     incomeSettings: incomeSettings.value,
     creditLimit: creditLimit.value,
+    creditAdjustments: creditAdjustments.value,
     summary: {
       totalIncome: totalIncome.value,
       totalExpense: totalExpense.value,
@@ -3614,6 +3645,7 @@ function applyBackupRecord(backup: Record<string, unknown>) {
   categorizationRules.value = restoreCategorizationRules(backup.categorizationRules)
   incomeSettings.value = restoreIncomeSettings(backup.incomeSettings)
   creditLimit.value = Math.max(0, Number(backup.creditLimit ?? summary.creditLimit ?? 0) || 0)
+  creditAdjustments.value = restoreCreditAdjustments(backup.creditAdjustments)
   selectedCategory.value = 'همه'
   selectedType.value = 'همه'
   query.value = ''
@@ -3668,6 +3700,14 @@ function scheduleCloudAutoSync() {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value))
+}
+
+function restoreCreditAdjustments(value: unknown): Record<string, number> {
+  if (!isRecord(value)) return {}
+  return Object.fromEntries(Object.entries(value).filter(([month, amount]) =>
+    /^\d{4}\/(0[1-9]|1[0-2])$/.test(month)
+      && typeof amount === 'number' && Number.isFinite(amount) && amount > 0 && amount <= 1e13,
+  )) as Record<string, number>
 }
 
 function restoreCategories(value: unknown) {
@@ -4495,7 +4535,7 @@ function unbindMobileViewport() {
 export function useBudgetyar() {
   return {
     activeSection, isMobileMenuOpen, isMobileViewport, navItems, months, years, today, todayKey, currentMonthYear, currentJalaliDate, currentMonthLength,
-    categories, transactions, budgets, installments, goals, goalTransactions, recurringItems, debts, categorizationRules, incomeSettings, creditLimit, cashFlowMode, themeMode, cashflowForecastPeriod, selectedDebtStrategy, marketRates, marketRatesLoading, marketRatesError,
+    categories, transactions, budgets, installments, goals, goalTransactions, recurringItems, debts, categorizationRules, incomeSettings, creditLimit, creditAdjustments, cashFlowMode, themeMode, cashflowForecastPeriod, selectedDebtStrategy, marketRates, marketRatesLoading, marketRatesError,
     cloudApiUrl, cloudApiToken, cloudSnapshotVersion, cloudSyncStatus, cloudSyncMessage, storageMode, cloudDirty,
     query, selectedMonth, selectedYear, selectedCategory, selectedType, dateRange, pickerDateRange,
     isModalOpen, formType, form, formAmountInWords, formDatePickerValue, editingId, toasts,
@@ -4522,7 +4562,7 @@ export function useBudgetyar() {
     filteredTransactions, dailyTrend, hasExpenseData, expenseShareChartData, categoryBarChartData, trendLineChartData, dailyExpensePoints, weeklyFlowPoints, budgetAnalysisItems, monthlyTrendPoints, hasMonthlyTrendData, commitmentTotal, flexibleAfterCommitments, statsExpenseMixChartData, statsBudgetUsageChartData, statsDailyExpenseChartData, statsWeeklyFlowChartData, statsCashFlowChartData, statsEssentialChartData, statsPaymentMethodChartData, statsMonthlyTrendChartData, statsCommitmentChartData,
     summaryLines, insights, dashboardCards, widgets, statsItems,
     getCategory, normalizeDigits, normalizeJalaliDate, getJalaliInputDay, getTrendDays, getPreviousMonthPrefix, addJalaliMonths, getInstallmentDueDate, getInstallmentStatus, getInstallmentStatusLabel, getCurrentWeekRange, getWeekdayLabel, getJalaliMonthPrefix, getCurrentJalaliDate, formatJalaliInputDate, formatDisplayJalaliDate, jalaliInputToIso, isoToJalaliInput, toPersianNumber, parseMoneyInput, formatMoneyInput, formatMoneyWords, formatMoney, formatCompact, progressPercent, getChangePercent, formatPercentHint, formatChangeSentence, getRiskLabel, getFinancialHealthLevelLabel,
-    selectSection, openModal, editTransaction, saveTransaction, removeTransaction, refreshBankNotifications, openNotificationAccessSettings, updateSelectedBankPackage, acceptBankSuggestion, dismissBankSuggestion, formatSuggestionDate, updateMoneyInput, updateCreditLimit, recordCreditPayment, updateBudget, addCategory, renameCategory, deleteCategory, addInstallmentPlan, editInstallmentPlan, cancelInstallmentEdit, payInstallment, undoInstallmentPayment, removeInstallmentPlan,
+    selectSection, openModal, editTransaction, saveTransaction, removeTransaction, refreshBankNotifications, openNotificationAccessSettings, updateSelectedBankPackage, acceptBankSuggestion, dismissBankSuggestion, formatSuggestionDate, updateMoneyInput, updateCreditLimit, recordCreditPayment, ignoreCreditMonth, restoreIgnoredCredit, updateBudget, addCategory, renameCategory, deleteCategory, addInstallmentPlan, editInstallmentPlan, cancelInstallmentEdit, payInstallment, undoInstallmentPayment, removeInstallmentPlan,
     addGoal, editGoal, updateGoal, deleteGoal, archiveGoal, pauseGoal, resumeGoal, addGoalContribution, withdrawFromGoal, getGoalProgress, getGoalRemainingAmount, getGoalSuggestedMonthlySaving, getGoalSuggestedWeeklySaving, getGoalUnitLabel, getGoalTransactionTypeLabel, formatGoalAmount, formatGoalTrackedAmount, getGoalEstimatedValue, getGoalTrackingModeLabel, getGoalHealthLabel, getGoalScenario, getGoalTransactions, getGoalSummary, getGoalSavedValue, getGoalTargetValue,
     addRecurringItem, editRecurringItem, updateRecurringItem, deleteRecurringItem, toggleRecurringItem, getRecurringNextDueDate, markRecurringItemPaid, skipRecurringOccurrence, createTransactionFromRecurringItem, getRecurringStatusLabel, createPurchaseTransaction, setThemeMode, refreshMarketRates, getDaysUntilDue, resetRecurringForm,
     addDebt, editDebt, updateDebt, deleteDebt, toggleDebt, recordDebtPayment, calculateDebtPayoffPlan,
@@ -4596,6 +4636,7 @@ export function startBudgetyar() {
     const savedCategories = localStorage.getItem(CATEGORIES_STORAGE_KEY)
     const savedBudgets = localStorage.getItem(BUDGETS_STORAGE_KEY)
     const savedCreditLimit = localStorage.getItem(CREDIT_STORAGE_KEY)
+    const savedCreditAdjustments = localStorage.getItem(CREDIT_ADJUSTMENTS_STORAGE_KEY)
     const savedInstallments = localStorage.getItem(INSTALLMENTS_STORAGE_KEY)
     const savedThemeMode = localStorage.getItem(THEME_STORAGE_KEY)
     const savedGoals = localStorage.getItem(GOALS_STORAGE_KEY)
@@ -4637,6 +4678,14 @@ export function startBudgetyar() {
   
     if (savedCreditLimit) {
       creditLimit.value = Math.max(0, parseMoneyInput(savedCreditLimit))
+    }
+
+    if (savedCreditAdjustments) {
+      try {
+        creditAdjustments.value = restoreCreditAdjustments(JSON.parse(savedCreditAdjustments))
+      } catch {
+        localStorage.removeItem(CREDIT_ADJUSTMENTS_STORAGE_KEY)
+      }
     }
   
     if (savedInstallments) {
@@ -4791,6 +4840,16 @@ export function startBudgetyar() {
     localStorage.setItem(CREDIT_STORAGE_KEY, String(value))
   })
 
+  watch(creditAdjustments, (value) => {
+    localStorage.setItem(CREDIT_ADJUSTMENTS_STORAGE_KEY, JSON.stringify(value))
+  })
+
+  watch(rawCreditMonths, (months) => {
+    const open = new Set(months.filter((month) => month.remaining > 0).map((month) => month.month))
+    const next = Object.fromEntries(Object.entries(creditAdjustments.value).filter(([month]) => open.has(month)))
+    if (Object.keys(next).length !== Object.keys(creditAdjustments.value).length) creditAdjustments.value = next
+  }, { immediate: true })
+
   watch(themeMode, (value) => {
     localStorage.setItem(THEME_STORAGE_KEY, value)
     applyTheme(value)
@@ -4865,7 +4924,7 @@ export function startBudgetyar() {
   )
 
   watch(
-    [transactions, categories, budgets, creditLimit, installments, goals, goalTransactions, recurringItems, debts, categorizationRules, incomeSettings],
+    [transactions, categories, budgets, creditLimit, creditAdjustments, installments, goals, goalTransactions, recurringItems, debts, categorizationRules, incomeSettings],
     scheduleCloudAutoSync,
     { deep: true },
   )

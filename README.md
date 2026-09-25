@@ -145,4 +145,4 @@ GAPGPT_API_KEY=your-gapgpt-api-key
 GAPGPT_MODEL=gpt-4o
 ```
 
-The GapGPT key remains server-side; never put it in a public Nuxt variable or browser form. Analysis sends only current-month aggregate totals and category names, not individual transactions, and runs only when the button is clicked. A static-file preview alone cannot serve the API route; use the Nuxt dev server locally or deploy the frontend to Vercel. The endpoint currently has no user authentication, so anyone who can reach the site can trigger paid API requests; add authentication before sharing it publicly.
+The GapGPT key remains server-side; never put it in a public Nuxt variable or browser form. Analysis sends aggregate totals and monthly trends across the recorded history, current commitments, and category summaries, but not individual transactions; it runs only when the button is clicked. A static-file preview alone cannot serve the API route; use the Nuxt dev server locally or deploy the frontend to Vercel. The endpoint currently has no user authentication, so anyone who can reach the site can trigger paid API requests; add authentication before sharing it publicly.

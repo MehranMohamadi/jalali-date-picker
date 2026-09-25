@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { summarizeFinancialHistory } from '../../src/utils/financialAdviceHistory'
+
 const budgetyar = useBudgetyar()
 const {
   financialHealthScore,
@@ -17,13 +19,18 @@ const {
   budgetUsage,
   incomeVolatilityPercent,
   currentMonthTransactions,
+  transactions,
   todayKey,
   categoryTotals,
   getCategory,
+  normalizeJalaliDate,
   balanceAfterCommitments,
   creditExpense,
   commitmentInstallmentDue,
   totalBudget,
+  installmentMonthlySchedule,
+  monthlyRecurringExpenseTotal,
+  totalGoalsRemaining,
 } = budgetyar
 
 const analysisText = ref('')
@@ -39,19 +46,31 @@ async function analyzeFinancialHealth() {
   const postedMonth = currentMonthTransactions.value.filter((item) => item.date <= todayKey.value)
   const monthlyIncome = postedMonth.filter((item) => item.type === 'income').reduce((sum, item) => sum + item.amount, 0)
   const monthlyExpense = postedMonth.filter((item) => item.type === 'expense' && item.sourceType !== 'credit-payment').reduce((sum, item) => sum + item.amount, 0)
+  const history = summarizeFinancialHistory(transactions.value, todayKey.value, normalizeJalaliDate)
+  const categoryHistory = history.categorySpending.map(({ key, spent }) => ({ name: getCategory(key).label.slice(0, 60), spent }))
+  const allTimeCategories = categoryHistory.length > 100
+    ? [...categoryHistory.slice(0, 99), { name: 'سایر دسته‌ها', spent: categoryHistory.slice(99).reduce((sum, item) => sum + item.spent, 0) }]
+    : categoryHistory
   const snapshot = {
     date: todayKey.value,
     monthlyIncome,
     monthlyExpense,
+    allTimeIncome: history.allTimeIncome,
+    allTimeExpense: history.allTimeExpense,
+    monthlyHistory: history.monthlyHistory,
+    allTimeCategories,
     availableBalance: balanceAfterCommitments.value,
     monthlyBudget: totalBudget.value,
     unpaidCredit: creditExpense.value,
     dueInstallments: commitmentInstallmentDue.value,
+    remainingInstallments: installmentMonthlySchedule.value.reduce((sum, month) => sum + month.remaining, 0),
+    monthlyRecurringExpense: monthlyRecurringExpenseTotal.value,
+    remainingGoals: totalGoalsRemaining.value,
     totalDebt: totalDebtRemaining.value,
     safeDailySpend: safeDailySpend.value,
     healthScore: financialHealthScore.value.totalScore,
     categories: categoryTotals.value.map((category) => ({
-      name: getCategory(category.key).label,
+      name: getCategory(category.key).label.slice(0, 60),
       budget: category.budget,
       spent: postedMonth.filter((item) => item.type === 'expense' && item.sourceType !== 'credit-payment' && item.category === category.key).reduce((sum, item) => sum + item.amount, 0),
     })).sort((first, second) => second.spent - first.spent || second.budget - first.budget).slice(0, 30),
@@ -141,7 +160,7 @@ const healthDetails = computed(() => [
 
     <div class="weekly-category-budget glass-panel planning-inline financial-ai-advice">
       <div class="weekly-category-head"><strong>تحلیل هوشمند مالی</strong><small>با GapGPT</small></div>
-      <p>فقط با زدن دکمه، خلاصهٔ عددی این ماه و نام دسته‌ها برای تحلیل ارسال می‌شود؛ جزئیات تراکنش‌ها ارسال نمی‌شود.</p>
+      <p>با زدن دکمه، خلاصهٔ عددی همهٔ ماه‌های ثبت‌شده و وضعیت فعلی برای تحلیل ارسال می‌شود؛ جزئیات تراکنش‌ها ارسال نمی‌شود.</p>
       <button class="primary-button" type="button" :disabled="isAnalyzing" @click="analyzeFinancialHealth">{{ isAnalyzing ? 'در حال تحلیل…' : 'تحلیل کن' }}</button>
       <p v-if="analysisError" class="financial-ai-error" role="alert">{{ analysisError }}</p>
       <div v-if="analysisText" class="financial-ai-result" aria-live="polite">{{ analysisText }}</div>
