@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { getCloudConfig, hasCloudSession, proxyCloudSnapshot, sameOrigin } from '../src/server/cloudAccess'
+import { getCloudConfig, hasCloudSession, proxyCloudSnapshot, sameOrigin } from '../src/server/cloudAccess.js'
 
 export default async function handler(request: IncomingMessage & { body?: unknown }, response: ServerResponse) {
   response.setHeader('Cache-Control', 'no-store')
