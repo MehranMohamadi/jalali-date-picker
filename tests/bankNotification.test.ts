@@ -55,4 +55,22 @@ describe('parseBankExpenseNotification', () => {
       postTime: 1783000000004,
     })).toBeNull()
   })
+
+  it('recognizes blu colloquial outgoing and incoming notifications', () => {
+    const outgoing = parseBankExpenseNotification({
+      packageName: 'ir.bluebank.mobile',
+      title: 'پول از حسابت پرید',
+      text: '۲۵۰٬۰۰۰ تومان از حسابت پرید.',
+      postTime: 1783000000005,
+    })
+    expect(outgoing?.amount).toBe(250000)
+
+    const incoming = parseBankExpenseNotification({
+      packageName: 'ir.bluebank.mobile',
+      title: 'پول به حسابت نشست',
+      text: '۲۵۰٬۰۰۰ تومان به حسابت نشست.',
+      postTime: 1783000000006,
+    })
+    expect(incoming).toBeNull()
+  })
 })

@@ -10,8 +10,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 final class BankNotificationParser {
-    private static final List<String> EXPENSE_WORDS = Arrays.asList("خرید", "پرداخت", "برداشت", "کسر", "انتقال", "هزینه");
-    private static final List<String> IGNORED_WORDS = Arrays.asList("واریز", "دریافت", "رمز", "پویا", "کد", "تایید", "تأیید", "otp", "رمز یکبار مصرف");
+    private static final List<String> EXPENSE_WORDS = Arrays.asList("خرید", "پرداخت", "برداشت", "کسر", "انتقال", "هزینه", "پرید");
+    private static final List<String> IGNORED_WORDS = Arrays.asList("واریز", "دریافت", "نشست", "رمز", "پویا", "کد", "تایید", "تأیید", "otp", "رمز یکبار مصرف");
     private static final Pattern MONEY_PATTERN = Pattern.compile("(\\d[\\d,\\s٬،.]*)\\s*(ریال|تومان)?");
 
     private BankNotificationParser() {}

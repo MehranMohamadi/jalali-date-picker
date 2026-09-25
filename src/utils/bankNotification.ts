@@ -17,8 +17,8 @@ export interface ParsedBankExpense {
   rawText: string
 }
 
-const expenseWords = ['خرید', 'پرداخت', 'برداشت', 'کسر', 'انتقال', 'هزینه']
-const ignoredWords = ['واریز', 'دریافت', 'رمز', 'پویا', 'کد', 'تایید', 'تأیید', 'otp', 'رمز یکبار مصرف']
+const expenseWords = ['خرید', 'پرداخت', 'برداشت', 'کسر', 'انتقال', 'هزینه', 'پرید']
+const ignoredWords = ['واریز', 'دریافت', 'نشست', 'رمز', 'پویا', 'کد', 'تایید', 'تأیید', 'otp', 'رمز یکبار مصرف']
 
 const categoryHints: Array<{ category: string; words: string[] }> = [
   { category: 'food', words: ['رستوران', 'کافه', 'غذا', 'سوپرمارکت', 'مارکت'] },
