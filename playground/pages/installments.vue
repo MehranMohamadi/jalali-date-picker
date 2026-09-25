@@ -8,6 +8,7 @@ const {
   installmentAmountInWords,
   installmentStartDatePickerValue,
   installmentSummaries,
+  installmentMonthlySchedule,
   categories,
   formatMoneyInput,
   formatMoney,
@@ -91,6 +92,44 @@ const {
         <span>{{ editingInstallmentId ? 'ذخیره ویرایش' : 'افزودن قسط' }}</span>
       </button>
     </form>
+
+    <section v-if="installmentMonthlySchedule.length" class="installment-schedule">
+      <div class="section-title compact">
+        <div>
+          <h3>جدول اقساط ماهانه</h3>
+          <p>همه سررسیدها؛ پرداخت هر قسط بلافاصله در این جدول به‌روزرسانی می‌شود.</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="installment-schedule-table">
+          <thead>
+            <tr>
+              <th>ماه</th>
+              <th>قسط‌ها</th>
+              <th>مجموع</th>
+              <th>پرداخت‌شده</th>
+              <th>مانده</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="month in installmentMonthlySchedule" :key="month.month">
+              <td data-label="ماه">{{ month.month }}</td>
+              <td data-label="قسط‌ها">
+                <div class="monthly-installment-items">
+                  <span v-for="item in month.items" :key="item.id" :class="{ paid: item.isPaid }">
+                    <b>{{ item.title }}</b>
+                    <small>{{ item.dueDate }} · {{ formatMoney(item.amount) }} · {{ item.isPaid ? 'پرداخت‌شده' : 'پرداخت‌نشده' }}</small>
+                  </span>
+                </div>
+              </td>
+              <td data-label="مجموع">{{ formatMoney(month.total) }}</td>
+              <td data-label="پرداخت‌شده">{{ formatMoney(month.paid) }}</td>
+              <td data-label="مانده">{{ formatMoney(month.remaining) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
 
     <div v-if="installmentSummaries.length" class="installments-grid">
       <article v-for="item in installmentSummaries" :key="item.id" class="installment-item" :class="item.status">

@@ -9,6 +9,7 @@ import {
 } from 'chart.js'
 import { Capacitor, registerPlugin } from '@capacitor/core'
 import { addJalaliDays, getJalaliMonthLength, parseJalaliInput, toGregorian, toJalali } from '../../src/utils/jalali'
+import { getCreditMonths } from '../../src/utils/creditLedger'
 import {
   buildCashflowTimeline,
   getCashflowRiskLevel,
@@ -690,23 +691,14 @@ const weeklyExpenseTransactions = computed(() => currentWeekTransactions.value.f
 const weeklyIncomeTransactions = computed(() => currentWeekTransactions.value.filter((item) => item.type === 'income'))
 const previousExpense = computed(() => previousMonthTransactions.value.filter((item) => item.type === 'expense').reduce((sum, item) => sum + item.amount, 0))
 const previousIncome = computed(() => previousMonthTransactions.value.filter((item) => item.type === 'income').reduce((sum, item) => sum + item.amount, 0))
-const carriedBalance = computed(() =>
-  transactions.value.reduce((sum, item) => {
-    const date = normalizeJalaliDate(item.date)
-    if (!date || date >= currentMonthStartKey) return sum
-
-    return sum + (item.type === 'income' ? item.amount : -item.amount)
-  }, 0),
-)
 const totalIncome = computed(() => incomeTransactions.value.reduce((sum, item) => sum + item.amount, 0))
 const totalExpense = computed(() => expenseTransactions.value.reduce((sum, item) => sum + item.amount, 0))
-const creditPurchases = computed(() => expenseTransactions.value.filter((item) => item.paymentMethod === 'credit').reduce((sum, item) => sum + item.amount, 0))
-const creditPayments = computed(() => expenseTransactions.value.filter((item) => item.sourceType === 'credit-payment').reduce((sum, item) => sum + item.amount, 0))
-const creditExpense = computed(() => Math.max(creditPurchases.value - creditPayments.value, 0))
+const creditMonths = computed(() => getCreditMonths(transactions.value))
+const creditExpense = computed(() => creditMonths.value.reduce((sum, month) => sum + month.remaining, 0))
 const creditRemaining = computed(() => Math.max(creditLimit.value - creditExpense.value, 0))
-const cashExpense = computed(() => expenseTransactions.value.filter((item) => item.paymentMethod !== 'credit').reduce((sum, item) => sum + item.amount, 0))
-const cashBeforeCreditPayment = computed(() => totalIncome.value - cashExpense.value)
-const balanceAfterCreditPayment = computed(() => carriedBalance.value + cashBeforeCreditPayment.value - creditExpense.value)
+const cashExpense = computed(() => transactions.value.filter((item) => item.type === 'expense' && item.paymentMethod !== 'credit').reduce((sum, item) => sum + item.amount, 0))
+const cashBeforeCreditPayment = computed(() => transactions.value.filter((item) => item.type === 'income').reduce((sum, item) => sum + item.amount, 0) - cashExpense.value)
+const balanceAfterCreditPayment = computed(() => cashBeforeCreditPayment.value - creditExpense.value)
 const loanedExpense = computed(() => expenseTransactions.value.filter((item) => item.isLoan).reduce((sum, item) => sum + item.amount, 0))
 const essentialExpense = computed(() => expenseTransactions.value.filter((item) => item.isEssential !== false).reduce((sum, item) => sum + item.amount, 0))
 const nonEssentialExpense = computed(() => expenseTransactions.value.filter((item) => item.isEssential === false).reduce((sum, item) => sum + item.amount, 0))
@@ -717,7 +709,7 @@ const weeklyBalance = computed(() => weeklyIncome.value - weeklyExpense.value)
 const totalBudget = computed(() => budgets.value.reduce((sum, item) => sum + item.budget, 0))
 const currentMonthWeekCount = computed(() => Math.ceil(currentMonthLength / 7))
 const weeklyBudgetAllowance = computed(() => Math.round(totalBudget.value / Math.max(currentMonthWeekCount.value, 1)))
-const balance = computed(() => carriedBalance.value + totalIncome.value - totalExpense.value)
+const balance = computed(() => balanceAfterCreditPayment.value)
 const budgetUsage = computed(() => Math.round((totalExpense.value / Math.max(totalBudget.value, 1)) * 100))
 const savingsPercent = computed(() => Math.max(0, Math.round((balance.value / Math.max(totalIncome.value, 1)) * 100)))
 
@@ -816,19 +808,71 @@ const installmentSummaries = computed(() =>
       return a.nextDueDate.localeCompare(b.nextDueDate)
     }),
 )
+const installmentMonthlySchedule = computed(() => {
+  const months = new Map<string, Array<{
+    id: string
+    title: string
+    amount: number
+    dueDate: string
+    isPaid: boolean
+  }>>()
+
+  installments.value.forEach((plan) => {
+    for (let index = 0; index < plan.totalCount; index += 1) {
+      const dueDate = getInstallmentDueDate(plan, index)
+      const month = dueDate.slice(0, 7)
+      const items = months.get(month) ?? []
+
+      items.push({
+        id: `${plan.id}-${index}`,
+        title: plan.title,
+        amount: plan.amount,
+        dueDate,
+        isPaid: index < plan.paidCount,
+      })
+      months.set(month, items)
+    }
+  })
+
+  return [...months.entries()]
+    .sort(([firstMonth], [secondMonth]) => firstMonth.localeCompare(secondMonth))
+    .map(([month, items]) => ({
+      month,
+      items: items.sort((first, second) => first.dueDate.localeCompare(second.dueDate)),
+      total: items.reduce((sum, item) => sum + item.amount, 0),
+      paid: items.filter((item) => item.isPaid).reduce((sum, item) => sum + item.amount, 0),
+      remaining: items.filter((item) => !item.isPaid).reduce((sum, item) => sum + item.amount, 0),
+    }))
+})
 const activeInstallmentSummaries = computed(() => installmentSummaries.value.filter((item) => item.status !== 'completed'))
 const overdueInstallments = computed(() => activeInstallmentSummaries.value.filter((item) => item.status === 'overdue'))
 const upcomingInstallments = computed(() => activeInstallmentSummaries.value.filter((item) => item.status === 'upcoming').slice(0, 3))
+const unpaidInstallmentOccurrences = computed(() =>
+  installmentMonthlySchedule.value.flatMap((month) => month.items).filter((item) => !item.isPaid),
+)
 const dueInstallmentsThisMonth = computed(() =>
-  activeInstallmentSummaries.value.filter((item) => item.nextDueDate >= currentMonthStartKey && item.nextDueDate <= currentMonthEndKey),
+  unpaidInstallmentOccurrences.value.filter((item) => item.dueDate >= currentMonthStartKey && item.dueDate <= currentMonthEndKey),
 )
 const monthlyInstallmentDue = computed(() => dueInstallmentsThisMonth.value.reduce((sum, item) => sum + item.amount, 0))
 const commitmentInstallmentDue = computed(() =>
-  activeInstallmentSummaries.value
-    .filter((item) => item.nextDueDate <= currentMonthEndKey)
+  unpaidInstallmentOccurrences.value
+    .filter((item) => item.dueDate <= currentMonthEndKey)
     .reduce((sum, item) => sum + item.amount, 0),
 )
-const balanceAfterCommitments = computed(() => carriedBalance.value + cashBeforeCreditPayment.value - creditExpense.value - commitmentInstallmentDue.value)
+const balanceAfterCommitments = computed(() => balanceAfterCreditPayment.value - commitmentInstallmentDue.value)
+const balanceDeductionBreakdown = computed(() => [
+  { label: 'هزینه‌ها و پرداخت‌های نقدی ثبت‌شده', amount: cashExpense.value },
+  ...creditMonths.value.filter((month) => month.remaining > 0).map((month) => ({
+    label: `اعتبار پرداخت‌نشده ${month.month}`,
+    amount: month.remaining,
+  })),
+  ...unpaidInstallmentOccurrences.value
+    .filter((item) => item.dueDate <= currentMonthEndKey)
+    .map((item) => ({
+      label: `قسط پرداخت‌نشده «${item.title}» · ${item.dueDate}`,
+      amount: item.amount,
+    })),
+].filter((item) => item.amount > 0))
 const activeGoals = computed(() => goals.value.filter((goal) => !goal.isArchived))
 const archivedGoals = computed(() => goals.value.filter((goal) => goal.isArchived))
 const activeGoalSnapshots = computed(() =>
@@ -1381,9 +1425,16 @@ const insights = computed(() => [
 ])
 
 const dashboardCards = computed(() => [
-  { label: 'مانده واقعی', value: balanceAfterCommitments.value, icon: '💵', hint: 'بعد از اعتبار و قسط‌های سررسید', className: 'card-blue' },
+  {
+    label: 'مانده واقعی',
+    value: balanceAfterCommitments.value,
+    icon: '💵',
+    hint: 'بعد از اعتبار و قسط‌های سررسید',
+    className: 'card-blue',
+    details: balanceDeductionBreakdown.value.map((item) => ({ label: item.label, value: formatMoney(item.amount) })),
+  },
   { label: 'هزینه ماه', value: totalExpense.value, icon: '💸', hint: formatPercentHint(expenseChangePercent.value, 'ماه قبل'), className: 'card-violet' },
-  { label: 'پرداخت اعتبار', value: creditExpense.value, icon: '💳', hint: 'جمع خرج‌های اعتباری این ماه', className: 'card-pink' },
+  { label: 'پرداخت اعتبار', value: creditExpense.value, icon: '💳', hint: 'بدهی تسویه‌نشده همه ماه‌ها', className: 'card-pink' },
   { label: 'هدف‌های مالی', value: totalGoalsSaved.value, icon: '🎯', hint: `${formatCompact(totalGoalsRemaining.value)} مانده`, className: 'card-violet' },
   { label: 'بدهی‌ها', value: totalDebtRemaining.value, icon: '📉', hint: nextDebtDue.value ? `سررسید ${toPersianNumber(nextDebtDue.value.dueDay ?? '')}` : debtFreedomDate.value, className: 'card-blue' },
   { label: 'سلامت مالی', value: financialHealthScore.value.totalScore, suffix: '/۱۰۰', icon: '🫀', hint: getFinancialHealthLevelLabel(financialHealthLevel.value), className: 'card-pink' },
@@ -1404,7 +1455,7 @@ const statsItems = computed(() => [
   { label: 'هزینه هفته', value: formatMoney(weeklyExpense.value) },
   { label: 'مانده هفته', value: formatMoney(weeklyBalance.value) },
   { label: 'خرج اعتباری هفته', value: formatMoney(weeklyCreditExpense.value) },
-  { label: 'پرداخت آخر ماه', value: formatMoney(creditExpense.value) },
+  { label: 'بدهی اعتبار باز', value: formatMoney(creditExpense.value) },
   { label: 'اعتبار باقی‌مانده', value: formatMoney(creditRemaining.value) },
   { label: 'پول کل قبل اعتبار', value: formatMoney(cashBeforeCreditPayment.value) },
   { label: 'مانده بعد اعتبار', value: formatMoney(balanceAfterCreditPayment.value) },
@@ -1620,23 +1671,30 @@ function updateCreditLimit(event: Event) {
   input.value = formatMoneyInput(amount)
 }
 
-function recordCreditPayment(amount = 0) {
-  const rawAmount = amount || Number(window.prompt('مبلغ پرداخت بدهی اعتبار') || 0)
-  const value = Math.min(Math.max(0, rawAmount), creditExpense.value)
-  if (!value) return
+function recordCreditPayment(month: string) {
+  const creditMonth = creditMonths.value.find((item) => item.month === month)
+  if (!creditMonth?.remaining) return
+  const rawAmount = window.prompt(`مبلغ تسویه اعتبار ${month}`, formatMoneyInput(creditMonth.remaining))
+  if (rawAmount === null) return
+  const value = parseMoneyInput(rawAmount)
+  if (!value || value > creditMonth.remaining) {
+    pushToast('مبلغ باید بیشتر از صفر و حداکثر برابر مانده همان ماه باشد')
+    return
+  }
 
   transactions.value = [{
     id: Date.now(),
     type: 'expense',
-    title: 'پرداخت بدهی اعتبار',
+    title: `تسویه اعتبار ${month}`,
     amount: value,
     date: todayKey,
     category: 'other',
-    description: 'تسویه بدهی اعتبار',
+    description: `تسویه بدهی اعتبار ${month}`,
     paymentMethod: 'cash',
     isEssential: true,
     isLoan: false,
     sourceType: 'credit-payment',
+    sourceId: month,
     sourceDate: todayKey,
   }, ...transactions.value]
   pushToast('پرداخت بدهی اعتبار ثبت شد ✅')
@@ -1758,6 +1816,10 @@ function saveTransaction() {
   }
 
   if (editingId.value) {
+    const previous = transactions.value.find((item) => item.id === editingId.value)
+    if (previous?.sourceType === 'credit-payment' && payload.type === 'expense' && payload.paymentMethod === 'cash') {
+      payload = { ...payload, sourceType: previous.sourceType, sourceId: previous.sourceId, sourceDate: previous.sourceDate }
+    }
     transactions.value = transactions.value.map((item) => (item.id === editingId.value ? payload : item))
     pushToast('ویرایش شد ✨')
   } else {
@@ -3184,7 +3246,7 @@ function buildExcelReport() {
   <h1>گزارش پولدار</h1>
   <p>درآمد ماه: ${formatMoney(totalIncome.value)}</p>
   <p>هزینه ماه: ${formatMoney(totalExpense.value)}</p>
-  <p>پرداخت اعتبار آخر ماه: ${formatMoney(creditExpense.value)}</p>
+  <p>بدهی اعتبار تسویه‌نشده: ${formatMoney(creditExpense.value)}</p>
   <p>قسط‌های سررسید تا پایان ماه: ${formatMoney(commitmentInstallmentDue.value)}</p>
   <p>خرج ضروری: ${formatMoney(essentialExpense.value)}</p>
   <p>خرج غیرضروری: ${formatMoney(nonEssentialExpense.value)}</p>
@@ -4303,10 +4365,10 @@ export function useBudgetyar() {
     installPrompt, isStandalone, isAndroidNative, isNotificationsLoading, bankApps, bankSuggestions, selectedBankPackage, bankNotificationStatus,
     expenseShareCanvas, categoryBarCanvas, trendLineCanvas, statsExpenseMixCanvas, statsBudgetUsageCanvas, statsDailyExpenseCanvas, statsWeeklyFlowCanvas, statsCashFlowCanvas, statsEssentialCanvas, statsPaymentMethodCanvas, statsMonthlyTrendCanvas, statsCommitmentCanvas,
     currentMonthTransactions, currentWeekTransactions, expenseTransactions, incomeTransactions, weeklyExpenseTransactions, weeklyIncomeTransactions,
-    totalIncome, totalExpense, creditExpense, creditRemaining, cashExpense, cashBeforeCreditPayment, balanceAfterCreditPayment, balanceAfterCommitments,
+    totalIncome, totalExpense, creditMonths, creditExpense, creditRemaining, cashExpense, cashBeforeCreditPayment, balanceAfterCreditPayment, balanceAfterCommitments,
     loanedExpense, essentialExpense, nonEssentialExpense, weeklyIncome, weeklyExpense, weeklyCreditExpense, weeklyBalance, totalBudget, weeklyBudgetAllowance, balance, budgetUsage, savingsPercent,
     categoryTotals, weeklyCategoryBudgets, weeklyBudgetAnalysis, sortedCategoryTotals, visibleCategoryTotals, safeMaxCategory, highestExpense, lowestExpense, todayExpense, todayIncome, averageDailyExpense, latestExpenses, latestLoans,
-    installmentSummaries, activeInstallmentSummaries, overdueInstallments, upcomingInstallments, dueInstallmentsThisMonth, monthlyInstallmentDue, commitmentInstallmentDue,
+    installmentSummaries, installmentMonthlySchedule, activeInstallmentSummaries, overdueInstallments, upcomingInstallments, dueInstallmentsThisMonth, monthlyInstallmentDue, commitmentInstallmentDue, balanceDeductionBreakdown,
     activeGoals, archivedGoals, totalGoalsTarget, totalGoalsSaved, totalGoalsRemaining, nearestGoal,
     activeRecurringItems, recurringSummaries, upcomingRecurringItems, dueRecurringItems, overdueRecurringItems, monthlyRecurringIncomeTotal, monthlyRecurringExpenseTotal, monthlySubscriptionsTotal, annualSubscriptionsTotal, subscriptionSummaries, generalRecurringSummaries, activeSubscriptionSummaries, nearDueSubscriptions,
     cashflowForecastDays, projectedEndOfMonthBalance, lowestProjectedBalance, cashflowRiskLevel, cashflowWarnings, safeDailySpend, safeWeeklySpend,

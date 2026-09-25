@@ -5,6 +5,7 @@ defineProps<{
   icon?: string
   hint?: string
   className?: string
+  details?: Array<{ label: string; value: string }>
 }>()
 </script>
 
@@ -18,5 +19,11 @@ defineProps<{
       <span class="counter">{{ value }}</span>
     </strong>
     <p v-if="hint">{{ hint }}</p>
+    <div v-if="details?.length" class="metric-details">
+      <span v-for="detail in details" :key="detail.label">
+        <small>{{ detail.label }}</small>
+        <b>− {{ detail.value }}</b>
+      </span>
+    </div>
   </article>
 </template>

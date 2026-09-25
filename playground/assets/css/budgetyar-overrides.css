@@ -230,6 +230,95 @@
   font-size: 1.2rem;
 }
 
+.metric-details {
+  border-top: 1px solid rgba(147, 197, 253, .2);
+  display: grid;
+  gap: 5px;
+  margin-top: 2px;
+  padding-top: 7px;
+}
+
+.metric-details span {
+  align-items: start;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.metric-details small {
+  line-height: 1.45;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.metric-details b {
+  color: #fda4af;
+  flex: 0 0 auto;
+  font-size: .72rem;
+  white-space: nowrap;
+}
+
+.installment-schedule {
+  margin: 18px 0;
+}
+
+.installment-schedule-table {
+  min-width: 720px;
+}
+
+.credit-monthly-section {
+  margin: 18px 0;
+}
+
+.credit-monthly-table {
+  min-width: 620px;
+}
+
+.credit-monthly-table .secondary-button {
+  min-height: 34px;
+}
+
+.monthly-installment-items {
+  display: grid;
+  gap: 6px;
+}
+
+.monthly-installment-items span {
+  display: grid;
+  gap: 2px;
+}
+
+.monthly-installment-items small {
+  color: #fbbf24;
+}
+
+.monthly-installment-items .paid small {
+  color: #6ee7b7;
+}
+
+body.budgetyar-light .metric-details b {
+  color: #be123c;
+}
+
+body.budgetyar-light .monthly-installment-items small {
+  color: #a16207;
+}
+
+body.budgetyar-light .monthly-installment-items .paid small {
+  color: #047857;
+}
+
+@media (max-width: 760px) {
+  .installment-schedule-table td::before {
+    content: attr(data-label) !important;
+  }
+
+  .credit-monthly-table td::before {
+    content: attr(data-label) !important;
+  }
+}
+
 .recent-expenses-card,
 .installment-alert-card,
 .weekly-category-budget {

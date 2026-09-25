@@ -49,6 +49,7 @@ onBeforeUnmount(destroyCharts)
       :icon="card.icon"
       :hint="card.hint"
       :class-name="card.className"
+      :details="card.details"
     />
   </section>
 

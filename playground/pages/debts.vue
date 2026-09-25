@@ -28,6 +28,7 @@ const {
   recordDebtPayment,
   toPersianNumber,
   creditLimit,
+  creditMonths,
   creditExpense,
   creditRemaining,
   updateCreditLimit,
@@ -55,10 +56,37 @@ const {
       <label>سقف اعتبار
         <input :value="formatMoneyInput(creditLimit)" type="text" inputmode="numeric" @input="updateCreditLimit" />
       </label>
-      <span><small>مصرف اعتبار این ماه</small><strong>{{ formatMoney(creditExpense) }}</strong></span>
+      <span><small>بدهی اعتبار همه ماه‌ها</small><strong>{{ formatMoney(creditExpense) }}</strong></span>
       <span><small>اعتبار باقی‌مانده</small><strong>{{ formatMoney(creditRemaining) }}</strong></span>
-      <button class="secondary-button" type="button" :disabled="!creditExpense" @click="recordCreditPayment()">پرداخت بدهی اعتبار</button>
     </div>
+
+    <section class="credit-monthly-section">
+      <div class="section-title compact">
+        <div>
+          <h3>اعتبار به تفکیک ماه</h3>
+          <p>بدهی هر ماه را در همان ماه یا ماه‌های بعد، کامل یا بخشی تسویه کنید.</p>
+        </div>
+      </div>
+      <div v-if="creditMonths.length" class="table-wrap">
+        <table class="credit-monthly-table">
+          <thead><tr><th>ماه خرید</th><th>مصرف اعتبار</th><th>تسویه‌شده</th><th>مانده</th><th>تسویه</th></tr></thead>
+          <tbody>
+            <tr v-for="month in creditMonths" :key="month.month">
+              <td data-label="ماه خرید">{{ month.month }}</td>
+              <td data-label="مصرف اعتبار">{{ formatMoney(month.purchases) }}</td>
+              <td data-label="تسویه‌شده">{{ formatMoney(month.paid) }}</td>
+              <td data-label="مانده">{{ formatMoney(month.remaining) }}</td>
+              <td data-label="تسویه">
+                <button class="secondary-button" type="button" :disabled="!month.remaining" @click="recordCreditPayment(month.month)">
+                  {{ month.remaining ? 'پرداخت' : 'تسویه‌شده' }}
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p v-else class="empty-inline">هنوز خرید اعتباری ثبت نشده است.</p>
+    </section>
 
     <form class="installment-form planning-form" @submit.prevent="addDebt">
       <div v-if="editingDebtId" class="installment-edit-banner"><strong>ویرایش بدهی</strong></div>
