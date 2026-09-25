@@ -34,10 +34,10 @@ const groupedItems = computed(() => {
   <aside class="sidebar glass-panel" :class="{ open }" aria-label="‏منوی اصلی">
     <div class="brand">
       <span class="brand-mark" aria-hidden="true">
-        <img src="/icons/icon-192.png" alt="‏پولدار" class="brand-mark-img" width="42" height="42" />
+        <img src="/icons/icon-192.png" alt="‏جیب‌طلا" class="brand-mark-img" width="42" height="42" />
       </span>
       <div>
-        <strong>‏پولدار</strong>
+        <strong>‏جیب‌طلا</strong>
         <small>‏مدیریت مالی شخصی</small>
       </div>
       <button class="drawer-close" type="button" aria-label="‏بستن منو" @click="emit('close')">

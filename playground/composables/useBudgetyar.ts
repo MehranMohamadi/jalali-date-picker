@@ -3416,7 +3416,7 @@ function buildExcelReport() {
   </style>
 </head>
 <body>
-  <h1>گزارش پولدار</h1>
+  <h1>گزارش جیب‌طلا</h1>
   <p>درآمد ماه: ${formatMoney(totalIncome.value)}</p>
   <p>هزینه ماه: ${formatMoney(totalExpense.value)}</p>
   <p>بدهی اعتبار تسویه‌نشده: ${formatMoney(creditExpense.value)}</p>
@@ -3631,7 +3631,7 @@ async function migrateLocalDataToCloud() {
 }
 
 function applyBackupRecord(backup: Record<string, unknown>) {
-  if (backup.app !== 'budgetyar') throw new Error('این فایل بکاپ پولدار نیست')
+  if (backup.app !== 'budgetyar') throw new Error('این فایل بکاپ جیب‌طلا نیست')
   const summary = isRecord(backup.summary) ? backup.summary : {}
   transactions.value = restoreTransactions(backup.transactions)
   categories.value = restoreCategories(backup.categories)
@@ -3933,7 +3933,7 @@ async function importBackup(event: Event) {
   try {
     const backup = JSON.parse(await file.text()) as unknown
     if (!isRecord(backup) || backup.app !== 'budgetyar') {
-      pushToast('این فایل بکاپ پولدار نیست')
+      pushToast('این فایل بکاپ جیب‌طلا نیست')
       return
     }
     applyBackupRecord(backup)
@@ -3975,7 +3975,7 @@ function createExportFile(format: ExportFormat) {
   return {
     blob: new Blob([buildBackupJson()], { type: 'application/json;charset=utf-8' }),
     filename: `budgetyar-backup-${stamp}.json`,
-    message: 'بکاپ پولدار آماده ذخیره شد ✅',
+    message: 'بکاپ جیب‌طلا آماده ذخیره شد ✅',
   }
 }
 
@@ -3988,7 +3988,7 @@ async function saveBlobToDevice(blob: Blob, filename: string, successMessage: st
       await shareNavigator.share({
         files: [file],
         title: filename,
-        text: 'خروجی پولدار',
+        text: 'خروجی جیب‌طلا',
       })
       pushToast(successMessage)
       return
@@ -4629,7 +4629,7 @@ export function startBudgetyar() {
     window.addEventListener('appinstalled', () => {
       isStandalone.value = true
       installPrompt.value = null
-      pushToast('پولدار نصب شد ✅')
+      pushToast('جیب‌طلا نصب شد ✅')
     })
   
     const savedTransactions = localStorage.getItem(STORAGE_KEY)

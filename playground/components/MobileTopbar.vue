@@ -18,9 +18,9 @@ const emit = defineEmits<{
       <Menu :size="20" aria-hidden="true" />
     </button>
     <div class="mobile-brand">
-      <img src="/icons/icon-192.png" alt="‏پولدار" class="mobile-mascot" width="34" height="34" />
+      <img src="/icons/icon-192.png" alt="‏جیب‌طلا" class="mobile-mascot" width="34" height="34" />
       <div class="mobile-title">
-        <strong>‏پولدار</strong>
+        <strong>‏جیب‌طلا</strong>
         <small>{{ title }}</small>
       </div>
     </div>

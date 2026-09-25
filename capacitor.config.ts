@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli'
 
 const config: CapacitorConfig = {
   appId: 'ir.budgetyar.app',
-  appName: 'Budgetyar',
+  appName: 'جیب‌طلا',
   webDir: 'playground/.output/public',
   server: {
     androidScheme: 'https',
