@@ -1,12 +1,15 @@
 # Codex Project Notes
 
-Compact project guide for future Codex turns. Keep this file concise so agents can spend fewer tokens on orientation.
+Compact project guide for future Codex turns. Keep it accurate and update it when architecture or commands change.
 
 ## Overview
 
-- This repo is a Nuxt 3 Jalali date-picker package.
+- This repo contains a Nuxt 3 / Vue 3 Jalali date-picker package and a larger Budgetyar finance playground.
+- The root package is published as `nuxt-jalali-minical`; `src/` builds into `dist/` via `unbuild`.
 - `playground/` is the Persian RTL Budgetyar demo app: a personal finance dashboard.
-- Budgetyar persists transactions, categories, budgets, installments, credit limit, theme, and report/export data in `localStorage`.
+- `api/` contains the Vercel financial-advice endpoint; `playground/server/api/` contains the Nuxt playground endpoint.
+- `backend/` is a separate Go service with platform storage/HTTP code, finance models, health, sync, and MCP endpoints.
+- Budgetyar persists finance state in browser `localStorage`; its settings page handles backup/import and export.
 - Finance UI and app logic usually live in `playground/composables/useBudgetyar.ts`, `playground/pages/*.vue`, and `playground/assets/css/`.
 - Reusable date-picker/date logic lives in `src/` and is covered by `tests/`.
 
@@ -25,8 +28,14 @@ Compact project guide for future Codex turns. Keep this file concise so agents c
 - `playground/assets/css/budgetyar.css`: main Budgetyar styles.
 - `playground/assets/css/budgetyar-overrides.css`: newer fixes/overrides.
 - `src/utils/jalali.ts`: Jalali/Gregorian conversion and date math; prefer these helpers over ad hoc date code.
-- `src/utils/bankNotification.ts`: bank notification parser; covered by `tests/bankNotification.test.ts`.
-- `tests/*.test.ts`: Vitest coverage for Jalali dates, ranges, and bank notifications.
+- `src/utils/dateOnly.ts`, `digits.ts`, and `format.ts`: date-only, digit conversion, and formatting helpers.
+- `src/utils/bankNotification.ts`: bank notification parser; keep parser behavior covered by tests.
+- `src/utils/creditLedger.ts`, `installmentLedger.ts`, `budgetyarPlanning.ts`, `budgetyarGoals.ts`, `budgetyarAdvancedFinance.ts`, and `financialAdvice.ts`: finance domain logic used by the playground where imported.
+- `src/components/`: package calendar and picker components; `src/composables/useJalaliCalendar.ts` owns calendar interaction state.
+- `src/module.ts`, `src/plugin.ts`, and `src/index.ts`: Nuxt module integration, plugin, and public exports. Keep package exports in sync with `package.json`.
+- `api/financial-advice.ts` and `playground/server/api/financial-advice.post.ts`: financial advice handlers; check both when changing shared behavior.
+- `backend/README.md`, `backend/go.mod`, and `backend/migrations/`: Go service documentation, dependencies, and schema migrations.
+- `tests/*.test.ts`: Vitest coverage for dates, bank notifications, and finance utilities.
 
 ## Commands
 
@@ -34,8 +43,11 @@ Compact project guide for future Codex turns. Keep this file concise so agents c
 - Start playground dev server: `npm run dev`
 - Build package: `npm run build`
 - Generate static playground: `npm run build:app`
+- Build the frontend for Vercel: `npm run build:vercel`
+- Backend tests: from `backend/`, run `go test ./...` (if Go is installed).
 - If Nuxt generate is blocked by a dev-server lock, use PowerShell:
   `$env:NUXT_IGNORE_LOCK='1'; npm run build:app`
+- Root `npm test` runs `vitest run`; `npm run build` builds the publishable package, while `npm run build:app` generates the playground. They validate different outputs.
 
 ## Budgetyar Architecture
 
@@ -45,6 +57,8 @@ Compact project guide for future Codex turns. Keep this file concise so agents c
 - Charts are created in the composable with Chart.js. Pages with canvases call `scheduleChartSync` on mount and `destroyCharts` on unmount.
 - `isMobileViewport` is used for mobile performance; some dashboard charts become text summaries on mobile.
 - Preserve Persian and RTL behavior. UI copy should stay short, direct, and Persian.
+- Package components should preserve RTL defaults, keyboard navigation, accessible native controls, and the date-only ISO model contract described in `README.md`.
+- The repository-level response rule requires `\\u2067` at the start of every Persian paragraph. Use `\\u200F` before Persian text embedded in code or LTR content when needed.
 - In Codex replies, explanations, comments, Markdown, and Persian strings inside code/files, if Persian text may render inside a left-to-right context, prefix the Persian text with the Unicode RTL mark `\u200F`.
 
 ## Date And Budget Rules
@@ -76,6 +90,8 @@ Compact project guide for future Codex turns. Keep this file concise so agents c
   `budgetyar-transactions-v1`, `budgetyar-categories-v1`, `budgetyar-budgets-v1`, `budgetyar-credit-limit-v1`, `budgetyar-installments-v1`, `budgetyar-theme-v1`.
 - Schema changes must remain compatible with import/export and old saved data.
 - Amounts are in toman. Use `parseMoneyInput`, `formatMoneyInput`, `formatMoney`, and `formatCompact` for money input/display.
+- Validate imported/local data at boundaries and preserve compatibility with older saved records; avoid changing storage keys or shapes without a migration/fallback.
+- Treat API keys as server-only secrets. Never use public Nuxt variables for secrets or expose keys in client code/logs. See `README.md` for GapGPT setup and endpoint caveats.
 
 ## Android / PWA
 
@@ -83,6 +99,21 @@ Compact project guide for future Codex turns. Keep this file concise so agents c
 - Native bank notification files are under `android/app/src/main/java/ir/budgetyar/app/`.
 - Shared JS parser is `src/utils/bankNotification.ts`; update/add tests when changing parser behavior.
 - Service worker is unregistered in dev and registered in production.
+- PWA assets and offline behavior live in `playground/public/`; check the manifest and service worker when changing install/offline behavior.
+
+## Package Contracts
+
+- Public picker values are Gregorian date-only ISO strings (`YYYY-MM-DD`); Jalali values are for display and calendar arithmetic. Avoid timezone conversions that shift calendar days.
+- Keep the package dependency-light and TypeScript-first. Do not add a date library for functionality covered by existing utilities.
+- Components/module auto-import behavior and optional prefix/font settings are documented in `README.md`; keep docs aligned with implementation.
+- `dist/` is generated output. Edit `src/` and rebuild instead of hand-editing generated files.
+
+## API And Backend
+
+- Financial-advice requests should send only the data needed for analysis. Current README says the playground sends aggregate totals/trends and category summaries, not individual transactions; preserve that privacy boundary unless explicitly changed.
+- The Vercel API and Nuxt server API may have different runtime/configuration constraints. Keep secrets server-side and verify the matching deployment path when changing either handler.
+- Backend configuration examples belong in `backend/.env.example`; never commit real credentials. Read `backend/README.md` before changing backend routes, storage, or migrations.
+- Keep schema migrations additive and compatible with existing deployments; do not rewrite applied migrations.
 
 ## Workflow
 
@@ -90,9 +121,14 @@ Compact project guide for future Codex turns. Keep this file concise so agents c
 - Avoid broad refactors or architecture moves unless explicitly requested.
 - If Persian text appears mojibake in the terminal, still keep files encoded as UTF-8.
 - Do not revert unrelated user changes.
+- Follow `RTK.md`: prefix shell commands with `rtk` when supported. If a shell builtin is unsupported, use a suitable wrapped executable or the narrowest fallback.
+- Avoid printing `.env` contents, credentials, or personal finance data in command output.
+- For package changes, inspect public entry points and README contracts. For finance changes, inspect the relevant domain utility, composable consumer, and page instead of scanning the whole app.
 
 ## Verification
 
-- After changing `src/utils/*` or date/notification logic: run `npm test`.
-- After changing `playground/*`: run `npm test`, then `npm run build:app`.
+- After changing `src/utils/*`, package components, or date/notification logic: run `npm test`; use `npm run build` when package exports, module integration, or component compilation changed.
+- After changing `playground/*` or `api/*`: run `npm test`, then `npm run build:app` when the change affects generated frontend routes/components. For API-only changes, validate the relevant deployment build/runtime path.
+- After changing `backend/*.go`: run `go test ./...` from `backend/` when Go is available.
+- Do not run broad builds for documentation-only changes.
 - A Nitro warning about `@nuxt/nitro-server/dist/runtime/utils/cache-driver` has been non-blocking in prior builds.

@@ -2176,7 +2176,7 @@ th {
   grid-column: 1 / -1;
 }
 
-.settings-general-grid > label:nth-child(-n + 3) {
+.settings-local-grid > label:nth-child(-n + 3) {
   display: none;
 }
 

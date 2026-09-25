@@ -46,7 +46,7 @@ function updateStorageMode(event: Event) {
         <p>اعتبار، بکاپ و نگهداری داده‌ها</p>
       </div>
     </div>
-    <div class="settings-grid settings-general-grid">
+    <div class="settings-grid settings-general-grid settings-local-grid">
       <label>سقف اعتبار
         <input :value="formatMoneyInput(creditLimit)" type="text" inputmode="numeric" @input="updateCreditLimit" />
       </label>
