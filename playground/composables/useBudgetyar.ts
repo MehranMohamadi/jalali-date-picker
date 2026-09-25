@@ -1041,10 +1041,8 @@ const financialHealthStrengths = computed(() => financialHealthScore.value.stren
 const filteredTransactions = computed(() => {
   const normalizedQuery = query.value.trim()
   const selectedMonthIndex = months.indexOf(selectedMonth.value) + 1
-  const selectedYearNumber = normalizeDigits(selectedYear.value)
-  const selectedMonthPrefix = selectedMonthIndex > 0 && selectedYearNumber
-    ? `${selectedYearNumber}/${String(selectedMonthIndex).padStart(2, '0')}`
-    : ''
+  const selectedYearNumber = selectedYear.value === 'همه' ? '' : normalizeDigits(selectedYear.value)
+  const selectedMonthNumber = selectedMonthIndex > 0 ? String(selectedMonthIndex).padStart(2, '0') : ''
 
   return transactions.value.filter((item) => {
     const itemDate = normalizeJalaliDate(item.date)
@@ -1057,8 +1055,9 @@ const filteredTransactions = computed(() => {
       (selectedType.value === 'هزینه' && item.type === 'expense')
     const matchesStart = !dateRange.start || itemDate >= normalizeJalaliDate(dateRange.start)
     const matchesEnd = !dateRange.end || itemDate <= normalizeJalaliDate(dateRange.end)
-    const matchesMonth = !selectedMonthPrefix || itemDate.startsWith(selectedMonthPrefix)
-    return matchesQuery && matchesCategory && matchesType && matchesMonth && matchesStart && matchesEnd
+    const matchesYear = !selectedYearNumber || itemDate.startsWith(`${selectedYearNumber}/`)
+    const matchesMonth = !selectedMonthNumber || itemDate.slice(5, 7) === selectedMonthNumber
+    return matchesQuery && matchesCategory && matchesType && matchesYear && matchesMonth && matchesStart && matchesEnd
   })
 })
 
@@ -4609,6 +4608,44 @@ function refreshCalendarOnVisibilityChange() {
   scheduleCalendarRefresh()
 }
 
+function seedDevelopmentDataIfEmpty() {
+  if (!import.meta.env.DEV || storageMode.value !== 'local') return
+  if ([STORAGE_KEY, CATEGORIES_STORAGE_KEY, BUDGETS_STORAGE_KEY, CREDIT_STORAGE_KEY,
+    CREDIT_ADJUSTMENTS_STORAGE_KEY, INSTALLMENTS_STORAGE_KEY, GOALS_STORAGE_KEY,
+    GOAL_TRANSACTIONS_STORAGE_KEY, RECURRING_ITEMS_STORAGE_KEY, DEBTS_STORAGE_KEY,
+    INCOME_SETTINGS_STORAGE_KEY, CLOUD_SETTINGS_STORAGE_KEY]
+    .some((key) => localStorage.getItem(key) !== null)) return
+
+  const monthDay = (daysAgo: number) => formatJalaliInputDate({
+    ...currentJalaliDate,
+    day: Math.max(1, currentJalaliDate.day - daysAgo),
+  })
+  const previousMonthDate = formatJalaliInputDate(addJalaliDays({
+    ...currentJalaliDate,
+    day: 1,
+  }, -1))
+
+  transactions.value = [
+    { id: -1, type: 'income', title: 'حقوق آزمایشی', amount: 45000000, date: monthDay(7), category: 'other', paymentMethod: 'cash' },
+    { id: -2, type: 'expense', title: 'اجاره آزمایشی', amount: 16000000, date: monthDay(5), category: 'rent', paymentMethod: 'cash', isEssential: true },
+    { id: -3, type: 'expense', title: 'خرید خوراک آزمایشی', amount: 1250000, date: monthDay(2), category: 'food', paymentMethod: 'cash', isEssential: true },
+    { id: -4, type: 'expense', title: 'رفت‌وآمد آزمایشی', amount: 380000, date: monthDay(1), category: 'transport', paymentMethod: 'credit' },
+    { id: -5, type: 'expense', title: 'تفریح آزمایشی', amount: 720000, date: monthDay(0), category: 'fun', paymentMethod: 'cash' },
+    { id: -6, type: 'income', title: 'درآمد ماه قبل آزمایشی', amount: 42000000, date: previousMonthDate, category: 'other', paymentMethod: 'cash' },
+  ]
+  installments.value = [{
+    id: -1,
+    title: 'قسط آزمایشی لپ‌تاپ',
+    amount: 2400000,
+    category: 'shopping',
+    startDate: monthDay(currentJalaliDate.day - 1),
+    dueDay: 15,
+    totalCount: 6,
+    paidCount: 0,
+    paymentMethod: 'cash',
+  }]
+}
+
 export function startBudgetyar() {
   if (budgetyarStarted) return
   budgetyarStarted = true
@@ -4767,6 +4804,7 @@ export function startBudgetyar() {
       themeMode.value = savedThemeMode
     }
     applyTheme()
+    seedDevelopmentDataIfEmpty()
   
     if ('serviceWorker' in navigator) {
       if (import.meta.env.PROD) {

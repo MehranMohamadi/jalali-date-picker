@@ -80,9 +80,11 @@ function showMoreTransactions() {
     <div class="filters transaction-filters">
       <input v-model="query" type="search" placeholder="جستجو" aria-label="جستجو" />
       <BudgetyarSelect v-model="selectedMonth" aria-label="ماه">
+        <option>همه</option>
         <option v-for="month in months" :key="month">{{ month }}</option>
       </BudgetyarSelect>
       <BudgetyarSelect v-model="selectedYear" aria-label="سال">
+        <option>همه</option>
         <option v-for="year in years" :key="year">{{ year }}</option>
       </BudgetyarSelect>
       <BudgetyarSelect v-model="selectedCategory" aria-label="دسته">
