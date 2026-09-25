@@ -17,9 +17,12 @@ const emit = defineEmits<{
     <button class="hamburger" type="button" :aria-expanded="open" aria-label="‏منو" @click="emit('openMenu')">
       <Menu :size="20" aria-hidden="true" />
     </button>
-    <div class="mobile-title">
-      <strong>‏پولدار</strong>
-      <small>{{ title }}</small>
+    <div class="mobile-brand">
+      <img src="/icons/icon-192.png" alt="‏پولدار" class="mobile-mascot" width="34" height="34" />
+      <div class="mobile-title">
+        <strong>‏پولدار</strong>
+        <small>{{ title }}</small>
+      </div>
     </div>
     <button class="mobile-add" type="button" aria-label="‏ثبت هزینه" @click="emit('quickAdd')">
       <Plus :size="20" aria-hidden="true" />

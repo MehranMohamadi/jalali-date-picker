@@ -752,3 +752,36 @@ body.budgetyar-light .sub-equivalent {
   color: #0891b2;
 }
 
+/* Mascot brand & mobile topbar styles */
+.brand-mark {
+  background: transparent !important;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.28) !important;
+  overflow: hidden;
+  padding: 0 !important;
+  border: none !important;
+}
+
+.brand-mark-img {
+  border-radius: 8px;
+  display: block;
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.mobile-brand {
+  align-items: center;
+  display: flex;
+  gap: 9px;
+  min-width: 0;
+}
+
+.mobile-mascot {
+  border-radius: 9px;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+  display: block;
+  flex-shrink: 0;
+  height: 34px;
+  object-fit: cover;
+  width: 34px;
+}
