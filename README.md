@@ -136,6 +136,42 @@ npm run build
 npm run dev
 ```
 
+## ساخت APK اندروید Budgetyar
+
+⁧پیش‌نیازهای Android SDK و Java برای این پروژه روی این سیستم در مسیرهای زیر نصب شده‌اند:
+
+```text
+JAVA_HOME=C:\Program Files\Android\Android Studio\jbr
+ANDROID_HOME=C:\Android\SDK
+```
+
+⁧برای ساخت APK جدید، از پوشهٔ اصلی پروژه این دستورها را در PowerShell اجرا کنید:
+
+```powershell
+rtk npm run build:app
+rtk npm exec -- cap sync android
+
+$env:JAVA_HOME = 'C:\Program Files\Android\Android Studio\jbr'
+$env:ANDROID_HOME = 'C:\Android\SDK'
+$env:ANDROID_SDK_ROOT = 'C:\Android\SDK'
+$env:JAVA_TOOL_OPTIONS = '-Djava.net.preferIPv4Stack=true'
+
+Set-Location android
+rtk proxy .\gradlew.bat :app:assembleDebug --offline --no-daemon --max-workers=2 --console=plain
+```
+
+⁧فایل نصب خروجی در این مسیر ساخته می‌شود:
+
+```text
+android\app\build\outputs\apk\debug\app-debug.apk
+```
+
+⁧این APK از نوع Debug است و برای نصب مستقیم روی گوشی مناسب است. برای انتشار در فروشگاه‌ها، باید یک keystore اختصاصی ایجاد شود و خروجی Release امضاشده ساخته شود. اگر وابستگی اندرویدی جدیدی اضافه شد، یک‌بار گزینهٔ `--offline` را حذف کنید تا Gradle فایل‌های تازه را دریافت کند.
+
+⁧پس از هر تغییر در کد وب، هر دو دستور `build:app` و `cap sync android` لازم‌اند تا نسخهٔ تازهٔ برنامه داخل APK قرار بگیرد. ورود و همگام‌سازی ابری در APK از طریق API سایت `https://date-one-roan.vercel.app` انجام می‌شوند و به اینترنت نیاز دارند؛ داده‌های محلی برنامه آفلاین کار می‌کنند. نشست حساب در کوکی HttpOnly اندروید نگه داشته می‌شود و کلید ارتباط با بک‌اند داخل APK قرار نمی‌گیرد.
+
+⁧اگر آدرس سایت عوض شد، پیش از `cap sync android` متغیر `BUDGETYAR_MOBILE_API_URL` را به مبدأ HTTPS جدید تنظیم کنید و APK را دوباره بسازید؛ مقدار پیش‌فرض در `capacitor.config.ts` ثبت شده است.
+
 ## Budgetyar AI analysis
 
 The Budgetyar playground can generate financial advice on demand from its Health page using [GapGPT's OpenAI-compatible API](https://gapgpt.app/platform-v2/docs/quickstart). Set these server-side environment variables in the frontend Vercel project; for local `npm run dev`, set them in `playground/.env`:

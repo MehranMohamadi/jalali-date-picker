@@ -8,6 +8,7 @@ import {
   registerables,
 } from 'chart.js'
 import { Capacitor, registerPlugin } from '@capacitor/core'
+import { requestCloudApi } from './cloudApi'
 import { addJalaliDays, getJalaliMonthLength, parseJalaliInput, toGregorian, toJalali } from '../../src/utils/jalali'
 import { applyCreditAdjustments, getCreditMonths } from '../../src/utils/creditLedger'
 import { localAccountKey, planLocalAccountSwitch } from '../../src/utils/accountLocal'
@@ -3563,7 +3564,7 @@ function setStorageMode(mode: StorageMode) {
 async function checkCloudSession() {
   cloudAuthStatus.value = 'checking'
   try {
-    const response = await fetch('/api/account', { credentials: 'same-origin', cache: 'no-store' })
+    const response = await requestCloudApi('/api/account')
     const result = await response.json() as { authenticated?: boolean, user?: { id?: string }, error?: string }
     if (!response.ok) throw new Error(result.error || 'اتصال ابری در دسترس نیست')
     const accountId = result.authenticated && typeof result.user?.id === 'string' ? result.user.id : ''
@@ -3589,7 +3590,7 @@ async function checkCloudSession() {
 }
 
 async function cloudRequest(init: RequestInit = {}) {
-  const response = await fetch('/api/cloud-sync', {
+  const response = await requestCloudApi('/api/cloud-sync', {
     ...init,
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json', ...init.headers },

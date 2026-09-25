@@ -118,7 +118,7 @@ Compact project guide for future Codex turns. Keep it accurate and update it whe
 - Financial-advice requests should send only the data needed for analysis. Current README says the playground sends aggregate totals/trends and category summaries, not individual transactions; preserve that privacy boundary unless explicitly changed.
 - The Vercel API and Nuxt server API may have different runtime/configuration constraints. Keep secrets server-side and verify the matching deployment path when changing either handler.
 - Account and cloud sync use `api/account.ts` and `api/cloud-sync.ts` on Vercel, with matching `playground/server/api/` routes for Nuxt development. Shared cookie, account, and proxy logic is in `src/server/cloudAccess.ts` and `src/server/accountApi.ts`. The browser never receives the backend bearer token or URL; the frontend server reads them from environment variables documented in `README.md`.
-- Cloud sync currently targets the hosted site/PWA. Capacitor's bundled static app needs a separate remote API/session path before cloud sync can work in an APK.
+- The bundled Capacitor app uses `BudgetyarApiPlugin.java` to call the hosted frontend account/cloud API with Android's HttpOnly cookie jar. Its HTTPS origin is set in `capacitor.config.ts` and can be overridden with `BUDGETYAR_MOBILE_API_URL` before `cap sync android`. Keep the backend bearer token on the frontend server.
 - Backend configuration examples belong in `backend/.env.example`; never commit real credentials. Read `backend/README.md` before changing backend routes, storage, or migrations.
 - Keep schema migrations additive and compatible with existing deployments; do not rewrite applied migrations.
 
@@ -130,6 +130,7 @@ Compact project guide for future Codex turns. Keep it accurate and update it whe
 - Do not revert unrelated user changes.
 - Follow `RTK.md`: prefix shell commands with `rtk` when supported. If a shell builtin is unsupported, use a suitable wrapped executable or the narrowest fallback.
 - Avoid printing `.env` contents, credentials, or personal finance data in command output.
+- After Android changes, do not build an APK automatically. Give the user the documented PowerShell commands to build it themselves.
 - For package changes, inspect public entry points and README contracts. For finance changes, inspect the relevant domain utility, composable consumer, and page instead of scanning the whole app.
 
 ## Verification

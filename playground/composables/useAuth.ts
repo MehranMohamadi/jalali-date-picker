@@ -1,3 +1,5 @@
+import { requestCloudApi } from './cloudApi'
+
 export interface AuthUser {
   id: string
   username: string
@@ -53,7 +55,7 @@ function accountChanged() {
 }
 
 async function requestAccount(body: Record<string, unknown>) {
-  const response = await fetch('/api/account', {
+  const response = await requestCloudApi('/api/account', {
     method: 'POST',
     credentials: 'same-origin',
     cache: 'no-store',
@@ -93,7 +95,7 @@ export function useAuth() {
       localStorage.removeItem('budgetyar-users-v1')
       localStorage.removeItem('budgetyar-current-user-v1')
       sessionStorage.removeItem('budgetyar-session-user-v1')
-      const response = await fetch('/api/account', { credentials: 'same-origin', cache: 'no-store' })
+      const response = await requestCloudApi('/api/account')
       const result = await response.json() as { authenticated?: boolean, user?: AuthUser }
       currentUser.value = response.ok && result.authenticated ? result.user ?? null : null
       loadAvatarForUser(currentUser.value)
