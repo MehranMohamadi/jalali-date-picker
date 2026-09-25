@@ -17,6 +17,7 @@ const {
   editInstallmentPlan,
   cancelInstallmentEdit,
   payInstallment,
+  undoInstallmentPayment,
   removeInstallmentPlan,
   getCategory,
   getPaymentMethodLabel,
@@ -119,6 +120,9 @@ const {
                   <span v-for="item in month.items" :key="item.id" :class="{ paid: item.isPaid }">
                     <b>{{ item.title }}</b>
                     <small>{{ item.dueDate }} · {{ formatMoney(item.amount) }} · {{ item.isPaid ? 'پرداخت‌شده' : 'پرداخت‌نشده' }}</small>
+                    <button v-if="item.isPaid" class="soft-button" type="button" @click="undoInstallmentPayment(item.planId, item.installmentIndex)">
+                      برگرداندن پرداخت
+                    </button>
                   </span>
                 </div>
               </td>

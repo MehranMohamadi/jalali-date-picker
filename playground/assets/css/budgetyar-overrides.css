@@ -293,6 +293,12 @@
   color: #fbbf24;
 }
 
+.monthly-installment-items .soft-button {
+  justify-self: start;
+  min-height: 30px;
+  padding: 4px 8px;
+}
+
 .monthly-installment-items .paid small {
   color: #6ee7b7;
 }

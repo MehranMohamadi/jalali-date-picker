@@ -27,14 +27,14 @@ const visibleTransactions = computed(() => filteredTransactions.value.slice(0, v
 const hasMoreTransactions = computed(() => visibleTransactionLimit.value < filteredTransactions.value.length)
 
 const filteredExpenseTotal = computed(() => filteredTransactions.value
-  .filter((item) => item.type === 'expense')
+  .filter((item) => item.type === 'expense' && item.sourceType !== 'credit-payment')
   .reduce((sum, item) => sum + item.amount, 0))
 
 const filteredCategoryExpenseTotals = computed(() => {
   const groups = new Map<string, { key: string; label: string; icon: string; amount: number }>()
 
   filteredTransactions.value
-    .filter((item) => item.type === 'expense')
+    .filter((item) => item.type === 'expense' && item.sourceType !== 'credit-payment')
     .forEach((item) => {
       const category = getCategory(item.category ?? 'other')
       const current = groups.get(category.key) ?? {

@@ -10,6 +10,7 @@ import {
 import { Capacitor, registerPlugin } from '@capacitor/core'
 import { addJalaliDays, getJalaliMonthLength, parseJalaliInput, toGregorian, toJalali } from '../../src/utils/jalali'
 import { getCreditMonths } from '../../src/utils/creditLedger'
+import { getForecastInstallmentEvents, getNextUnpaidInstallmentIndex, getPaidInstallmentIndexes, setInstallmentPaid } from '../../src/utils/installmentLedger'
 import {
   buildCashflowTimeline,
   getCashflowRiskLevel,
@@ -82,6 +83,7 @@ export interface Transaction {
   sourceType?: 'manual' | 'recurring' | 'installment' | 'bank-notification' | 'credit-payment'
   sourceId?: string
   sourceDate?: string
+  installmentIndex?: number
   autoCategorized?: boolean
   categorizationRuleId?: string
   merchantName?: string
@@ -101,6 +103,7 @@ export interface InstallmentPlan {
   dueDay: number
   totalCount: number
   paidCount: number
+  paidIndexes?: number[]
   description?: string
   paymentMethod: PaymentMethod
 }
@@ -685,19 +688,20 @@ const currentWeekTransactions = computed(() =>
     return date >= currentWeekStartKey && date <= currentWeekEndKey
   }),
 )
-const expenseTransactions = computed(() => currentMonthTransactions.value.filter((item) => item.type === 'expense'))
+const expenseTransactions = computed(() => currentMonthTransactions.value.filter((item) => item.type === 'expense' && item.sourceType !== 'credit-payment'))
 const incomeTransactions = computed(() => currentMonthTransactions.value.filter((item) => item.type === 'income'))
-const weeklyExpenseTransactions = computed(() => currentWeekTransactions.value.filter((item) => item.type === 'expense'))
+const weeklyExpenseTransactions = computed(() => currentWeekTransactions.value.filter((item) => item.type === 'expense' && item.sourceType !== 'credit-payment'))
 const weeklyIncomeTransactions = computed(() => currentWeekTransactions.value.filter((item) => item.type === 'income'))
-const previousExpense = computed(() => previousMonthTransactions.value.filter((item) => item.type === 'expense').reduce((sum, item) => sum + item.amount, 0))
+const previousExpense = computed(() => previousMonthTransactions.value.filter((item) => item.type === 'expense' && item.sourceType !== 'credit-payment').reduce((sum, item) => sum + item.amount, 0))
 const previousIncome = computed(() => previousMonthTransactions.value.filter((item) => item.type === 'income').reduce((sum, item) => sum + item.amount, 0))
 const totalIncome = computed(() => incomeTransactions.value.reduce((sum, item) => sum + item.amount, 0))
 const totalExpense = computed(() => expenseTransactions.value.reduce((sum, item) => sum + item.amount, 0))
-const creditMonths = computed(() => getCreditMonths(transactions.value))
+const postedTransactions = computed(() => transactions.value.filter((item) => normalizeJalaliDate(item.date) <= todayKey))
+const creditMonths = computed(() => getCreditMonths(postedTransactions.value))
 const creditExpense = computed(() => creditMonths.value.reduce((sum, month) => sum + month.remaining, 0))
 const creditRemaining = computed(() => Math.max(creditLimit.value - creditExpense.value, 0))
-const cashExpense = computed(() => transactions.value.filter((item) => item.type === 'expense' && item.paymentMethod !== 'credit').reduce((sum, item) => sum + item.amount, 0))
-const cashBeforeCreditPayment = computed(() => transactions.value.filter((item) => item.type === 'income').reduce((sum, item) => sum + item.amount, 0) - cashExpense.value)
+const cashExpense = computed(() => postedTransactions.value.filter((item) => item.type === 'expense' && item.paymentMethod !== 'credit').reduce((sum, item) => sum + item.amount, 0))
+const cashBeforeCreditPayment = computed(() => postedTransactions.value.filter((item) => item.type === 'income').reduce((sum, item) => sum + item.amount, 0) - cashExpense.value)
 const balanceAfterCreditPayment = computed(() => cashBeforeCreditPayment.value - creditExpense.value)
 const loanedExpense = computed(() => expenseTransactions.value.filter((item) => item.isLoan).reduce((sum, item) => sum + item.amount, 0))
 const essentialExpense = computed(() => expenseTransactions.value.filter((item) => item.isEssential !== false).reduce((sum, item) => sum + item.amount, 0))
@@ -777,7 +781,7 @@ const todayIncome = computed(() => incomeTransactions.value.filter((item) => nor
 const averageDailyExpense = computed(() => Math.round(totalExpense.value / Math.max(currentJalaliDate.day, 1)))
 const latestExpenses = computed(() =>
   [...transactions.value]
-    .filter((item) => item.type === 'expense')
+    .filter((item) => item.type === 'expense' && item.sourceType !== 'credit-payment')
     .sort((a, b) => normalizeJalaliDate(b.date).localeCompare(normalizeJalaliDate(a.date)) || b.id - a.id)
     .slice(0, 3),
 )
@@ -790,12 +794,15 @@ const latestLoans = computed(() =>
 const installmentSummaries = computed(() =>
   installments.value
     .map((plan) => {
-      const remainingCount = Math.max(plan.totalCount - plan.paidCount, 0)
-      const nextDueDate = remainingCount ? getInstallmentDueDate(plan, plan.paidCount) : ''
+      const paidCount = getPaidInstallmentIndexes(plan).length
+      const remainingCount = Math.max(plan.totalCount - paidCount, 0)
+      const nextIndex = getNextUnpaidInstallmentIndex(plan)
+      const nextDueDate = nextIndex >= 0 ? getInstallmentDueDate(plan, nextIndex) : ''
       const status = getInstallmentStatus(plan)
 
       return {
         ...plan,
+        paidCount,
         remainingCount,
         nextDueDate,
         status,
@@ -811,6 +818,8 @@ const installmentSummaries = computed(() =>
 const installmentMonthlySchedule = computed(() => {
   const months = new Map<string, Array<{
     id: string
+    planId: number
+    installmentIndex: number
     title: string
     amount: number
     dueDate: string
@@ -818,17 +827,25 @@ const installmentMonthlySchedule = computed(() => {
   }>>()
 
   installments.value.forEach((plan) => {
+    const paidIndexes = new Set(getPaidInstallmentIndexes(plan))
     for (let index = 0; index < plan.totalCount; index += 1) {
       const dueDate = getInstallmentDueDate(plan, index)
       const month = dueDate.slice(0, 7)
       const items = months.get(month) ?? []
+      const isPaid = paidIndexes.has(index)
+      const payment = isPaid ? transactions.value.find((item) =>
+        item.type === 'expense' && item.sourceType === 'installment' && item.sourceId === String(plan.id)
+          && (item.installmentIndex === index || (item.installmentIndex === undefined && item.sourceDate === dueDate)),
+      ) : undefined
 
       items.push({
         id: `${plan.id}-${index}`,
+        planId: plan.id,
+        installmentIndex: index,
         title: plan.title,
-        amount: plan.amount,
+        amount: payment?.amount ?? plan.amount,
         dueDate,
-        isPaid: index < plan.paidCount,
+        isPaid,
       })
       months.set(month, items)
     }
@@ -1335,7 +1352,7 @@ const monthlyTrendPoints = computed(() =>
     const prefix = getJalaliMonthPrefix(date)
     const monthTransactions = transactions.value.filter((item) => normalizeJalaliDate(item.date).startsWith(prefix))
     const income = monthTransactions.filter((item) => item.type === 'income').reduce((sum, item) => sum + item.amount, 0)
-    const expense = monthTransactions.filter((item) => item.type === 'expense').reduce((sum, item) => sum + item.amount, 0)
+    const expense = monthTransactions.filter((item) => item.type === 'expense' && item.sourceType !== 'credit-payment').reduce((sum, item) => sum + item.amount, 0)
 
     return {
       label: months[date.month - 1],
@@ -1528,10 +1545,26 @@ function getInstallmentDueDate(plan: InstallmentPlan, index: number) {
   return formatJalaliInputDate({ ...dueMonth, day })
 }
 
-function getInstallmentStatus(plan: InstallmentPlan) {
-  if (plan.paidCount >= plan.totalCount) return 'completed'
+function getInstallmentPaymentIndex(transaction: Transaction, plan: InstallmentPlan) {
+  if (transaction.installmentIndex !== undefined) return transaction.installmentIndex
+  return Array.from({ length: plan.totalCount }, (_, index) => index)
+    .find((index) => getInstallmentDueDate(plan, index) === transaction.sourceDate) ?? -1
+}
 
-  const dueDate = getInstallmentDueDate(plan, plan.paidCount)
+function reopenInstallmentPayment(transaction: Transaction) {
+  if (transaction.sourceType !== 'installment') return
+  installments.value = installments.value.map((plan) => {
+    if (String(plan.id) !== transaction.sourceId) return plan
+    const index = getInstallmentPaymentIndex(transaction, plan)
+    return index < 0 ? plan : { ...plan, ...setInstallmentPaid(plan, index, false) }
+  })
+}
+
+function getInstallmentStatus(plan: InstallmentPlan) {
+  const nextIndex = getNextUnpaidInstallmentIndex(plan)
+  if (nextIndex < 0) return 'completed'
+
+  const dueDate = getInstallmentDueDate(plan, nextIndex)
   const upcomingLimit = formatJalaliInputDate(addJalaliDays(currentJalaliDate, 7))
 
   if (dueDate < todayKey) return 'overdue'
@@ -1817,8 +1850,19 @@ function saveTransaction() {
 
   if (editingId.value) {
     const previous = transactions.value.find((item) => item.id === editingId.value)
+    if (previous?.sourceType === 'installment' && payload.type === 'expense' && payload.date > todayKey) {
+      pushToast('تاریخ پرداخت قسط نمی‌تواند در آینده باشد')
+      return
+    }
     if (previous?.sourceType === 'credit-payment' && payload.type === 'expense' && payload.paymentMethod === 'cash') {
       payload = { ...payload, sourceType: previous.sourceType, sourceId: previous.sourceId, sourceDate: previous.sourceDate }
+    }
+    if (previous?.sourceType === 'installment') {
+      if (payload.type === 'expense') {
+        payload = { ...payload, sourceType: previous.sourceType, sourceId: previous.sourceId, sourceDate: previous.sourceDate, installmentIndex: previous.installmentIndex }
+      } else {
+        reopenInstallmentPayment(previous)
+      }
     }
     transactions.value = transactions.value.map((item) => (item.id === editingId.value ? payload : item))
     pushToast('ویرایش شد ✨')
@@ -1831,6 +1875,9 @@ function saveTransaction() {
 }
 
 function removeTransaction(id: number) {
+  const transaction = transactions.value.find((item) => item.id === id)
+  if (!transaction || !window.confirm(`تراکنش «${transaction.title}» حذف شود؟`)) return
+  reopenInstallmentPayment(transaction)
   transactions.value = transactions.value.filter((item) => item.id !== id)
   pushToast('حذف شد 🗑️')
 }
@@ -1993,7 +2040,8 @@ function addInstallmentPlan() {
   const existingPlan = editingInstallmentId.value
     ? installments.value.find((item) => item.id === editingInstallmentId.value)
     : undefined
-  const totalCount = Math.max(1, existingPlan?.paidCount ?? 0, Math.trunc(Number(installmentForm.totalCount) || 0))
+  const highestPaidIndex = existingPlan ? Math.max(-1, ...getPaidInstallmentIndexes(existingPlan)) : -1
+  const totalCount = Math.max(1, highestPaidIndex + 1, Math.trunc(Number(installmentForm.totalCount) || 0))
   const dueDay = Math.min(31, Math.max(1, Math.trunc(Number(installmentForm.dueDay) || 1)))
 
   if (!title || !amount || !installmentForm.startDate) return
@@ -2012,8 +2060,14 @@ function addInstallmentPlan() {
   }
 
   if (existingPlan) {
+    const paidIndexes = getPaidInstallmentIndexes(existingPlan)
+    transactions.value = transactions.value.map((item) => {
+      if (item.sourceType !== 'installment' || item.sourceId !== String(existingPlan.id)) return item
+      const index = getInstallmentPaymentIndex(item, existingPlan)
+      return index < 0 ? item : { ...item, installmentIndex: index }
+    })
     installments.value = installments.value.map((item) =>
-      item.id === existingPlan.id ? { ...plan, id: existingPlan.id, paidCount: existingPlan.paidCount } : item,
+      item.id === existingPlan.id ? { ...plan, id: existingPlan.id, paidCount: paidIndexes.length, paidIndexes } : item,
     )
     resetInstallmentForm()
     pushToast('قسط ویرایش شد ✅')
@@ -2045,9 +2099,10 @@ function cancelInstallmentEdit() {
 }
 
 function payInstallment(plan: InstallmentPlan) {
-  if (plan.paidCount >= plan.totalCount) return
+  const index = getNextUnpaidInstallmentIndex(plan)
+  if (index < 0) return
 
-  const dueDate = getInstallmentDueDate(plan, plan.paidCount)
+  const dueDate = getInstallmentDueDate(plan, index)
   const transaction: Transaction = {
     id: Date.now(),
     type: 'expense',
@@ -2062,13 +2117,43 @@ function payInstallment(plan: InstallmentPlan) {
     sourceType: 'installment',
     sourceId: String(plan.id),
     sourceDate: dueDate,
+    installmentIndex: index,
   }
 
   transactions.value = [transaction, ...transactions.value]
   installments.value = installments.value.map((item) =>
-    item.id === plan.id ? { ...item, paidCount: Math.min(item.paidCount + 1, item.totalCount) } : item,
+    item.id === plan.id ? { ...item, ...setInstallmentPaid(item, index, true) } : item,
   )
   pushToast('قسط پرداخت و هزینه ثبت شد ✅')
+}
+
+function undoInstallmentPayment(planId: number, index: number) {
+  const plan = installments.value.find((item) => item.id === planId)
+  if (!plan || !getPaidInstallmentIndexes(plan).includes(index)) return
+
+  const dueDate = getInstallmentDueDate(plan, index)
+  const payment = transactions.value.find((item) =>
+    item.type === 'expense' && item.sourceType === 'installment' && item.sourceId === String(planId)
+      && getInstallmentPaymentIndex(item, plan) === index,
+  )
+  const hasUnmatchedPayment = transactions.value.some((item) =>
+    item.type === 'expense' && item.sourceType === 'installment' && item.sourceId === String(planId)
+      && getInstallmentPaymentIndex(item, plan) < 0,
+  )
+  if (!payment && hasUnmatchedPayment) {
+    pushToast('تراکنش این قسط مشخص نیست؛ ابتدا آن را از فهرست تراکنش‌ها بررسی کنید')
+    return
+  }
+  const message = payment
+    ? `پرداخت قسط «${plan.title}» با سررسید ${dueDate} برگردانده شود؟ تراکنش پرداخت آن هم حذف می‌شود.`
+    : `وضعیت پرداخت قسط «${plan.title}» با سررسید ${dueDate} برگردانده شود؟`
+  if (!window.confirm(message)) return
+
+  installments.value = installments.value.map((item) =>
+    item.id === planId ? { ...item, ...setInstallmentPaid(item, index, false) } : item,
+  )
+  if (payment) transactions.value = transactions.value.filter((item) => item.id !== payment.id)
+  pushToast('پرداخت قسط برگردانده شد')
 }
 
 function removeInstallmentPlan(id: number) {
@@ -2622,11 +2707,7 @@ function getCashflowEvents() {
   const events: Array<{ date: string; amount: number; kind: 'income' | 'expense'; source?: 'recurring' | 'installment' | 'budget' }> = []
   const endDate = formatJalaliInputDate(addJalaliDays(currentJalaliDate, getForecastDayCount() - 1))
 
-  activeInstallmentSummaries.value.forEach((item) => {
-    if (item.nextDueDate >= todayKey && item.nextDueDate <= endDate) {
-      events.push({ date: item.nextDueDate, amount: item.amount, kind: 'expense', source: 'installment' })
-    }
-  })
+  events.push(...getForecastInstallmentEvents(unpaidInstallmentOccurrences.value, todayKey, endDate))
 
   activeRecurringItems.value.forEach((item) => {
     getRecurringOccurrences(item, todayKey, endDate).forEach((date) => {
@@ -4379,7 +4460,7 @@ export function useBudgetyar() {
     filteredTransactions, dailyTrend, hasExpenseData, expenseShareChartData, categoryBarChartData, trendLineChartData, dailyExpensePoints, weeklyFlowPoints, budgetAnalysisItems, monthlyTrendPoints, hasMonthlyTrendData, commitmentTotal, flexibleAfterCommitments, statsExpenseMixChartData, statsBudgetUsageChartData, statsDailyExpenseChartData, statsWeeklyFlowChartData, statsCashFlowChartData, statsEssentialChartData, statsPaymentMethodChartData, statsMonthlyTrendChartData, statsCommitmentChartData,
     summaryLines, insights, dashboardCards, widgets, statsItems,
     getCategory, normalizeDigits, normalizeJalaliDate, getJalaliInputDay, getTrendDays, getPreviousMonthPrefix, addJalaliMonths, getInstallmentDueDate, getInstallmentStatus, getInstallmentStatusLabel, getCurrentWeekRange, getWeekdayLabel, getJalaliMonthPrefix, getCurrentJalaliDate, formatJalaliInputDate, formatDisplayJalaliDate, jalaliInputToIso, isoToJalaliInput, toPersianNumber, parseMoneyInput, formatMoneyInput, formatMoneyWords, formatMoney, formatCompact, progressPercent, getChangePercent, formatPercentHint, formatChangeSentence, getRiskLabel, getFinancialHealthLevelLabel,
-    selectSection, openModal, editTransaction, saveTransaction, removeTransaction, refreshBankNotifications, openNotificationAccessSettings, updateSelectedBankPackage, acceptBankSuggestion, dismissBankSuggestion, formatSuggestionDate, updateMoneyInput, updateCreditLimit, recordCreditPayment, updateBudget, addCategory, deleteCategory, addInstallmentPlan, editInstallmentPlan, cancelInstallmentEdit, payInstallment, removeInstallmentPlan,
+    selectSection, openModal, editTransaction, saveTransaction, removeTransaction, refreshBankNotifications, openNotificationAccessSettings, updateSelectedBankPackage, acceptBankSuggestion, dismissBankSuggestion, formatSuggestionDate, updateMoneyInput, updateCreditLimit, recordCreditPayment, updateBudget, addCategory, deleteCategory, addInstallmentPlan, editInstallmentPlan, cancelInstallmentEdit, payInstallment, undoInstallmentPayment, removeInstallmentPlan,
     addGoal, editGoal, updateGoal, deleteGoal, archiveGoal, pauseGoal, resumeGoal, addGoalContribution, withdrawFromGoal, getGoalProgress, getGoalRemainingAmount, getGoalSuggestedMonthlySaving, getGoalSuggestedWeeklySaving, getGoalUnitLabel, getGoalTransactionTypeLabel, formatGoalAmount, formatGoalTrackedAmount, getGoalEstimatedValue, getGoalTrackingModeLabel, getGoalHealthLabel, getGoalScenario, getGoalTransactions, getGoalSummary, getGoalSavedValue, getGoalTargetValue,
     addRecurringItem, editRecurringItem, updateRecurringItem, deleteRecurringItem, toggleRecurringItem, getRecurringNextDueDate, markRecurringItemPaid, skipRecurringOccurrence, createTransactionFromRecurringItem, getRecurringStatusLabel, createPurchaseTransaction, setThemeMode, refreshMarketRates, getDaysUntilDue, resetRecurringForm,
     addDebt, editDebt, updateDebt, deleteDebt, toggleDebt, recordDebtPayment, calculateDebtPayoffPlan,
