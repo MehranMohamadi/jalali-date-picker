@@ -18,6 +18,7 @@ import {
   Settings,
   ShieldCheck,
   Target,
+  UserCheck,
   WalletCards,
 } from 'lucide-vue-next'
 
@@ -51,6 +52,7 @@ const navItems = [
   { label: '‏سلامت مالی', path: '/health', group: '‏تحلیل و کنترل', icon: ShieldCheck },
   { label: '‏تحلیل‌ها', path: '/analytics', group: '‏گزارش و تنظیمات', icon: ChartNoAxesCombined },
   { label: '‏اعلان‌ها', path: '/notifications', group: '‏گزارش و تنظیمات', icon: Bell },
+  { label: '‏حساب کاربری', path: '/login', group: '‏گزارش و تنظیمات', icon: UserCheck },
   { label: '‏تنظیمات', path: '/settings', group: '‏گزارش و تنظیمات', icon: Settings },
 ]
 

@@ -9,7 +9,6 @@ const {
   creditRemaining,
   themeMode,
   isStandalone,
-  cloudPassword,
   cloudAuthStatus,
   cloudAuthMessage,
   cloudSnapshotVersion,
@@ -24,7 +23,6 @@ const {
   importBackup,
   installApp,
   setStorageMode,
-  signInCloud,
   testCloudConnection,
   migrateLocalDataToCloud,
   downloadCloudSnapshot,
@@ -98,10 +96,7 @@ function updateStorageMode(event: Event) {
       <p v-if="storageMode === 'local'" class="app-version">
         اطلاعات فعلی بدون تغییر در همین دستگاه باقی می‌مانند.
       </p>
-      <label v-if="storageMode === 'cloud' && cloudAuthStatus !== 'authenticated'">رمز ورود به فضای ابری
-        <input v-model="cloudPassword" type="password" autocomplete="current-password" />
-      </label>
-      <button v-if="storageMode === 'cloud' && cloudAuthStatus !== 'authenticated'" class="primary-button pwa-install" type="button" :disabled="cloudAuthStatus === 'checking' || !cloudPassword" @click="signInCloud">ورود</button>
+      <NuxtLink v-if="storageMode === 'cloud' && cloudAuthStatus !== 'authenticated'" to="/login" class="primary-button pwa-install">ورود یا ساخت حساب برای ذخیرهٔ ابری</NuxtLink>
       <p v-if="storageMode === 'cloud' && cloudAuthMessage" class="app-version" role="status">{{ cloudAuthMessage }}</p>
       <label v-if="storageMode === 'cloud'">وضعیت داده ابری
         <input :value="cloudDirty ? 'در انتظار همگام‌سازی' : cloudSnapshotVersion ? `نسخه ${cloudSnapshotVersion}` : 'هنوز منتقل نشده'" type="text" readonly />

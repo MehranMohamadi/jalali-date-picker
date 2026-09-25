@@ -1,4 +1,4 @@
-import { getCloudConfig, hasCloudSession, proxyCloudSnapshot, sameOrigin } from '../../../src/server/cloudAccess'
+import { accountSession, getCloudConfig, proxyCloudSnapshot, sameOrigin } from '../../../src/server/cloudAccess'
 
 export default defineEventHandler(async (event) => {
   setHeader(event, 'Cache-Control', 'no-store')
@@ -7,7 +7,8 @@ export default defineEventHandler(async (event) => {
     setResponseStatus(event, 503)
     return { error: 'اتصال ابری در سرور تنظیم نشده است' }
   }
-  if (!hasCloudSession(getHeader(event, 'cookie'), config)) {
+  const session = accountSession(getHeader(event, 'cookie'))
+  if (!session) {
     setResponseStatus(event, 401)
     return { error: 'ابتدا با رمز وارد شوید' }
   }
@@ -25,7 +26,7 @@ export default defineEventHandler(async (event) => {
       setResponseStatus(event, 413)
       return { error: 'حجم داده بیش از حد مجاز است' }
     }
-    const result = await proxyCloudSnapshot(config, event.method, body)
+    const result = await proxyCloudSnapshot(config, event.method, session, body)
     setResponseStatus(event, result.status)
     return JSON.parse(result.body)
   } catch {

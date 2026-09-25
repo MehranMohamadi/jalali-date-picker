@@ -29,9 +29,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			platform.WriteError(w, http.StatusServiceUnavailable, "database is unavailable")
 			return
 		}
+		account, err := store.AccountForSession(r.Context(), r.Header.Get("X-Budgetyar-Session"))
+		if errors.Is(err, platform.ErrInvalidCredentials) {
+			platform.WriteError(w, http.StatusUnauthorized, "session expired")
+			return
+		}
+		if err != nil {
+			platform.WriteError(w, http.StatusInternalServerError, "could not load account")
+			return
+		}
 		switch r.Method {
 		case http.MethodGet:
-			snapshot, err := store.LoadSnapshot(r.Context(), cfg.UserID)
+			snapshot, err := store.LoadSnapshot(r.Context(), account.ID)
 			if errors.Is(err, pgx.ErrNoRows) {
 				platform.WriteError(w, http.StatusNotFound, "no cloud snapshot exists")
 				return
@@ -54,7 +63,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				platform.WriteError(w, http.StatusBadRequest, "invalid Budgetyar data")
 				return
 			}
-			snapshot, err := store.SaveSnapshot(r.Context(), cfg.UserID, request.ExpectedVersion, request.Data)
+			snapshot, err := store.SaveSnapshot(r.Context(), account.ID, request.ExpectedVersion, request.Data)
 			if errors.Is(err, platform.ErrVersionConflict) {
 				platform.WriteError(w, http.StatusConflict, "cloud snapshot changed; download it before uploading again")
 				return

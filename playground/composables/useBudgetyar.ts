@@ -10,6 +10,7 @@ import {
 import { Capacitor, registerPlugin } from '@capacitor/core'
 import { addJalaliDays, getJalaliMonthLength, parseJalaliInput, toGregorian, toJalali } from '../../src/utils/jalali'
 import { applyCreditAdjustments, getCreditMonths } from '../../src/utils/creditLedger'
+import { localAccountKey, planLocalAccountSwitch } from '../../src/utils/accountLocal'
 import { getForecastInstallmentEvents, getNextUnpaidInstallmentIndex, getPaidInstallmentIndexes, setInstallmentPaid } from '../../src/utils/installmentLedger'
 import {
   buildCashflowTimeline,
@@ -435,7 +436,6 @@ const pickerDateRange = computed({
 const isModalOpen = ref(false)
 const formType = ref<TransactionType>('expense')
 const toasts = ref<ToastMessage[]>([])
-const cloudPassword = ref('')
 const cloudAuthStatus = ref<'unknown' | 'checking' | 'authenticated' | 'unauthenticated' | 'unavailable'>('unknown')
 const cloudAuthMessage = ref('')
 const cloudSnapshotVersion = ref(0)
@@ -446,6 +446,7 @@ const cloudDirty = ref(false)
 let cloudReadyForAutoSync = false
 let cloudAutoSyncTimer: ReturnType<typeof setTimeout> | null = null
 let cloudLastSnapshotJson = ''
+let cloudAccountId = ''
 const editingId = ref<number | null>(null)
 const expenseShareCanvas = ref<HTMLCanvasElement | null>(null)
 const categoryBarCanvas = ref<HTMLCanvasElement | null>(null)
@@ -3489,11 +3490,37 @@ function buildCloudSnapshotJson() {
   return JSON.stringify(snapshot)
 }
 
+function emptyAccountSnapshot(): Record<string, unknown> {
+  return {
+    app: 'budgetyar', version: 1, transactions: [], categories: [...defaultCategories], budgets: [],
+    installments: [], goals: [], goalTransactions: [], recurringItems: [], debts: [],
+    categorizationRules: [], incomeSettings: {}, creditLimit: 0, creditAdjustments: {},
+  }
+}
+
+function switchLocalAccount(nextAccountId: string) {
+  if (nextAccountId === cloudAccountId) return
+  const currentSnapshot = buildCloudSnapshotJson()
+  const emptySnapshot = JSON.stringify(emptyAccountSnapshot())
+  const plan = planLocalAccountSwitch(cloudAccountId, nextAccountId, currentSnapshot, localStorage.getItem(localAccountKey(nextAccountId)), emptySnapshot)
+  for (const [key, value] of plan.saves) localStorage.setItem(key, value)
+  if (plan.restore) {
+    try {
+      applyBackupRecord(JSON.parse(plan.restore) as Record<string, unknown>)
+      return
+    } catch {
+      localStorage.removeItem(localAccountKey(nextAccountId))
+    }
+  }
+  if (plan.restore !== null) applyBackupRecord(emptyAccountSnapshot())
+}
+
 function persistCloudConfiguration() {
   localStorage.setItem(CLOUD_SETTINGS_STORAGE_KEY, JSON.stringify({
     version: cloudSnapshotVersion.value,
     storageMode: storageMode.value,
     dirty: cloudDirty.value,
+    accountId: cloudAccountId,
   }))
 }
 
@@ -3503,6 +3530,7 @@ function restoreCloudConfiguration() {
     cloudSnapshotVersion.value = typeof saved.version === 'number' ? Math.max(0, saved.version) : 0
     storageMode.value = saved.storageMode === 'cloud' ? 'cloud' : 'local'
     cloudDirty.value = saved.dirty === true
+    cloudAccountId = typeof saved.accountId === 'string' ? saved.accountId : ''
     if ('apiUrl' in saved || 'apiToken' in saved) persistCloudConfiguration()
   } catch {
     localStorage.removeItem(CLOUD_SETTINGS_STORAGE_KEY)
@@ -3535,37 +3563,28 @@ function setStorageMode(mode: StorageMode) {
 async function checkCloudSession() {
   cloudAuthStatus.value = 'checking'
   try {
-    const response = await fetch('/api/cloud-session', { credentials: 'same-origin', cache: 'no-store' })
-    const result = await response.json() as { authenticated?: boolean, error?: string }
+    const response = await fetch('/api/account', { credentials: 'same-origin', cache: 'no-store' })
+    const result = await response.json() as { authenticated?: boolean, user?: { id?: string }, error?: string }
     if (!response.ok) throw new Error(result.error || 'اتصال ابری در دسترس نیست')
-    cloudAuthStatus.value = result.authenticated ? 'authenticated' : 'unauthenticated'
-    cloudAuthMessage.value = result.authenticated ? '' : 'برای اتصال ابری رمز ورود را وارد کنید'
-    return result.authenticated === true
+    const accountId = result.authenticated && typeof result.user?.id === 'string' ? result.user.id : ''
+    if (accountId !== cloudAccountId) {
+      cloudReadyForAutoSync = false
+      if (cloudAutoSyncTimer) clearTimeout(cloudAutoSyncTimer)
+      cloudAutoSyncTimer = null
+      switchLocalAccount(accountId)
+      cloudSnapshotVersion.value = 0
+      cloudDirty.value = false
+      cloudLastSnapshotJson = ''
+      cloudAccountId = accountId
+      persistCloudConfiguration()
+    }
+    cloudAuthStatus.value = accountId ? 'authenticated' : 'unauthenticated'
+    cloudAuthMessage.value = accountId ? '' : 'برای استفاده از فضای ابری وارد حساب شوید'
+    return Boolean(accountId)
   } catch (error) {
     cloudAuthStatus.value = 'unavailable'
     cloudAuthMessage.value = error instanceof Error ? error.message : 'اتصال ابری در دسترس نیست'
     return false
-  }
-}
-
-async function signInCloud() {
-  cloudAuthStatus.value = 'checking'
-  try {
-    const response = await fetch('/api/cloud-session', {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: cloudPassword.value }),
-    })
-    const result = await response.json() as { authenticated?: boolean, error?: string }
-    if (!response.ok || !result.authenticated) throw new Error(result.error || 'ورود انجام نشد')
-    cloudPassword.value = ''
-    cloudAuthStatus.value = 'authenticated'
-    cloudAuthMessage.value = ''
-    if (storageMode.value === 'cloud' && cloudSnapshotVersion.value > 0) void fetchCloudSnapshot(false, true)
-  } catch (error) {
-    cloudAuthStatus.value = 'unauthenticated'
-    cloudAuthMessage.value = error instanceof Error ? error.message : 'ورود انجام نشد'
   }
 }
 
@@ -3709,6 +3728,13 @@ function scheduleCloudAutoSync() {
     cloudAutoSyncTimer = null
     void syncCloudSnapshot(true)
   }, 1200)
+}
+
+function handleAccountChanged() {
+  cloudReadyForAutoSync = false
+  if (cloudAutoSyncTimer) clearTimeout(cloudAutoSyncTimer)
+  cloudAutoSyncTimer = null
+  void checkCloudSession()
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -4549,7 +4575,7 @@ export function useBudgetyar() {
   return {
     activeSection, isMobileMenuOpen, isMobileViewport, navItems, months, years, today, todayKey, currentMonthYear, currentJalaliDate, currentMonthLength,
     categories, transactions, budgets, installments, goals, goalTransactions, recurringItems, debts, categorizationRules, incomeSettings, creditLimit, creditAdjustments, cashFlowMode, themeMode, cashflowForecastPeriod, selectedDebtStrategy, marketRates, marketRatesLoading, marketRatesError,
-    cloudPassword, cloudAuthStatus, cloudAuthMessage, cloudSnapshotVersion, cloudSyncStatus, cloudSyncMessage, storageMode, cloudDirty,
+    cloudAuthStatus, cloudAuthMessage, cloudSnapshotVersion, cloudSyncStatus, cloudSyncMessage, storageMode, cloudDirty,
     query, selectedMonth, selectedYear, selectedCategory, selectedType, dateRange, pickerDateRange,
     isModalOpen, formType, form, formAmountInWords, formDatePickerValue, editingId, toasts,
     categoryForm, installmentForm, editingInstallmentId, installmentAmountInWords, installmentStartDatePickerValue,
@@ -4582,7 +4608,7 @@ export function useBudgetyar() {
     addCategorizationRule, editCategorizationRule, updateCategorizationRule, deleteCategorizationRule, toggleCategorizationRule, matchTransactionCategoryRule, applyCategorizationRulesToTransaction, applyCategorizationRulesToAllTransactions, suggestCategorizationRules, acceptSuggestedCategorizationRule, bulkUpdateTransactionCategory,
     updateIncomeSettings, applyRecommendedBudgetPlan,
     getTransactionCategoryLabel, getPaymentMethodLabel, getNecessityLabel, buildCsvReport, buildExcelReport, buildBackupJson, importBackup, createExportFile, saveBlobToDevice, exportReport, installApp, pushToast,
-    setStorageMode, checkCloudSession, signInCloud, testCloudConnection, uploadCloudSnapshot, migrateLocalDataToCloud, downloadCloudSnapshot,
+    setStorageMode, checkCloudSession, testCloudConnection, uploadCloudSnapshot, migrateLocalDataToCloud, downloadCloudSnapshot,
     createCharts, syncCharts, scheduleChartSync, destroyCharts,
   }
 }
@@ -4669,6 +4695,7 @@ export function startBudgetyar() {
     document.addEventListener('visibilitychange', refreshCalendarOnVisibilityChange)
     bindMobileViewport()
     restoreCloudConfiguration()
+    window.addEventListener('budgetyar-account-changed', handleAccountChanged)
     isStandalone.value = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as Navigator & { standalone?: boolean }).standalone === true
     isAndroidNative.value = Capacitor.getPlatform() === 'android'
   
@@ -4840,25 +4867,24 @@ export function startBudgetyar() {
     }
 
     cloudLastSnapshotJson = buildCloudSnapshotJson()
-    if (storageMode.value === 'cloud') {
-      void checkCloudSession().then((authenticated) => {
-        if (!authenticated || storageMode.value !== 'cloud') return
-        if (cloudDirty.value && cloudSnapshotVersion.value > 0) {
-          cloudReadyForAutoSync = true
-          void syncCloudSnapshot(true)
-        } else if (cloudSnapshotVersion.value > 0) {
-          void fetchCloudSnapshot(false, true)
-        } else {
-          cloudSyncMessage.value = 'برای شروع، داده‌های این دستگاه را منتقل یا داده‌های ابری را دریافت کنید'
-        }
-      })
-    }
+    void checkCloudSession().then((authenticated) => {
+      if (!authenticated || storageMode.value !== 'cloud') return
+      if (cloudDirty.value && cloudSnapshotVersion.value > 0) {
+        cloudReadyForAutoSync = true
+        void syncCloudSnapshot(true)
+      } else if (cloudSnapshotVersion.value > 0) {
+        void fetchCloudSnapshot(false, true)
+      } else {
+        cloudSyncMessage.value = 'برای شروع، داده‌های این دستگاه را منتقل یا داده‌های ابری را دریافت کنید'
+      }
+    })
   
     nextTick(scheduleChartSync)
   })
   
   onBeforeUnmount(() => {
     document.removeEventListener('visibilitychange', refreshCalendarOnVisibilityChange)
+    window.removeEventListener('budgetyar-account-changed', handleAccountChanged)
     if (calendarRefreshTimer) clearTimeout(calendarRefreshTimer)
     calendarRefreshTimer = null
     unbindMobileViewport()

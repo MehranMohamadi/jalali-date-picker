@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { getCloudConfig, hasCloudSession, proxyCloudSnapshot, sameOrigin } from '../src/server/cloudAccess.js'
+import { accountSession, getCloudConfig, proxyCloudSnapshot, sameOrigin } from '../src/server/cloudAccess.js'
 
 export default async function handler(request: IncomingMessage & { body?: unknown }, response: ServerResponse) {
   response.setHeader('Cache-Control', 'no-store')
@@ -10,7 +10,8 @@ export default async function handler(request: IncomingMessage & { body?: unknow
     response.end(JSON.stringify({ error: 'اتصال ابری در سرور تنظیم نشده است' }))
     return
   }
-  if (!hasCloudSession(request.headers.cookie, config)) {
+  const session = accountSession(request.headers.cookie)
+  if (!session) {
     response.statusCode = 401
     response.end(JSON.stringify({ error: 'ابتدا با رمز وارد شوید' }))
     return
@@ -43,7 +44,7 @@ export default async function handler(request: IncomingMessage & { body?: unknow
       }
       if (Buffer.byteLength(body) > 2 << 20) throw new Error('large body')
     }
-    const result = await proxyCloudSnapshot(config, request.method, body)
+    const result = await proxyCloudSnapshot(config, request.method, session, body)
     response.statusCode = result.status
     response.end(result.body)
   } catch {

@@ -7,9 +7,9 @@ Compact project guide for future Codex turns. Keep it accurate and update it whe
 - This repo contains a Nuxt 3 / Vue 3 Jalali date-picker package and a larger Budgetyar finance playground.
 - The root package is published as `nuxt-jalali-minical`; `src/` builds into `dist/` via `unbuild`.
 - `playground/` is the Persian RTL Budgetyar demo app: a personal finance dashboard.
-- `api/` contains the Vercel financial-advice endpoint; `playground/server/api/` contains the Nuxt playground endpoint.
+- `api/` contains Vercel account, cloud-sync, and financial-advice endpoints; `playground/server/api/` contains matching Nuxt development endpoints.
 - `backend/` is a separate Go service with platform storage/HTTP code, finance models, health, sync, and MCP endpoints.
-- Budgetyar persists finance state in browser `localStorage`; its settings page handles backup/import and export.
+- Budgetyar keeps device finance state in `localStorage`; account-owned cloud snapshots are stored in Neon PostgreSQL through the Go backend.
 - Finance UI and app logic usually live in `playground/composables/useBudgetyar.ts`, `playground/pages/*.vue`, and `playground/assets/css/`.
 - Reusable date-picker/date logic lives in `src/` and is covered by `tests/`.
 
@@ -23,7 +23,8 @@ Compact project guide for future Codex turns. Keep it accurate and update it whe
 - `playground/pages/installments.vue`: installment form/list and payment/edit actions.
 - `playground/pages/analytics.vue`: reports, stats, charts, weekly budget analysis, and cash flow modes.
 - `playground/pages/notifications.vue`: Android/Capacitor bank notification suggestions.
-- `playground/pages/settings.vue`: export, backup/import, PWA install, and theme settings.
+- `playground/pages/settings.vue`: account-based cloud transfer, export, backup/import, PWA install, and theme settings.
+- `playground/pages/login.vue` and `playground/composables/useAuth.ts`: account UI and client session state. Never store passwords or session tokens in browser storage.
 - `playground/components/*.vue`: small UI components; transaction form is `TransactionModal.vue`.
 - `playground/assets/css/budgetyar.css`: main Budgetyar styles.
 - `playground/assets/css/budgetyar-overrides.css`: newer fixes/overrides.
@@ -34,6 +35,7 @@ Compact project guide for future Codex turns. Keep it accurate and update it whe
 - `src/components/`: package calendar and picker components; `src/composables/useJalaliCalendar.ts` owns calendar interaction state.
 - `src/module.ts`, `src/plugin.ts`, and `src/index.ts`: Nuxt module integration, plugin, and public exports. Keep package exports in sync with `package.json`.
 - `api/financial-advice.ts` and `playground/server/api/financial-advice.post.ts`: financial advice handlers; check both when changing shared behavior.
+- `src/server/cloudAccess.ts` and `accountApi.ts`: server-only backend proxy and HttpOnly account cookie. Keep `api/account.ts`, `api/cloud-sync.ts`, and their `playground/server/api/` counterparts aligned.
 - `backend/README.md`, `backend/go.mod`, and `backend/migrations/`: Go service documentation, dependencies, and schema migrations.
 - `tests/*.test.ts`: Vitest coverage for dates, bank notifications, and finance utilities.
 
@@ -92,6 +94,9 @@ Compact project guide for future Codex turns. Keep it accurate and update it whe
 - Amounts are in toman. Use `parseMoneyInput`, `formatMoneyInput`, `formatMoney`, and `formatCompact` for money input/display.
 - Validate imported/local data at boundaries and preserve compatibility with older saved records; avoid changing storage keys or shapes without a migration/fallback.
 - Treat API keys as server-only secrets. Never use public Nuxt variables for secrets or expose keys in client code/logs. See `README.md` for GapGPT setup and endpoint caveats.
+- Cloud sync requires a valid account session; the backend derives `user_id` from that session. Never accept a user ID supplied by the browser for snapshot access. Run migrations in numeric order, and preserve existing snapshots during account/schema changes.
+- `useBudgetyar.ts` keeps device snapshots under `budgetyar-account-local-v1:<account-id>` when accounts switch. Preserve the explicit upload/download step and reset cloud version/auto-sync state on account changes; never auto-upload the previous account's device data.
+- Passwords use Argon2id in the Go backend. Account sessions are opaque random tokens hashed in PostgreSQL and carried in HttpOnly cookies; same-origin checks protect write requests. The old shared cloud password and browser-only account list are obsolete.
 
 ## Android / PWA
 
@@ -112,7 +117,7 @@ Compact project guide for future Codex turns. Keep it accurate and update it whe
 
 - Financial-advice requests should send only the data needed for analysis. Current README says the playground sends aggregate totals/trends and category summaries, not individual transactions; preserve that privacy boundary unless explicitly changed.
 - The Vercel API and Nuxt server API may have different runtime/configuration constraints. Keep secrets server-side and verify the matching deployment path when changing either handler.
-- Cloud sync uses `api/cloud-session.ts` and `api/cloud-sync.ts` on Vercel, with matching `playground/server/api/` routes for Nuxt development. Shared session and proxy logic is in `src/server/cloudAccess.ts`. The browser never receives the backend bearer token or URL; the frontend server reads them from environment variables documented in `README.md`.
+- Account and cloud sync use `api/account.ts` and `api/cloud-sync.ts` on Vercel, with matching `playground/server/api/` routes for Nuxt development. Shared cookie, account, and proxy logic is in `src/server/cloudAccess.ts` and `src/server/accountApi.ts`. The browser never receives the backend bearer token or URL; the frontend server reads them from environment variables documented in `README.md`.
 - Cloud sync currently targets the hosted site/PWA. Capacitor's bundled static app needs a separate remote API/session path before cloud sync can work in an APK.
 - Backend configuration examples belong in `backend/.env.example`; never commit real credentials. Read `backend/README.md` before changing backend routes, storage, or migrations.
 - Keep schema migrations additive and compatible with existing deployments; do not rewrite applied migrations.
