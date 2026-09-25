@@ -135,3 +135,15 @@ npm test
 npm run build
 npm run dev
 ```
+
+## Budgetyar AI analysis
+
+The Budgetyar playground can generate financial advice on demand from its Health page using [GapGPT's OpenAI-compatible API](https://gapgpt.app/platform-v2/docs/quickstart). Set these server-side environment variables in the frontend Vercel project; for local `npm run dev`, set them in `playground/.env`:
+
+```text
+GAPGPT_API_KEY=your-gapgpt-api-key
+BUDGETYAR_ANALYSIS_TOKEN=a-separate-long-random-access-token
+GAPGPT_MODEL=gpt-4o
+```
+
+Enter `BUDGETYAR_ANALYSIS_TOKEN` in the Health page's password field. This access token is saved only in that browser's local storage; never enter the GapGPT API key there. The provider key remains server-side. Analysis sends only current-month aggregate totals and category names, not individual transactions, and runs only when the button is clicked. A static-file preview alone cannot serve the API route; use the Nuxt dev server locally or deploy the frontend to Vercel.

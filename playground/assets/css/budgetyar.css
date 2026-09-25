@@ -2140,6 +2140,40 @@ th {
   padding: 10px 12px;
 }
 
+.financial-ai-advice {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.financial-ai-advice > p,
+.financial-ai-access span {
+  color: var(--muted);
+  font-size: .82rem;
+  line-height: 1.8;
+}
+
+.financial-ai-access {
+  display: grid;
+  gap: 6px;
+  max-width: 360px;
+}
+
+.financial-ai-advice > button {
+  justify-self: start;
+}
+
+.financial-ai-advice .financial-ai-error {
+  color: #fca5a5;
+}
+
+.financial-ai-result {
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  line-height: 2;
+  padding: 12px;
+  white-space: pre-line;
+}
+
 .app-version {
   align-items: center;
   color: var(--muted);

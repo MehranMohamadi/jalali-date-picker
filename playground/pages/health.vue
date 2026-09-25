@@ -3,7 +3,6 @@ const budgetyar = useBudgetyar()
 const {
   financialHealthScore,
   financialHealthLevel,
-  financialHealthSuggestions,
   financialHealthWarnings,
   financialHealthStrengths,
   getFinancialHealthLevelLabel,
@@ -17,7 +16,79 @@ const {
   safeDailySpend,
   budgetUsage,
   incomeVolatilityPercent,
+  currentMonthTransactions,
+  todayKey,
+  categoryTotals,
+  getCategory,
+  balanceAfterCommitments,
+  creditExpense,
+  commitmentInstallmentDue,
+  totalBudget,
 } = budgetyar
+
+const analysisAccessToken = ref('')
+const analysisText = ref('')
+const analysisError = ref('')
+const isAnalyzing = ref(false)
+
+onMounted(() => {
+  analysisAccessToken.value = localStorage.getItem('budgetyar-analysis-access-token-v1') ?? ''
+})
+
+function saveAnalysisAccessToken() {
+  if (analysisAccessToken.value.trim()) localStorage.setItem('budgetyar-analysis-access-token-v1', analysisAccessToken.value.trim())
+  else localStorage.removeItem('budgetyar-analysis-access-token-v1')
+}
+
+async function analyzeFinancialHealth() {
+  if (isAnalyzing.value) return
+  if (!analysisAccessToken.value.trim()) {
+    analysisError.value = 'ابتدا رمز دسترسی تحلیل را وارد کنید.'
+    return
+  }
+  saveAnalysisAccessToken()
+  isAnalyzing.value = true
+  analysisError.value = ''
+  analysisText.value = ''
+
+  const postedMonth = currentMonthTransactions.value.filter((item) => item.date <= todayKey.value)
+  const monthlyIncome = postedMonth.filter((item) => item.type === 'income').reduce((sum, item) => sum + item.amount, 0)
+  const monthlyExpense = postedMonth.filter((item) => item.type === 'expense' && item.sourceType !== 'credit-payment').reduce((sum, item) => sum + item.amount, 0)
+  const snapshot = {
+    date: todayKey.value,
+    monthlyIncome,
+    monthlyExpense,
+    availableBalance: balanceAfterCommitments.value,
+    monthlyBudget: totalBudget.value,
+    unpaidCredit: creditExpense.value,
+    dueInstallments: commitmentInstallmentDue.value,
+    totalDebt: totalDebtRemaining.value,
+    safeDailySpend: safeDailySpend.value,
+    healthScore: financialHealthScore.value.totalScore,
+    categories: categoryTotals.value.map((category) => ({
+      name: getCategory(category.key).label,
+      budget: category.budget,
+      spent: postedMonth.filter((item) => item.type === 'expense' && item.sourceType !== 'credit-payment' && item.category === category.key).reduce((sum, item) => sum + item.amount, 0),
+    })).sort((first, second) => second.spent - first.spent || second.budget - first.budget).slice(0, 30),
+  }
+
+  try {
+    const response = await fetch('/api/financial-advice', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-budgetyar-analysis-token': analysisAccessToken.value.trim() },
+      body: JSON.stringify(snapshot),
+    })
+    const result = await response.json() as { analysis?: string; error?: string; statusMessage?: string }
+    if (!response.ok || !result.analysis) throw new Error(result.error || result.statusMessage || 'تحلیل انجام نشد؛ دوباره تلاش کنید.')
+    analysisText.value = result.analysis
+  } catch (error) {
+    analysisError.value = error instanceof SyntaxError
+      ? 'سرویس تحلیل در این نسخه فعال نیست؛ برنامه را از سرور توسعه یا استقرار Vercel اجرا کنید.'
+      : error instanceof Error ? error.message : 'تحلیل انجام نشد؛ دوباره تلاش کنید.'
+  } finally {
+    isAnalyzing.value = false
+  }
+}
 
 const healthDetails = computed(() => [
   { label: 'نسبت درآمد به هزینه', value: totalExpense.value ? `${toPersianNumber(Math.round((totalIncome.value / totalExpense.value) * 100))}٪` : 'بدون هزینه', tone: totalIncome.value >= totalExpense.value ? 'positive' : 'danger', help: 'بیشتر از ۱۰۰٪ یعنی درآمد این ماه هزینه‌ها را پوشش می‌دهد.' },
@@ -50,7 +121,7 @@ const healthDetails = computed(() => [
         <i :style="{ width: `${financialHealthScore.totalScore}%` }" />
       </div>
       <small class="health-explanation">امتیاز از ترکیب پس‌انداز، کنترل بودجه، فشار بدهی، امنیت جریان نقدی، هزینه‌های غیرضروری و رشد دارایی محاسبه می‌شود.</small>
-      <p>{{ financialHealthSuggestions[0] || 'وضعیت کلی قابل مدیریت است.' }}</p>
+      <p>برای دریافت توصیه‌های شخصی‌سازی‌شده، دکمهٔ تحلیل را بزنید.</p>
     </article>
 
     <section class="health-details planning-inline" aria-label="شاخص‌های تکمیلی سلامت مالی">
@@ -61,7 +132,7 @@ const healthDetails = computed(() => [
       </article>
     </section>
 
-    <p class="health-budget-note">مصرف بودجه‌ی دسته‌ها: {{ toPersianNumber(budgetUsage) }}٪. برای بهبود امتیاز، ابتدا هشدارهای قرمز را حل کنید، سپس روی افزایش پس‌انداز و کاهش تعهدات تمرکز کنید.</p>
+    <p class="health-budget-note">مصرف بودجه‌ی دسته‌ها: {{ toPersianNumber(budgetUsage) }}٪</p>
 
     <div class="installments-grid planning-card-grid planning-inline">
       <article v-for="item in financialHealthScore.items" :key="item.key" class="installment-item">
@@ -72,7 +143,6 @@ const healthDetails = computed(() => [
         <div class="progress" :class="{ danger: item.score < 50 }">
           <i :style="{ width: `${item.score}%` }" />
         </div>
-        <p>{{ item.suggestion }}</p>
       </article>
     </div>
 
@@ -84,11 +154,17 @@ const healthDetails = computed(() => [
       <span v-for="item in financialHealthWarnings" :key="item">{{ item }}</span>
     </div>
 
-    <div v-if="financialHealthSuggestions.length" class="weekly-category-budget glass-panel planning-inline">
-      <div class="weekly-category-head"><strong>پیشنهادهای کوتاه</strong><small>برای بهتر شدن امتیاز</small></div>
-      <div class="weekly-category-list">
-        <span v-for="item in financialHealthSuggestions.slice(0, 6)" :key="item"><b>{{ item }}</b></span>
-      </div>
+    <div class="weekly-category-budget glass-panel planning-inline financial-ai-advice">
+      <div class="weekly-category-head"><strong>تحلیل هوشمند مالی</strong><small>با GapGPT</small></div>
+      <p>فقط با زدن دکمه، خلاصهٔ عددی این ماه و نام دسته‌ها برای تحلیل ارسال می‌شود؛ جزئیات تراکنش‌ها ارسال نمی‌شود.</p>
+      <label class="financial-ai-access">
+        <span>رمز دسترسی تحلیل (جدا از کلید GapGPT)</span>
+        <input v-model="analysisAccessToken" type="password" autocomplete="off" placeholder="رمز تنظیم‌شده روی سرور" @change="saveAnalysisAccessToken" />
+      </label>
+      <button class="primary-button" type="button" :disabled="isAnalyzing" @click="analyzeFinancialHealth">{{ isAnalyzing ? 'در حال تحلیل…' : 'تحلیل کن' }}</button>
+      <p v-if="analysisError" class="financial-ai-error" role="alert">{{ analysisError }}</p>
+      <div v-if="analysisText" class="financial-ai-result" aria-live="polite">{{ analysisText }}</div>
+      <small v-if="analysisText">این پیشنهادها بر پایهٔ داده‌های ثبت‌شده‌اند و جایگزین مشاورهٔ مالی تخصصی نیستند.</small>
     </div>
   </section>
 </template>
