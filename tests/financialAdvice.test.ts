@@ -43,6 +43,7 @@ describe('GapGPT financial advice', () => {
   it('accepts requests without an access token and validates their body', async () => {
     expect((await analyzeFinancialAdviceBody('x', '')).status).toBe(400)
     expect((await analyzeFinancialAdviceBody(JSON.stringify(snapshot), '')).status).toBe(503)
+    expect((await analyzeFinancialAdviceBody(JSON.stringify({ ...snapshot, monthlyExpense: -1 }), 'provider-test')).status).toBe(400)
   })
 
   it('serves a Vercel-style POST without an access header', async () => {
@@ -56,9 +57,11 @@ describe('GapGPT financial advice', () => {
       end: vi.fn(),
     }
     try {
-      await handler({ method: 'POST', body: snapshot } as Parameters<typeof handler>[0], response as unknown as Parameters<typeof handler>[1])
+      await handler({ method: 'POST', body: { ...snapshot, transactionDetails: 'private' } } as Parameters<typeof handler>[0], response as unknown as Parameters<typeof handler>[1])
       expect(response.statusCode).toBe(200)
       expect(JSON.parse(response.end.mock.calls[0]![0] as string)).toEqual({ analysis: 'تحلیل آزمایشی' })
+      const requestBody = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0]![1].body as string
+      expect(requestBody).not.toContain('private')
     } finally {
       globalThis.fetch = originalFetch
       if (originalKey === undefined) delete process.env.GAPGPT_API_KEY
