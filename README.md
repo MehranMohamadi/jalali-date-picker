@@ -146,3 +146,15 @@ GAPGPT_MODEL=gpt-4o
 ```
 
 The GapGPT key remains server-side; never put it in a public Nuxt variable or browser form. Analysis sends aggregate totals and monthly trends across the recorded history, current commitments, and category summaries, but not individual transactions; it runs only when the button is clicked. A static-file preview alone cannot serve the API route; use the Nuxt dev server locally or deploy the frontend to Vercel. The endpoint currently has no user authentication, so anyone who can reach the site can trigger paid API requests; add authentication before sharing it publicly.
+
+## Budgetyar cloud sync
+
+The Settings page now asks only for a cloud login password. The frontend server proxies sync requests to the separate Go backend, keeping the backend URL and bearer token out of browser storage and bundles. Set these variables on the **frontend** Vercel project (or in `playground/.env` for local Nuxt development):
+
+```text
+BUDGETYAR_API_TOKEN=the-same-32-character-or-longer-token-configured-on-the-backend
+BUDGETYAR_CLOUD_PASSWORD=a-private-password-with-at-least-16-characters
+BUDGETYAR_SESSION_SECRET=a-separate-random-secret-with-at-least-32-characters
+```
+
+The backend URL defaults to `https://jalali-date-picker.vercel.app`; set `BUDGETYAR_BACKEND_URL` on the frontend only if it changes. The Go backend still needs its own `DATABASE_URL` and matching `BUDGETYAR_API_TOKEN`. After deployment, enter the cloud login password once in Settings. The login uses a signed, HttpOnly, SameSite=Strict cookie valid for 30 days. No cloud endpoint is usable when the required secrets are missing. Local static-file previews cannot serve the cloud API; use `npm run dev` or the deployed Vercel app.

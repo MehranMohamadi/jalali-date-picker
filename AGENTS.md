@@ -112,6 +112,8 @@ Compact project guide for future Codex turns. Keep it accurate and update it whe
 
 - Financial-advice requests should send only the data needed for analysis. Current README says the playground sends aggregate totals/trends and category summaries, not individual transactions; preserve that privacy boundary unless explicitly changed.
 - The Vercel API and Nuxt server API may have different runtime/configuration constraints. Keep secrets server-side and verify the matching deployment path when changing either handler.
+- Cloud sync uses `api/cloud-session.ts` and `api/cloud-sync.ts` on Vercel, with matching `playground/server/api/` routes for Nuxt development. Shared session and proxy logic is in `src/server/cloudAccess.ts`. The browser never receives the backend bearer token or URL; the frontend server reads them from environment variables documented in `README.md`.
+- Cloud sync currently targets the hosted site/PWA. Capacitor's bundled static app needs a separate remote API/session path before cloud sync can work in an APK.
 - Backend configuration examples belong in `backend/.env.example`; never commit real credentials. Read `backend/README.md` before changing backend routes, storage, or migrations.
 - Keep schema migrations additive and compatible with existing deployments; do not rewrite applied migrations.
 

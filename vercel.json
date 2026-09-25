@@ -7,6 +7,9 @@
   "functions": {
     "api/financial-advice.ts": {
       "maxDuration": 30
+    },
+    "api/cloud-sync.ts": {
+      "maxDuration": 30
     }
   },
   "headers": [

@@ -9,8 +9,9 @@ const {
   creditRemaining,
   themeMode,
   isStandalone,
-  cloudApiUrl,
-  cloudApiToken,
+  cloudPassword,
+  cloudAuthStatus,
+  cloudAuthMessage,
   cloudSnapshotVersion,
   cloudSyncStatus,
   cloudSyncMessage,
@@ -23,6 +24,7 @@ const {
   importBackup,
   installApp,
   setStorageMode,
+  signInCloud,
   testCloudConnection,
   migrateLocalDataToCloud,
   downloadCloudSnapshot,
@@ -83,7 +85,7 @@ function updateStorageMode(event: Event) {
     <div class="section-title">
       <div>
         <h2>اتصال ابری و هوش مصنوعی</h2>
-        <p>ارسال رمزگذاری‌شده داده‌ها به بک‌اند شخصی و Remote MCP</p>
+        <p>همگام‌سازی داده‌ها با بک‌اند شخصی پس از ورود</p>
       </div>
     </div>
     <div class="settings-grid settings-general-grid">
@@ -96,24 +98,23 @@ function updateStorageMode(event: Event) {
       <p v-if="storageMode === 'local'" class="app-version">
         اطلاعات فعلی بدون تغییر در همین دستگاه باقی می‌مانند.
       </p>
-      <label v-if="storageMode === 'cloud'">نشانی بک‌اند
-        <input v-model.trim="cloudApiUrl" type="url" inputmode="url" dir="ltr" placeholder="https://budgetyar-api.vercel.app" autocomplete="url" />
+      <label v-if="storageMode === 'cloud' && cloudAuthStatus !== 'authenticated'">رمز ورود به فضای ابری
+        <input v-model="cloudPassword" type="password" autocomplete="current-password" />
       </label>
-      <label v-if="storageMode === 'cloud'">توکن اتصال
-        <input v-model.trim="cloudApiToken" type="password" dir="ltr" placeholder="توکن حداقل ۳۲ نویسه" autocomplete="off" />
-      </label>
+      <button v-if="storageMode === 'cloud' && cloudAuthStatus !== 'authenticated'" class="primary-button pwa-install" type="button" :disabled="cloudAuthStatus === 'checking' || !cloudPassword" @click="signInCloud">ورود</button>
+      <p v-if="storageMode === 'cloud' && cloudAuthMessage" class="app-version" role="status">{{ cloudAuthMessage }}</p>
       <label v-if="storageMode === 'cloud'">وضعیت داده ابری
         <input :value="cloudDirty ? 'در انتظار همگام‌سازی' : cloudSnapshotVersion ? `نسخه ${cloudSnapshotVersion}` : 'هنوز منتقل نشده'" type="text" readonly />
       </label>
-      <button v-if="storageMode === 'cloud'" class="primary-button pwa-install" type="button" :disabled="cloudSyncStatus === 'working'" @click="testCloudConnection">
+      <button v-if="storageMode === 'cloud' && cloudAuthStatus === 'authenticated'" class="primary-button pwa-install" type="button" :disabled="cloudSyncStatus === 'working'" @click="testCloudConnection">
         <PlugZap :size="18" aria-hidden="true" />
         <span>تست اتصال بک‌اند</span>
       </button>
-      <button v-if="storageMode === 'cloud'" class="primary-button pwa-install" type="button" :disabled="cloudSyncStatus === 'working'" @click="migrateLocalDataToCloud">
+      <button v-if="storageMode === 'cloud' && cloudAuthStatus === 'authenticated'" class="primary-button pwa-install" type="button" :disabled="cloudSyncStatus === 'working'" @click="migrateLocalDataToCloud">
         <CloudUpload :size="18" aria-hidden="true" />
         <span>انتقال داده‌های این دستگاه به ابر</span>
       </button>
-      <button v-if="storageMode === 'cloud'" class="primary-button pwa-install" type="button" :disabled="cloudSyncStatus === 'working'" @click="downloadCloudSnapshot">
+      <button v-if="storageMode === 'cloud' && cloudAuthStatus === 'authenticated'" class="primary-button pwa-install" type="button" :disabled="cloudSyncStatus === 'working'" @click="downloadCloudSnapshot">
         <CloudDownload :size="18" aria-hidden="true" />
         <span>دریافت داده‌های ابری روی این دستگاه</span>
       </button>

@@ -435,14 +435,14 @@ const pickerDateRange = computed({
 const isModalOpen = ref(false)
 const formType = ref<TransactionType>('expense')
 const toasts = ref<ToastMessage[]>([])
-const cloudApiUrl = ref('')
-const cloudApiToken = ref('')
+const cloudPassword = ref('')
+const cloudAuthStatus = ref<'unknown' | 'checking' | 'authenticated' | 'unauthenticated' | 'unavailable'>('unknown')
+const cloudAuthMessage = ref('')
 const cloudSnapshotVersion = ref(0)
 const cloudSyncStatus = ref<'idle' | 'working' | 'success' | 'error'>('idle')
 const cloudSyncMessage = ref('')
 const storageMode = ref<StorageMode>('local')
 const cloudDirty = ref(false)
-let cloudConfiguredApiUrl = ''
 let cloudReadyForAutoSync = false
 let cloudAutoSyncTimer: ReturnType<typeof setTimeout> | null = null
 let cloudLastSnapshotJson = ''
@@ -3483,10 +3483,6 @@ function buildBackupJson() {
   }, null, 2)
 }
 
-function normalizeCloudApiUrl(value: string) {
-  return value.trim().replace(/\/+$/, '')
-}
-
 function buildCloudSnapshotJson() {
   const snapshot = JSON.parse(buildBackupJson()) as Record<string, unknown>
   delete snapshot.exportedAt
@@ -3495,8 +3491,6 @@ function buildCloudSnapshotJson() {
 
 function persistCloudConfiguration() {
   localStorage.setItem(CLOUD_SETTINGS_STORAGE_KEY, JSON.stringify({
-    apiUrl: cloudApiUrl.value,
-    apiToken: cloudApiToken.value,
     version: cloudSnapshotVersion.value,
     storageMode: storageMode.value,
     dirty: cloudDirty.value,
@@ -3506,34 +3500,15 @@ function persistCloudConfiguration() {
 function restoreCloudConfiguration() {
   try {
     const saved = JSON.parse(localStorage.getItem(CLOUD_SETTINGS_STORAGE_KEY) ?? '{}') as Record<string, unknown>
-    cloudApiUrl.value = typeof saved.apiUrl === 'string' ? saved.apiUrl : ''
-    cloudConfiguredApiUrl = cloudApiUrl.value
-    cloudApiToken.value = typeof saved.apiToken === 'string' ? saved.apiToken : ''
     cloudSnapshotVersion.value = typeof saved.version === 'number' ? Math.max(0, saved.version) : 0
     storageMode.value = saved.storageMode === 'cloud' ? 'cloud' : 'local'
     cloudDirty.value = saved.dirty === true
+    if ('apiUrl' in saved || 'apiToken' in saved) persistCloudConfiguration()
   } catch {
     localStorage.removeItem(CLOUD_SETTINGS_STORAGE_KEY)
     storageMode.value = 'local'
     cloudDirty.value = false
   }
-}
-
-function saveCloudConfiguration() {
-  const apiUrl = normalizeCloudApiUrl(cloudApiUrl.value)
-  if (!/^https:\/\//.test(apiUrl) && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(apiUrl)) {
-    throw new Error('نشانی بک‌اند باید با https:// شروع شود')
-  }
-  if (cloudApiToken.value.trim().length < 32) throw new Error('توکن اتصال باید حداقل ۳۲ نویسه باشد')
-  if (cloudConfiguredApiUrl && cloudConfiguredApiUrl !== apiUrl) {
-    cloudSnapshotVersion.value = 0
-    cloudDirty.value = false
-    cloudReadyForAutoSync = false
-  }
-  cloudApiUrl.value = apiUrl
-  cloudConfiguredApiUrl = apiUrl
-  cloudApiToken.value = cloudApiToken.value.trim()
-  persistCloudConfiguration()
 }
 
 function persistCloudVersion(version: number) {
@@ -3552,27 +3527,66 @@ function setStorageMode(mode: StorageMode) {
   } else {
     cloudReadyForAutoSync = false
     cloudSyncMessage.value = 'برای شروع، داده‌های این دستگاه را منتقل یا داده‌های ابری را دریافت کنید'
+    void checkCloudSession()
   }
   persistCloudConfiguration()
 }
 
-async function cloudRequest(path: string, init: RequestInit = {}) {
-  saveCloudConfiguration()
-  return fetch(`${cloudApiUrl.value}${path}`, {
+async function checkCloudSession() {
+  cloudAuthStatus.value = 'checking'
+  try {
+    const response = await fetch('/api/cloud-session', { credentials: 'same-origin', cache: 'no-store' })
+    const result = await response.json() as { authenticated?: boolean, error?: string }
+    if (!response.ok) throw new Error(result.error || 'اتصال ابری در دسترس نیست')
+    cloudAuthStatus.value = result.authenticated ? 'authenticated' : 'unauthenticated'
+    cloudAuthMessage.value = result.authenticated ? '' : 'برای اتصال ابری رمز ورود را وارد کنید'
+    return result.authenticated === true
+  } catch (error) {
+    cloudAuthStatus.value = 'unavailable'
+    cloudAuthMessage.value = error instanceof Error ? error.message : 'اتصال ابری در دسترس نیست'
+    return false
+  }
+}
+
+async function signInCloud() {
+  cloudAuthStatus.value = 'checking'
+  try {
+    const response = await fetch('/api/cloud-session', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: cloudPassword.value }),
+    })
+    const result = await response.json() as { authenticated?: boolean, error?: string }
+    if (!response.ok || !result.authenticated) throw new Error(result.error || 'ورود انجام نشد')
+    cloudPassword.value = ''
+    cloudAuthStatus.value = 'authenticated'
+    cloudAuthMessage.value = ''
+    if (storageMode.value === 'cloud' && cloudSnapshotVersion.value > 0) void fetchCloudSnapshot(false, true)
+  } catch (error) {
+    cloudAuthStatus.value = 'unauthenticated'
+    cloudAuthMessage.value = error instanceof Error ? error.message : 'ورود انجام نشد'
+  }
+}
+
+async function cloudRequest(init: RequestInit = {}) {
+  const response = await fetch('/api/cloud-sync', {
     ...init,
-    headers: {
-      Authorization: `Bearer ${cloudApiToken.value}`,
-      'Content-Type': 'application/json',
-      ...init.headers,
-    },
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json', ...init.headers },
   })
+  if (response.status === 401) {
+    cloudAuthStatus.value = 'unauthenticated'
+    cloudReadyForAutoSync = false
+  }
+  return response
 }
 
 async function testCloudConnection() {
   cloudSyncStatus.value = 'working'
   cloudSyncMessage.value = 'در حال بررسی اتصال…'
   try {
-    const response = await cloudRequest('/api/sync')
+    const response = await cloudRequest()
     const result = await response.json() as { error?: string }
     if (!response.ok && response.status !== 404) throw new Error(result.error || 'اتصال به بک‌اند ناموفق بود')
     cloudSyncStatus.value = 'success'
@@ -3592,7 +3606,7 @@ async function syncCloudSnapshot(silent = false, activateCloud = false) {
   cloudSyncMessage.value = 'در حال ارسال داده‌ها…'
   try {
     const snapshotJson = buildCloudSnapshotJson()
-    const response = await cloudRequest('/api/sync', {
+    const response = await cloudRequest({
       method: 'PUT',
       body: JSON.stringify({
         expectedVersion: cloudSnapshotVersion.value,
@@ -3602,7 +3616,7 @@ async function syncCloudSnapshot(silent = false, activateCloud = false) {
     const result = await response.json() as { version?: number, error?: string }
     if (!response.ok) throw new Error(result.error || 'ارسال داده‌ها ناموفق بود')
     if (activateCloud) storageMode.value = 'cloud'
-    cloudReadyForAutoSync = storageMode.value === 'cloud'
+    cloudReadyForAutoSync = storageMode.value === 'cloud' && cloudAuthStatus.value === 'authenticated'
     cloudDirty.value = false
     cloudLastSnapshotJson = snapshotJson
     persistCloudVersion(Number(result.version) || 0)
@@ -3657,7 +3671,7 @@ async function fetchCloudSnapshot(confirmReplace: boolean, silent: boolean) {
   cloudSyncStatus.value = 'working'
   cloudSyncMessage.value = 'در حال دریافت داده‌ها…'
   try {
-    const response = await cloudRequest('/api/sync')
+    const response = await cloudRequest()
     const result = await response.json() as { version?: number, data?: unknown, error?: string }
     if (!response.ok) throw new Error(result.error || 'دریافت داده‌ها ناموفق بود')
     if (!isRecord(result.data)) throw new Error('پاسخ بک‌اند معتبر نیست')
@@ -3672,7 +3686,7 @@ async function fetchCloudSnapshot(confirmReplace: boolean, silent: boolean) {
     if (!silent) pushToast('داده‌های ابری بازیابی شدند ✅')
     return true
   } catch (error) {
-    cloudReadyForAutoSync = storageMode.value === 'cloud'
+    cloudReadyForAutoSync = storageMode.value === 'cloud' && cloudAuthStatus.value === 'authenticated'
     cloudSyncStatus.value = 'error'
     cloudSyncMessage.value = error instanceof Error ? error.message : 'دریافت داده‌ها ناموفق بود'
     if (!silent) pushToast(cloudSyncMessage.value)
@@ -4535,7 +4549,7 @@ export function useBudgetyar() {
   return {
     activeSection, isMobileMenuOpen, isMobileViewport, navItems, months, years, today, todayKey, currentMonthYear, currentJalaliDate, currentMonthLength,
     categories, transactions, budgets, installments, goals, goalTransactions, recurringItems, debts, categorizationRules, incomeSettings, creditLimit, creditAdjustments, cashFlowMode, themeMode, cashflowForecastPeriod, selectedDebtStrategy, marketRates, marketRatesLoading, marketRatesError,
-    cloudApiUrl, cloudApiToken, cloudSnapshotVersion, cloudSyncStatus, cloudSyncMessage, storageMode, cloudDirty,
+    cloudPassword, cloudAuthStatus, cloudAuthMessage, cloudSnapshotVersion, cloudSyncStatus, cloudSyncMessage, storageMode, cloudDirty,
     query, selectedMonth, selectedYear, selectedCategory, selectedType, dateRange, pickerDateRange,
     isModalOpen, formType, form, formAmountInWords, formDatePickerValue, editingId, toasts,
     categoryForm, installmentForm, editingInstallmentId, installmentAmountInWords, installmentStartDatePickerValue,
@@ -4568,7 +4582,7 @@ export function useBudgetyar() {
     addCategorizationRule, editCategorizationRule, updateCategorizationRule, deleteCategorizationRule, toggleCategorizationRule, matchTransactionCategoryRule, applyCategorizationRulesToTransaction, applyCategorizationRulesToAllTransactions, suggestCategorizationRules, acceptSuggestedCategorizationRule, bulkUpdateTransactionCategory,
     updateIncomeSettings, applyRecommendedBudgetPlan,
     getTransactionCategoryLabel, getPaymentMethodLabel, getNecessityLabel, buildCsvReport, buildExcelReport, buildBackupJson, importBackup, createExportFile, saveBlobToDevice, exportReport, installApp, pushToast,
-    saveCloudConfiguration, setStorageMode, testCloudConnection, uploadCloudSnapshot, migrateLocalDataToCloud, downloadCloudSnapshot,
+    setStorageMode, checkCloudSession, signInCloud, testCloudConnection, uploadCloudSnapshot, migrateLocalDataToCloud, downloadCloudSnapshot,
     createCharts, syncCharts, scheduleChartSync, destroyCharts,
   }
 }
@@ -4827,14 +4841,17 @@ export function startBudgetyar() {
 
     cloudLastSnapshotJson = buildCloudSnapshotJson()
     if (storageMode.value === 'cloud') {
-      if (cloudDirty.value) {
-        cloudReadyForAutoSync = true
-        void syncCloudSnapshot(true)
-      } else if (cloudSnapshotVersion.value > 0) {
-        void fetchCloudSnapshot(false, true)
-      } else {
-        cloudSyncMessage.value = 'برای شروع، داده‌های این دستگاه را منتقل یا داده‌های ابری را دریافت کنید'
-      }
+      void checkCloudSession().then((authenticated) => {
+        if (!authenticated || storageMode.value !== 'cloud') return
+        if (cloudDirty.value && cloudSnapshotVersion.value > 0) {
+          cloudReadyForAutoSync = true
+          void syncCloudSnapshot(true)
+        } else if (cloudSnapshotVersion.value > 0) {
+          void fetchCloudSnapshot(false, true)
+        } else {
+          cloudSyncMessage.value = 'برای شروع، داده‌های این دستگاه را منتقل یا داده‌های ابری را دریافت کنید'
+        }
+      })
     }
   
     nextTick(scheduleChartSync)
