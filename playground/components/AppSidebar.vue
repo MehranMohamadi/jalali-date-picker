@@ -131,9 +131,11 @@ const groupedItems = computed(() => {
   margin-top: auto;
   position: sticky;
   bottom: 0;
-  padding-top: 10px;
-  background: linear-gradient(to top, rgba(15, 23, 42, 0.98) 80%, transparent);
-  border-top: 1px solid var(--line, rgba(148, 163, 184, 0.15));
+  padding-top: 12px;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   z-index: 2;
 }
 
@@ -143,17 +145,19 @@ const groupedItems = computed(() => {
   gap: 10px;
   padding: 8px 10px;
   border-radius: 12px;
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid var(--line, rgba(148, 163, 184, 0.15));
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
   text-decoration: none;
-  color: var(--text, #e8eef6);
-  transition: all 0.2s ease;
+  color: var(--text);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .sidebar-user-card:hover,
 .sidebar-user-card.active {
-  background: rgba(42, 168, 154, 0.15);
-  border-color: rgba(42, 168, 154, 0.4);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  border-color: color-mix(in srgb, var(--primary) 36%, transparent);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 15%, transparent);
 }
 
 .sidebar-user-avatar-wrap {
@@ -168,8 +172,16 @@ const groupedItems = computed(() => {
   height: 100%;
   border-radius: 50%;
   display: block;
-  background: #0f172a;
-  border: 1.5px solid rgba(42, 168, 154, 0.5);
+  background: var(--panel-strong, var(--bg));
+  border: 1.5px solid color-mix(in srgb, var(--primary) 40%, var(--line));
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.sidebar-user-card:hover .sidebar-user-avatar,
+.sidebar-user-card.active .sidebar-user-avatar {
+  border-color: var(--primary);
+  transform: scale(1.04);
 }
 
 .user-online-dot {
@@ -179,8 +191,9 @@ const groupedItems = computed(() => {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #10b981;
-  border: 2px solid #0f172a;
+  background: var(--success, #10b981);
+  border: 2px solid var(--panel-strong, var(--bg));
+  box-shadow: 0 0 0 1px var(--line);
 }
 
 .sidebar-user-info {
@@ -189,34 +202,38 @@ const groupedItems = computed(() => {
   min-width: 0;
   flex: 1;
   text-align: right;
+  gap: 1px;
 }
 
 .sidebar-user-name {
   font-size: 0.88rem;
   font-weight: 700;
-  color: var(--text, #e8eef6);
+  color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  line-height: 1.35;
 }
 
 .sidebar-user-handle {
   font-size: 0.72rem;
-  color: var(--muted, #91a0b4);
+  color: var(--muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  line-height: 1.2;
 }
 
 .sidebar-user-chevron {
-  color: var(--muted, #91a0b4);
+  color: var(--muted);
   flex-shrink: 0;
-  transition: transform 0.2s ease;
+  transition: transform 0.2s ease, color 0.2s ease;
 }
 
-.sidebar-user-card:hover .sidebar-user-chevron {
+.sidebar-user-card:hover .sidebar-user-chevron,
+.sidebar-user-card.active .sidebar-user-chevron {
   transform: translateX(-3px);
-  color: var(--primary, #2aa89a);
+  color: var(--primary);
 }
 
 .sidebar-auth-button {
@@ -226,18 +243,20 @@ const groupedItems = computed(() => {
   gap: 8px;
   padding: 10px 14px;
   border-radius: 10px;
-  background: rgba(42, 168, 154, 0.12);
-  border: 1px solid rgba(42, 168, 154, 0.3);
-  color: var(--primary, #2aa89a);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
+  color: var(--primary);
   text-decoration: none;
   font-size: 0.88rem;
   font-weight: 700;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .sidebar-auth-button:hover,
 .sidebar-auth-button.active {
-  background: var(--primary, #2aa89a);
+  background: var(--primary);
+  border-color: var(--primary);
   color: #fff;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--primary) 28%, transparent);
 }
 </style>
