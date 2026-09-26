@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <defs>
+    <linearGradient id="fbg9" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </linearGradient>
+    <linearGradient id="fshield-l" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <linearGradient id="fshield-r" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0284c7"/>
+      <stop offset="100%" stop-color="#0369a1"/>
+    </linearGradient>
+  </defs>
+  <circle cx="60" cy="60" r="56" fill="url(#fbg9)"/>
+  <circle cx="60" cy="60" r="55" fill="none" stroke="rgba(56,189,248,0.22)" stroke-width="1.5"/>
+
+  <!-- Shield Outer Border -->
+  <path d="M 60,32 C 76,32 86,38 86,54 C 86,74 72,86 60,94 C 48,86 34,74 34,54 C 34,38 44,32 60,32 Z" fill="#0f172a" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
+
+  <!-- Shield Left Half -->
+  <path d="M 60,34 C 46,34 38,40 38,54 C 38,72 50,83 60,90 Z" fill="url(#fshield-l)"/>
+
+  <!-- Shield Right Half -->
+  <path d="M 60,34 C 74,34 82,40 82,54 C 82,72 70,83 60,90 Z" fill="url(#fshield-r)"/>
+
+  <!-- Checkmark / Security emblem inside -->
+  <path d="M 48,60 L 56,68 L 74,50" fill="none" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

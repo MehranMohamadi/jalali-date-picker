@@ -1,6 +1,7 @@
 export default defineNuxtConfig({
   runtimeConfig: {
     public: {
+      buildId: process.env.BUDGETYAR_BUILD_ID || 'development',
       brsApiKey: process.env.NUXT_PUBLIC_BRS_API_KEY || process.env.BRS_API_KEY || '',
     },
   },
@@ -11,6 +12,7 @@ export default defineNuxtConfig({
   modules: ['@nuxtjs/tailwindcss', '../src/module'],
   app: {
     head: {
+      script: process.env.NODE_ENV === 'production' ? [{ src: '/update-bootstrap.js' }] : [],
       htmlAttrs: {
         lang: 'fa',
         dir: 'rtl',

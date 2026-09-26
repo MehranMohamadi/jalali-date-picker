@@ -3,6 +3,8 @@ import { CloudDownload, CloudUpload, Download, PlugZap, Smartphone } from 'lucid
 import { APP_VERSION } from '../version'
 
 const budgetyar = useBudgetyar()
+const updates = useAppUpdates()
+const updateState = updates.state
 const {
   creditLimit,
   creditExpense,
@@ -77,6 +79,16 @@ function updateStorageMode(event: Event) {
         <span>نصب نسخه PWA</span>
       </button>
       <div class="app-version">نسخه برنامه: <strong>{{ APP_VERSION }}</strong></div>
+    </div>
+  </section>
+  <section class="glass-panel settings-card" data-section="‏به‌روزرسانی">
+    <div class="section-title"><div><h2>‏به‌روزرسانی برنامه</h2><p>‏دریافت نسخهٔ جدید بدون نصب دوبارهٔ APK</p></div></div>
+    <div class="settings-grid settings-general-grid">
+      <p class="app-version">‏نسخه: <strong>{{ APP_VERSION }}</strong> · <span dir="ltr">{{ updates.buildId }}</span></p>
+      <button class="primary-button" type="button" :disabled="updateState.busy" @click="updates.check">‏بررسی به‌روزرسانی</button>
+      <button v-if="updateState.ready" class="primary-button" type="button" :disabled="updateState.busy" @click="updates.apply">‏اعمال به‌روزرسانی</button>
+      <button class="primary-button" type="button" @click="updateState.demo = true">‏نمایش تست آپدیت</button>
+      <p v-if="updateState.message" class="app-version" role="status">{{ updateState.message }}</p>
     </div>
   </section>
   <section class="glass-panel settings-card" data-section="اتصال هوش مصنوعی">

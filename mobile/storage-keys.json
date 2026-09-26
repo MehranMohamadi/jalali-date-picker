@@ -1,0 +1,8 @@
+[
+  "budgetyar-transactions-v1", "budgetyar-categories-v1", "budgetyar-budgets-v1",
+  "budgetyar-credit-limit-v1", "budgetyar-credit-adjustments-v1", "budgetyar-installments-v1",
+  "budgetyar-theme-v1", "budgetyar-goals-v1", "budgetyar-goal-transactions-v1",
+  "budgetyar-recurring-items-v1", "budgetyar-debts-v1", "budgetyar-categorization-rules-v1",
+  "budgetyar-deleted-default-categorization-rules-v1", "budgetyar-income-settings-v1",
+  "budgetyar-cloud-settings-v1", "budgetyar-market-rates-v1"
+]

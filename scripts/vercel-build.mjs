@@ -6,10 +6,10 @@ import { fileURLToPath } from 'node:url'
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const playground = resolve(root, 'playground')
 const publicDir = resolve(root, 'public')
-const nuxi = resolve(root, 'node_modules/@nuxt/cli/bin/nuxi.mjs')
+const nuxi = resolve(root, 'scripts/build-app.mjs')
 
-const result = spawnSync(process.execPath, [nuxi, 'generate'], {
-  cwd: playground,
+const result = spawnSync(process.execPath, [nuxi], {
+  cwd: root,
   stdio: 'inherit',
   shell: false,
 })

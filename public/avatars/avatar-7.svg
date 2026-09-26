@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <defs>
+    <linearGradient id="fbg7" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </linearGradient>
+    <linearGradient id="fgold7" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a"/>
+      <stop offset="35%" stop-color="#f59e0b"/>
+      <stop offset="70%" stop-color="#d97706"/>
+      <stop offset="100%" stop-color="#78350f"/>
+    </linearGradient>
+    <linearGradient id="fshine7" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <circle cx="60" cy="60" r="56" fill="url(#fbg7)"/>
+  <circle cx="60" cy="60" r="55" fill="none" stroke="rgba(245,158,11,0.3)" stroke-width="1.5"/>
+
+  <!-- Outer Coin Rim -->
+  <circle cx="60" cy="60" r="42" fill="url(#fgold7)" stroke="#fef08a" stroke-width="1.5"/>
+  <circle cx="60" cy="60" r="37" fill="none" stroke="rgba(254,240,138,0.5)" stroke-width="1.2" stroke-dasharray="3,2.5"/>
+
+  <!-- Inner Coin Surface -->
+  <circle cx="60" cy="60" r="33" fill="#b45309"/>
+
+  <!-- Bullion / Mint Symbol (Geometric Gold Bar / Emblem) -->
+  <polygon points="60,40 76,50 76,70 60,80 44,70 44,50" fill="url(#fgold7)" stroke="#fef08a" stroke-width="1.2"/>
+  <polygon points="60,40 76,50 60,57 44,50" fill="#fef08a" opacity="0.6"/>
+  <polygon points="44,50 60,57 60,80 44,70" fill="#92400e"/>
+  <polygon points="76,50 60,57 60,80 76,70" fill="#d97706"/>
+
+  <!-- Subtle Polish Sheen -->
+  <ellipse cx="48" cy="46" rx="10" ry="4" fill="url(#fshine7)" transform="rotate(-30 48 46)"/>
+</svg>

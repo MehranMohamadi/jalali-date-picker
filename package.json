@@ -23,7 +23,8 @@
   },
   "scripts": {
     "build": "unbuild",
-    "build:app": "nuxi generate playground",
+    "build:app": "node scripts/build-app.mjs",
+    "build:mobile": "node scripts/build-mobile.mjs",
     "build:vercel": "node scripts/vercel-build.mjs",
     "version:patch": "node scripts/bump-version.mjs",
     "dev": "nuxi dev playground",

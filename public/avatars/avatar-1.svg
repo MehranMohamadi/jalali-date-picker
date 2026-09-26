@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <defs>
+    <linearGradient id="fbg1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e3a8a"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="fskin1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fed7aa"/>
+      <stop offset="100%" stop-color="#fdba74"/>
+    </linearGradient>
+    <linearGradient id="fsuit1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#090d16"/>
+    </linearGradient>
+  </defs>
+  <!-- Background circle with metallic rim -->
+  <circle cx="60" cy="60" r="56" fill="url(#fbg1)"/>
+  <circle cx="60" cy="60" r="55" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="1.5"/>
+
+  <!-- Neck -->
+  <path d="M 50,78 L 70,78 L 70,92 L 50,92 Z" fill="url(#fskin1)"/>
+  <path d="M 50,84 L 70,84 L 70,92 L 50,92 Z" fill="#ea580c" opacity="0.25"/>
+
+  <!-- Suit Body -->
+  <path d="M 26,114 C 26,92 42,88 60,88 C 78,88 94,92 94,114 Z" fill="url(#fsuit1)"/>
+
+  <!-- Crisp White Shirt Collar -->
+  <polygon points="60,102 46,86 56,86" fill="#f8fafc"/>
+  <polygon points="60,102 74,86 64,86" fill="#f8fafc"/>
+
+  <!-- Silk Blue Tie -->
+  <polygon points="57,88 63,88 64,114 60,118 56,114" fill="#2563eb"/>
+  <polygon points="57,88 63,88 62,94 58,94" fill="#1d4ed8"/>
+
+  <!-- Suit Lapels -->
+  <polygon points="46,88 56,104 36,114 30,102" fill="#334155"/>
+  <polygon points="74,88 64,104 84,114 90,102" fill="#334155"/>
+
+  <!-- Ears -->
+  <circle cx="36" cy="62" r="6" fill="url(#fskin1)"/>
+  <circle cx="84" cy="62" r="6" fill="url(#fskin1)"/>
+
+  <!-- Face -->
+  <ellipse cx="60" cy="61" rx="23" ry="25" fill="url(#fskin1)"/>
+
+  <!-- Hair -->
+  <path d="M 36,52 C 35,32 46,24 60,24 C 74,24 85,32 84,52 C 80,42 72,36 60,37 C 48,37 40,43 36,52 Z" fill="#1e293b"/>
+  <path d="M 36,50 L 37,60 L 40,58 L 39,50 Z" fill="#1e293b"/>
+  <path d="M 84,50 L 83,60 L 80,58 L 81,50 Z" fill="#1e293b"/>
+
+  <!-- Eyes -->
+  <circle cx="49" cy="60" r="2.5" fill="#0f172a"/>
+  <circle cx="50" cy="59.2" r="0.8" fill="#ffffff"/>
+  <circle cx="71" cy="60" r="2.5" fill="#0f172a"/>
+  <circle cx="72" cy="59.2" r="0.8" fill="#ffffff"/>
+
+  <!-- Eyebrows -->
+  <path d="M 43,50 Q 49,48 55,51" fill="none" stroke="#1e293b" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M 65,51 Q 71,48 77,50" fill="none" stroke="#1e293b" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Nose -->
+  <path d="M 60,60 L 59,66 L 62,66" fill="none" stroke="#b45309" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
+
+  <!-- Smile -->
+  <path d="M 54,73 Q 60,77 66,73" fill="none" stroke="#9a3412" stroke-width="2.2" stroke-linecap="round"/>
+</svg>

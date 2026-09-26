@@ -45,6 +45,7 @@ Compact project guide for future Codex turns. Keep it accurate and update it whe
 - Start playground dev server: `npm run dev`
 - Build package: `npm run build`
 - Generate static playground: `npm run build:app`
+- Generate the Android remote bootstrap: `npm run build:mobile`, then `npx cap sync android`. APK builds remain manual.
 - Build the frontend for Vercel: `npm run build:vercel`
 - Backend tests: from `backend/`, run `go test ./...` (if Go is installed).
 - If Nuxt generate is blocked by a dev-server lock, use PowerShell:
@@ -105,6 +106,8 @@ Compact project guide for future Codex turns. Keep it accurate and update it whe
 - Shared JS parser is `src/utils/bankNotification.ts`; update/add tests when changing parser behavior.
 - Service worker is unregistered in dev and registered in production.
 - PWA assets and offline behavior live in `playground/public/`; check the manifest and service worker when changing install/offline behavior.
+- Android shell v2 opens the trusted hosted origin; `mobile/` is the local bootstrap/error page. `BudgetyarUpdatesPlugin` migrates allowlisted device finance data before remote app initialization. `MainActivity` injects the native bridge at document start, including cached HTML; keep its plugin list synchronized with registrations.
+- `scripts/build-app.mjs` and `update-release.mjs` finalize a single release after generation. `useAppUpdates.ts` owns the waiting/apply UI. See `docs/in-app-updates.md` for migration, integrity, recovery, and test contracts; raw Nuxt generation is not a deployable update release.
 
 ## Package Contracts
 

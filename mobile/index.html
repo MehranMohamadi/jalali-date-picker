@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>‏جیب‌طلا</title>
+<style>body{background:#050816;color:#eef2ff;font:16px system-ui;text-align:center;padding:15vh 24px}button{padding:12px 24px;border:0;border-radius:12px;background:#d8bb69;color:#17130a}p{line-height:1.9}</style></head>
+<body><h1>‏جیب‌طلا</h1><p id="status">‏در حال بازکردن برنامه…</p><button onclick="start()">‏تلاش دوباره</button>
+<script>
+const keys = /* STORAGE_KEYS */ []
+async function start() {
+  try {
+    const plugin = window.Capacitor?.Plugins?.BudgetyarUpdates
+    if (!plugin) throw new Error('‏پل اندروید آماده نیست. برنامه را دوباره باز کنید.')
+    const entries = {}
+    for (const key of Object.keys(localStorage)) {
+      if (keys.includes(key) || key.startsWith('budgetyar-account-local-v1:')) entries[key] = localStorage.getItem(key)
+    }
+    const { url } = await plugin.prepare({ entries })
+    location.replace(url)
+  } catch (error) {
+    document.getElementById('status').textContent = error.message || '‏اتصال برقرار نشد. اینترنت را بررسی کنید.'
+  }
+}
+start()
+</script></body></html>

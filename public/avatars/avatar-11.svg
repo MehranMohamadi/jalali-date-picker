@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <defs>
+    <linearGradient id="fbg11" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e1b4b"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </linearGradient>
+    <linearGradient id="fgold-star" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a"/>
+      <stop offset="50%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#b45309"/>
+    </linearGradient>
+  </defs>
+  <circle cx="60" cy="60" r="56" fill="url(#fbg11)"/>
+  <circle cx="60" cy="60" r="55" fill="none" stroke="rgba(245,158,11,0.25)" stroke-width="1.5"/>
+
+  <!-- Concentric Gold Rings -->
+  <circle cx="60" cy="60" r="42" fill="none" stroke="rgba(245,158,11,0.35)" stroke-width="1.5"/>
+  <circle cx="60" cy="60" r="38" fill="rgba(245,158,11,0.06)"/>
+
+  <!-- 3D Star Facets -->
+  <!-- Main 5-point star -->
+  <!-- Top Point -->
+  <polygon points="60,30 66,48 60,60" fill="#fef08a"/>
+  <polygon points="60,30 54,48 60,60" fill="#f59e0b"/>
+
+  <!-- Right Point -->
+  <polygon points="90,48 72,56 60,60" fill="#fef08a"/>
+  <polygon points="90,48 74,68 60,60" fill="#d97706"/>
+
+  <!-- Bottom Right Point -->
+  <polygon points="78,82 66,72 60,60" fill="#f59e0b"/>
+  <polygon points="78,82 56,80 60,60" fill="#b45309"/>
+
+  <!-- Bottom Left Point -->
+  <polygon points="42,82 54,72 60,60" fill="#f59e0b"/>
+  <polygon points="42,82 46,68 60,60" fill="#92400e"/>
+
+  <!-- Left Point -->
+  <polygon points="30,48 48,56 60,60" fill="#fde68a"/>
+  <polygon points="30,48 54,48 60,60" fill="#b45309"/>
+
+  <!-- Center Sparkle Gem -->
+  <circle cx="60" cy="60" r="3.5" fill="#ffffff" stroke="#b45309" stroke-width="1"/>
+</svg>

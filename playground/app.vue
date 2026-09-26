@@ -26,6 +26,8 @@ const route = useRoute()
 const router = useRouter()
 const budgetyar = useBudgetyar()
 startBudgetyar()
+const appUpdates = useAppUpdates()
+onMounted(() => { void appUpdates.start() })
 
 const {
   activeSection,
@@ -109,5 +111,6 @@ function quickAdd() {
     </button>
     <TransactionModal />
     <ToastStack :toasts="toasts" />
+    <AppUpdateNotice />
   </main>
 </template>

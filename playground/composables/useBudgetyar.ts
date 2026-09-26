@@ -4849,9 +4849,7 @@ export function startBudgetyar() {
     seedDevelopmentDataIfEmpty()
   
     if ('serviceWorker' in navigator) {
-      if (import.meta.env.PROD) {
-        navigator.serviceWorker.register('/sw.js')
-      } else {
+      if (!import.meta.env.PROD) {
         navigator.serviceWorker.getRegistrations().then((registrations) => {
           registrations.forEach((registration) => registration.unregister())
         })

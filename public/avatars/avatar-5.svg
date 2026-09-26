@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <defs>
+    <linearGradient id="fbg5" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0284c7"/>
+      <stop offset="100%" stop-color="#082f49"/>
+    </linearGradient>
+    <linearGradient id="fskin5" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fed7aa"/>
+      <stop offset="100%" stop-color="#fba874"/>
+    </linearGradient>
+  </defs>
+  <circle cx="60" cy="60" r="56" fill="url(#fbg5)"/>
+  <circle cx="60" cy="60" r="55" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="1.5"/>
+
+  <!-- Neck -->
+  <path d="M 50,78 L 70,78 L 70,92 L 50,92 Z" fill="url(#fskin5)"/>
+
+  <!-- Suit Body -->
+  <path d="M 26,114 C 26,92 42,88 60,88 C 78,88 94,92 94,114 Z" fill="#0f172a"/>
+
+  <!-- Light Blue Shirt Collar -->
+  <polygon points="60,102 46,86 56,86" fill="#e0f2fe"/>
+  <polygon points="60,102 74,86 64,86" fill="#e0f2fe"/>
+
+  <!-- Burgundy Tie -->
+  <polygon points="57,88 63,88 64,114 60,118 56,114" fill="#991b1b"/>
+  <polygon points="57,88 63,88 62,94 58,94" fill="#7f1d1d"/>
+
+  <!-- Lapels -->
+  <polygon points="46,88 56,104 36,114 30,102" fill="#1e293b"/>
+  <polygon points="74,88 64,104 84,114 90,102" fill="#1e293b"/>
+
+  <!-- Ears & Face -->
+  <circle cx="36" cy="62" r="6" fill="url(#fskin5)"/>
+  <circle cx="84" cy="62" r="6" fill="url(#fskin5)"/>
+  <ellipse cx="60" cy="61" rx="23" ry="25" fill="url(#fskin5)"/>
+
+  <!-- Short Professional Hair -->
+  <path d="M 37,50 C 36,32 46,24 60,24 C 74,24 84,32 83,50 C 78,40 70,36 60,37 C 50,37 42,41 37,50 Z" fill="#334155"/>
+
+  <!-- Eyes & Eyebrows -->
+  <path d="M 43,50 Q 49,48 55,51" fill="none" stroke="#1e293b" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M 65,51 Q 71,48 77,50" fill="none" stroke="#1e293b" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="49" cy="60" r="2.5" fill="#0f172a"/>
+  <circle cx="50" cy="59.2" r="0.8" fill="#ffffff"/>
+  <circle cx="71" cy="60" r="2.5" fill="#0f172a"/>
+  <circle cx="72" cy="59.2" r="0.8" fill="#ffffff"/>
+
+  <!-- Nose & Smile -->
+  <path d="M 60,60 L 59,66 L 62,66" fill="none" stroke="#b45309" stroke-width="1.6" stroke-linecap="round" opacity="0.6"/>
+  <path d="M 54,73 Q 60,77 66,73" fill="none" stroke="#9a3412" stroke-width="2.2" stroke-linecap="round"/>
+</svg>

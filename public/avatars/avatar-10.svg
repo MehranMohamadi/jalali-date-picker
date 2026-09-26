@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <defs>
+    <linearGradient id="fbg10" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#064e3b"/>
+      <stop offset="100%" stop-color="#022c22"/>
+    </linearGradient>
+    <linearGradient id="fgrowth10" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#34d399"/>
+      <stop offset="100%" stop-color="#10b981"/>
+    </linearGradient>
+  </defs>
+  <circle cx="60" cy="60" r="56" fill="url(#fbg10)"/>
+  <circle cx="60" cy="60" r="55" fill="none" stroke="rgba(52,211,153,0.3)" stroke-width="1.5"/>
+
+  <!-- Bar Chart Columns -->
+  <rect x="36" y="66" width="10" height="20" rx="3" fill="#047857" opacity="0.6"/>
+  <rect x="50" y="54" width="10" height="32" rx="3" fill="#059669" opacity="0.8"/>
+  <rect x="64" y="44" width="10" height="42" rx="3" fill="#10b981"/>
+  <rect x="78" y="36" width="10" height="50" rx="3" fill="url(#fgrowth10)"/>
+
+  <!-- Upward Trend Arrow -->
+  <path d="M 34,70 Q 56,58 78,38" fill="none" stroke="#6ee7b7" stroke-width="3.5" stroke-linecap="round"/>
+  <polygon points="76,32 88,34 84,46" fill="#6ee7b7"/>
+
+  <!-- Glow Dot on Top Peak -->
+  <circle cx="86" cy="35" r="4.5" fill="#a7f3d0" stroke="#047857" stroke-width="1.5"/>
+</svg>
