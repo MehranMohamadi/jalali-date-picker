@@ -9,7 +9,10 @@ interface NativeCloudApi {
 const nativeCloudApi = registerPlugin<NativeCloudApi>('BudgetyarApi')
 
 export async function requestCloudApi(path: CloudPath, init: RequestInit = {}): Promise<Response> {
-  if (Capacitor.getPlatform() === 'android' && Capacitor.isNativePlatform()) {
+  // Hosted shells share the page's HttpOnly cookie jar. The native proxy is
+  // required only by the older APK which runs its web assets at localhost.
+  const hosted = typeof window !== 'undefined' && window.location.protocol === 'https:' && window.location.hostname !== 'localhost'
+  if (Capacitor.getPlatform() === 'android' && Capacitor.isNativePlatform() && !hosted) {
     const result = await nativeCloudApi.request({
       path,
       method: init.method || 'GET',

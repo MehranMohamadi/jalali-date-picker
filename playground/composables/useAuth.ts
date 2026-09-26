@@ -38,6 +38,8 @@ const currentUser = ref<AuthUser | null>(null)
 const isAuthInitialized = ref(false)
 const isAuthWorking = ref(false)
 const activeAvatar = ref<string>(DEFAULT_AVATARS[0].src)
+let authRevision = 0
+let sessionRefresh: Promise<void> | null = null
 
 function loadAvatarForUser(user: AuthUser | null) {
   if (typeof window === 'undefined') return
@@ -75,6 +77,23 @@ function errorMessage(status: number, error?: string) {
 }
 
 export function useAuth() {
+  async function refreshAuth() {
+    if (sessionRefresh) return sessionRefresh
+    const revision = authRevision
+    sessionRefresh = (async () => {
+      const response = await requestCloudApi('/api/account')
+      const result = await response.json() as { authenticated?: boolean, user?: AuthUser, error?: string }
+      if (revision !== authRevision) return
+      if (!response.ok) throw new Error(result.error || '\u200Fارتباط با سرور برقرار نشد. دوباره تلاش کنید.')
+      currentUser.value = result.authenticated && typeof result.user?.id === 'string' ? result.user : null
+      loadAvatarForUser(currentUser.value)
+      isAuthInitialized.value = true
+    })().catch(error => {
+      if (revision === authRevision) throw error
+    }).finally(() => { sessionRefresh = null })
+    return sessionRefresh
+  }
+
   function setAvatar(avatarSrc: string, userId?: string) {
     activeAvatar.value = avatarSrc
     if (typeof window !== 'undefined') {
@@ -95,10 +114,7 @@ export function useAuth() {
       localStorage.removeItem('budgetyar-users-v1')
       localStorage.removeItem('budgetyar-current-user-v1')
       sessionStorage.removeItem('budgetyar-session-user-v1')
-      const response = await requestCloudApi('/api/account')
-      const result = await response.json() as { authenticated?: boolean, user?: AuthUser }
-      currentUser.value = response.ok && result.authenticated ? result.user ?? null : null
-      loadAvatarForUser(currentUser.value)
+      await refreshAuth()
     } catch {
       currentUser.value = null
       loadAvatarForUser(null)
@@ -114,6 +130,7 @@ export function useAuth() {
     try {
       const { response, result } = await requestAccount({ action: 'login', username: username.trim(), password, remember })
       if (!response.ok || !result.user) return { success: false, message: errorMessage(response.status, result.error) }
+      authRevision++
       currentUser.value = result.user
       loadAvatarForUser(result.user)
       isAuthInitialized.value = true
@@ -134,6 +151,7 @@ export function useAuth() {
     try {
       const { response, result } = await requestAccount({ action: 'register', username: username.trim(), password, fullName: fullName.trim(), remember: true })
       if (!response.ok || !result.user) return { success: false, message: errorMessage(response.status, result.error) }
+      authRevision++
       currentUser.value = result.user
       if (chosenAvatar) {
         setAvatar(chosenAvatar, result.user.id || result.user.username)
@@ -155,6 +173,7 @@ export function useAuth() {
     try {
       const { response, result } = await requestAccount({ action: 'profile', fullName: fullName.trim() })
       if (!response.ok || !result.user) return { success: false, message: errorMessage(response.status, result.error) }
+      authRevision++
       currentUser.value = result.user
       return { success: true, message: '\u200Fنام نمایشی ذخیره شد.' }
     } catch {
@@ -180,6 +199,7 @@ export function useAuth() {
     try {
       const { response, result } = await requestAccount({ action: 'delete', password })
       if (!response.ok) return { success: false, message: response.status === 401 ? '\u200Fرمز عبور درست نیست.' : errorMessage(response.status, result.error) }
+      authRevision++
       currentUser.value = null
       loadAvatarForUser(null)
       accountChanged()
@@ -193,6 +213,7 @@ export function useAuth() {
     try {
       const { response, result } = await requestAccount({ action: 'logout' })
       if (!response.ok && response.status !== 401) return { success: false, message: errorMessage(response.status, result.error) }
+      authRevision++
       currentUser.value = null
       loadAvatarForUser(null)
       accountChanged()
@@ -211,6 +232,7 @@ export function useAuth() {
     DEFAULT_AVATARS,
     setAvatar,
     initAuth,
+    refreshAuth,
     login,
     register,
     updateProfile,

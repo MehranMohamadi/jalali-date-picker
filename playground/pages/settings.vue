@@ -108,7 +108,9 @@ function updateStorageMode(event: Event) {
       <p v-if="storageMode === 'local'" class="app-version">
         اطلاعات فعلی بدون تغییر در همین دستگاه باقی می‌مانند.
       </p>
-      <NuxtLink v-if="storageMode === 'cloud' && cloudAuthStatus !== 'authenticated'" to="/login" class="primary-button pwa-install">ورود یا ساخت حساب برای ذخیرهٔ ابری</NuxtLink>
+      <p v-if="storageMode === 'cloud' && (cloudAuthStatus === 'checking' || cloudAuthStatus === 'unknown')" class="app-version" role="status">‏در حال بررسی حساب…</p>
+      <NuxtLink v-if="storageMode === 'cloud' && cloudAuthStatus === 'unauthenticated'" to="/login" class="primary-button pwa-install">ورود یا ساخت حساب برای ذخیرهٔ ابری</NuxtLink>
+      <button v-if="storageMode === 'cloud' && cloudAuthStatus === 'unavailable'" class="primary-button pwa-install" type="button" @click="budgetyar.checkCloudSession">‏بررسی دوبارهٔ اتصال</button>
       <p v-if="storageMode === 'cloud' && cloudAuthMessage" class="app-version" role="status">{{ cloudAuthMessage }}</p>
       <label v-if="storageMode === 'cloud'">وضعیت داده ابری
         <input :value="cloudDirty ? 'در انتظار همگام‌سازی' : cloudSnapshotVersion ? `نسخه ${cloudSnapshotVersion}` : 'هنوز منتقل نشده'" type="text" readonly />

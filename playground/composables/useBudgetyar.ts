@@ -3564,10 +3564,9 @@ function setStorageMode(mode: StorageMode) {
 async function checkCloudSession() {
   cloudAuthStatus.value = 'checking'
   try {
-    const response = await requestCloudApi('/api/account')
-    const result = await response.json() as { authenticated?: boolean, user?: { id?: string }, error?: string }
-    if (!response.ok) throw new Error(result.error || 'اتصال ابری در دسترس نیست')
-    const accountId = result.authenticated && typeof result.user?.id === 'string' ? result.user.id : ''
+    const auth = useAuth()
+    await auth.refreshAuth()
+    const accountId = auth.currentUser.value?.id || ''
     if (accountId !== cloudAccountId) {
       cloudReadyForAutoSync = false
       if (cloudAutoSyncTimer) clearTimeout(cloudAutoSyncTimer)
@@ -3598,6 +3597,7 @@ async function cloudRequest(init: RequestInit = {}) {
   if (response.status === 401) {
     cloudAuthStatus.value = 'unauthenticated'
     cloudReadyForAutoSync = false
+    void checkCloudSession()
   }
   return response
 }
