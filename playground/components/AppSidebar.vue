@@ -20,7 +20,7 @@ const emit = defineEmits<{
 }>()
 
 const auth = useAuth()
-const { currentUser, activeAvatar, initAuth } = auth
+const { currentUser, activeAvatar, isAuthInitialized, initAuth } = auth
 
 onMounted(() => {
   void initAuth()
@@ -73,9 +73,13 @@ const groupedItems = computed(() => {
 
     <!-- Sticky Bottom User Account / Profile Section -->
     <div class="sidebar-user-footer">
+      <div v-if="!isAuthInitialized" class="sidebar-account-loading" role="status">
+        <span class="sidebar-account-spinner" aria-hidden="true" />
+        <span>‏در حال بررسی حساب…</span>
+      </div>
       <!-- When logged in: show profile card with avatar, name, and handle -->
       <NuxtLink
-        v-if="currentUser"
+        v-else-if="currentUser"
         to="/login"
         class="sidebar-user-card"
         :class="{ active: activePath === '/login' }"
@@ -151,6 +155,46 @@ const groupedItems = computed(() => {
   color: var(--text);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
   transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.sidebar-user-card,
+.sidebar-auth-button,
+.sidebar-account-loading {
+  box-sizing: border-box;
+  height: 56px;
+}
+
+.sidebar-account-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-soft);
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.sidebar-account-spinner {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  border: 2px solid var(--line);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: sidebar-account-spin 0.8s linear infinite;
+}
+
+@keyframes sidebar-account-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-account-spinner {
+    animation: none;
+  }
 }
 
 .sidebar-user-card:hover,
