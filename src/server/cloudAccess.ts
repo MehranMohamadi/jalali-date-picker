@@ -49,11 +49,15 @@ export async function proxyBackend(config: CloudConfig, path: '/api/account' | '
     signal: AbortSignal.timeout(25000),
   })
   const content = await response.text()
+  if (!content || !response.headers.get('content-type')?.includes('application/json')) {
+    return {
+      status: 502,
+      body: JSON.stringify({ error: '\u200Fآدرس بک‌اند ابری در دسترس نیست یا پاسخ معتبر نمی‌دهد' }),
+    }
+  }
   return {
     status: response.status,
-    body: content && response.headers.get('content-type')?.includes('application/json')
-      ? content
-      : JSON.stringify({ error: 'پاسخ بک‌اند معتبر نیست' }),
+    body: content,
   }
 }
 

@@ -15,6 +15,24 @@ function configuredCloud() {
 }
 
 describe('account cloud access', () => {
+  it('reports an HTML backend 404 as a gateway failure, not a missing snapshot', async () => {
+    const config = configuredCloud()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('NOT_FOUND', {
+      status: 404, headers: { 'content-type': 'text/plain' },
+    })))
+    expect((await proxyCloudSnapshot(config, 'GET', 'b'.repeat(64))).status).toBe(502)
+  })
+
+  it('preserves a JSON missing-snapshot response from the backend', async () => {
+    const config = configuredCloud()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{"error":"snapshot not found"}', {
+      status: 404, headers: { 'content-type': 'application/json' },
+    })))
+    expect(await proxyCloudSnapshot(config, 'GET', 'b'.repeat(64))).toEqual({
+      status: 404, body: '{"error":"snapshot not found"}',
+    })
+  })
+
   it('requires server-only backend credentials', () => {
     vi.stubEnv('BUDGETYAR_API_TOKEN', '')
     expect(getCloudConfig()).toBeNull()

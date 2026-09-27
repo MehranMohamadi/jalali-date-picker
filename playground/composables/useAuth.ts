@@ -69,6 +69,10 @@ async function requestAccount(body: Record<string, unknown>) {
 }
 
 function errorMessage(status: number, error?: string) {
+  if (status === 503) return '\u200Fاتصال ابری روی سرور تنظیم نشده یا موقتاً در دسترس نیست.'
+  if (status === 502 || status === 504) return '\u200Fسرور برنامه به بک‌اند ابری دسترسی ندارد. تنظیمات اتصال سرور باید بررسی شود.'
+  if (status === 404) return '\u200Fسرویس ورود روی سرور پیدا نشد. آدرس و انتشار سرور باید بررسی شود.'
+  if (status === 403) return '\u200Fسرور درخواست ورود را مجاز نمی‌داند. آدرس برنامه و تنظیمات سرور باید بررسی شود.'
   if (status === 409) return '\u200Fاین نام کاربری قبلاً ثبت شده است.'
   if (status === 429) return '\u200Fتلاش‌های ناموفق زیاد بود. ۱۵ دقیقهٔ دیگر دوباره امتحان کنید.'
   if (status === 401) return error === 'session expired' ? '\u200Fنشست شما منقضی شده است.' : '\u200Fنام کاربری یا رمز عبور درست نیست.'

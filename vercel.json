@@ -5,6 +5,9 @@
   "framework": null,
   "cleanUrls": true,
   "functions": {
+    "api/account.ts": {
+      "maxDuration": 30
+    },
     "api/financial-advice.ts": {
       "maxDuration": 30
     },

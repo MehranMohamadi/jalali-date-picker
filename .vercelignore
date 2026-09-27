@@ -2,7 +2,6 @@
 .kilo/
 node_modules/
 android/
-backend/
 mobile/dist/
 **/.nuxt/
 **/.output/
