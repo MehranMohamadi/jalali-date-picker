@@ -26,9 +26,7 @@ const {
   getRiskLabel,
   activeGoals,
   totalGoalsRemaining,
-  upcomingInstallments,
-  overdueInstallments,
-  upcomingRecurringItems,
+  upcomingExpenseItems,
   getGoalProgress,
   getGoalSuggestedWeeklySaving,
 } = budgetyar
@@ -39,11 +37,7 @@ const visibleTimeline = computed(() =>
     .slice(0, 12),
 )
 
-const nearInstallments = computed(() =>
-  [...overdueInstallments.value, ...upcomingInstallments.value]
-    .filter((item, index, items) => items.findIndex((candidate) => candidate.id === item.id) === index)
-    .slice(0, 5),
-)
+const totalUpcomingExpense = computed(() => upcomingExpenseItems.value.reduce((sum, item) => sum + item.amount, 0))
 </script>
 
 <template>
@@ -105,22 +99,27 @@ const nearInstallments = computed(() =>
         <p v-else class="empty-inline">هنوز هدف فعالی ثبت نشده است.</p>
       </section>
 
-      <section class="glass-panel planning-inline">
+      <section id="commitments" class="glass-panel planning-inline">
         <div class="section-title compact">
           <div>
             <h2>تعهدات پیش‌رو</h2>
-            <p>پرداخت‌هایی که باید در برنامه‌ی نزدیک دیده شوند</p>
+            <p>قسط‌ها و پرداخت‌های دوره‌ای به ترتیب سررسید</p>
           </div>
+          <strong v-if="upcomingExpenseItems.length">{{ formatMoney(totalUpcomingExpense) }}</strong>
         </div>
-        <div class="planning-list">
-          <span v-for="item in nearInstallments" :key="`installment-${item.id}`" class="planning-list-item compact-item" :class="{ overdue: item.status === 'overdue' }">
-            <span>🧾 {{ item.title }}<small>{{ item.statusLabel }} · {{ item.nextDueDate }}</small></span><b>{{ formatMoney(item.amount) }}</b>
-          </span>
-          <span v-for="item in upcomingRecurringItems" :key="`recurring-${item.id}`" class="planning-list-item compact-item">
-            <span>🔁 {{ item.title }}</span><b>{{ formatMoney(item.amount) }}</b>
-          </span>
-          <p v-if="!nearInstallments.length && !upcomingRecurringItems.length" class="empty-inline">تعهد نزدیکی ثبت نشده است.</p>
+        <div v-if="upcomingExpenseItems.length" class="planning-list">
+          <NuxtLink
+            v-for="item in upcomingExpenseItems"
+            :key="item.id"
+            :to="item.path"
+            class="planning-list-item compact-item planning-commitment-link"
+            :class="{ overdue: item.status === 'overdue' }"
+          >
+            <span>{{ item.icon }} {{ item.title }}<small>{{ item.typeLabel }} · {{ item.statusLabel }} · {{ item.date }}</small></span>
+            <b>{{ formatMoney(item.amount) }}</b>
+          </NuxtLink>
         </div>
+        <p v-else class="empty-inline">تعهد نزدیکی ثبت نشده است.</p>
       </section>
     </div>
 

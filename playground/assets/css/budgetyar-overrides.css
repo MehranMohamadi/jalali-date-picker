@@ -70,73 +70,63 @@
   padding: 11px;
 }
 
-.upcoming-expense-list {
+/* Dashboard: compact visual hierarchy with a stronger daily snapshot. */
+.dashboard-action-row {
   display: grid;
   gap: 10px;
-  margin-top: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.upcoming-expense-item {
+.dashboard-action {
   align-items: center;
-  background: rgba(15, 23, 42, .38);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  display: grid;
+  color: var(--text);
+  display: flex;
   gap: 12px;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
-  padding: 13px;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 10px 14px;
+  text-decoration: none;
 }
 
-.upcoming-expense-item.overdue {
-  border-color: rgba(251, 113, 133, .48);
+.dashboard-action:hover,
+.dashboard-action:focus-visible,
+.planning-commitment-link:hover,
+.planning-commitment-link:focus-visible {
+  border-color: var(--primary);
 }
 
-.upcoming-expense-icon {
-  background: rgba(34, 211, 238, .12);
-  border-radius: 12px;
-  display: grid;
-  font-size: 1.25rem;
-  height: 42px;
-  place-items: center;
-  width: 42px;
+.dashboard-action.danger,
+.planning-commitment-link.overdue { border-color: rgba(251, 113, 133, .55); }
+.dashboard-action-copy { display: grid; gap: 2px; min-width: 0; }
+.dashboard-action-copy strong { font-size: .9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dashboard-action-copy small { color: var(--muted); font-size: .74rem; }
+.dashboard-action-link { color: #5eead4; flex: 0 0 auto; font-size: .75rem; font-weight: 700; }
+.dashboard-risk-inline {
+  align-items: center;
+  background: rgba(251, 113, 133, .1);
+  border: 1px solid rgba(251, 113, 133, .45);
+  border-radius: 10px;
+  color: var(--text);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 12px;
+  justify-content: space-between;
+  padding: 8px 12px;
+  text-decoration: none;
+}
+.dashboard-risk-inline strong { color: #fda4af; }
+.planning-commitment-link { color: var(--text); gap: 8px; min-width: 0; text-decoration: none; }
+.planning-commitment-link > span { display: grid; gap: 3px; min-width: 0; }
+.planning-commitment-link b { flex: 0 0 auto; white-space: nowrap; }
+@media (max-width: 760px) {
+  .dashboard-action-row { grid-template-columns: 1fr; }
 }
 
-.upcoming-expense-item div {
-  display: grid;
-  gap: 3px;
+@media (max-width: 400px) {
+  .dashboard-action { align-items: flex-start; flex-direction: column; gap: 5px; }
+  .planning-commitment-link { align-items: flex-start; flex-direction: column; }
 }
 
-.upcoming-expense-item small,
-.upcoming-expense-status {
-  color: var(--muted);
-}
-
-.upcoming-expense-status {
-  background: rgba(148, 163, 184, .1);
-  border-radius: 999px;
-  font-size: .72rem;
-  padding: 5px 8px;
-}
-
-.upcoming-expense-item b {
-  color: #fb7185;
-}
-
-@media (max-width: 520px) {
-  .upcoming-expense-item {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-  }
-
-  .upcoming-expense-status {
-    display: none;
-  }
-
-  .upcoming-expense-item b {
-    grid-column: 2 / -1;
-  }
-}
-
-/* Dashboard: compact visual hierarchy with a stronger daily snapshot. */
 .dashboard-hero {
   background:
     radial-gradient(circle at 88% 18%, rgba(45, 212, 191, .22), transparent 26%),

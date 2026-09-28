@@ -4,7 +4,6 @@ import './assets/css/budgetyar.css'
 import './assets/css/budgetyar-overrides.css'
 import {
   Bell,
-  CalendarClock,
   ChartNoAxesCombined,
   CircleDollarSign,
   ClipboardList,
@@ -40,22 +39,21 @@ const {
 } = budgetyar
 
 const navItems = [
-  { label: '‏داشبورد', path: '/', group: '‏نمای کلی', icon: LayoutDashboard },
-  { label: '‏تراکنش‌ها', path: '/transactions', group: '‏نمای کلی', icon: ReceiptText },
-  { label: '‏بودجه‌ها', path: '/budgets', group: '‏برنامه‌ریزی', icon: WalletCards },
+  { label: '‏داشبورد', path: '/', group: '‏روزمره', icon: LayoutDashboard },
+  { label: '‏تراکنش‌ها', path: '/transactions', group: '‏روزمره', icon: ReceiptText },
+  { label: '‏بودجه‌ها', path: '/budgets', group: '‏روزمره', icon: WalletCards },
+  { label: '‏برنامه‌ریزی', path: '/planning', group: '‏برنامه‌ریزی', icon: ClipboardList },
   { label: '‏قسط‌ها', path: '/installments', group: '‏برنامه‌ریزی', icon: CreditCard },
   { label: '‏هدف‌ها', path: '/goals', group: '‏برنامه‌ریزی', icon: Target },
-  { label: '‏پرداخت‌های دوره‌ای', path: '/recurring', group: '‏برنامه‌ریزی', icon: Repeat2 },
-  { label: '‏خرج‌های پیش‌رو', path: '/upcoming-expenses', group: '‏برنامه‌ریزی', icon: CalendarClock },
-  { label: '‏برنامه‌ریزی', path: '/planning', group: '‏تحلیل و کنترل', icon: ClipboardList },
-  { label: '‏بدهی‌ها', path: '/debts', group: '‏تحلیل و کنترل', icon: Landmark },
-  { label: '‏قوانین', path: '/rules', group: '‏تحلیل و کنترل', icon: ListChecks },
-  { label: '‏درآمد', path: '/income-planning', group: '‏تحلیل و کنترل', icon: CircleDollarSign },
-  { label: '‏سلامت مالی', path: '/health', group: '‏تحلیل و کنترل', icon: ShieldCheck },
   { label: '‏تحلیل‌ها', path: '/analytics', group: '‏گزارش و تنظیمات', icon: ChartNoAxesCombined },
-  { label: '‏اعلان‌ها', path: '/notifications', group: '‏گزارش و تنظیمات', icon: Bell },
-  { label: '‏حساب کاربری', path: '/login', group: '‏گزارش و تنظیمات', icon: UserCheck },
   { label: '‏تنظیمات', path: '/settings', group: '‏گزارش و تنظیمات', icon: Settings },
+  { label: '‏پرداخت‌های دوره‌ای', path: '/recurring', group: '‏ابزارهای بیشتر', icon: Repeat2, secondary: true },
+  { label: '‏بدهی‌ها', path: '/debts', group: '‏ابزارهای بیشتر', icon: Landmark, secondary: true },
+  { label: '‏قوانین دسته‌بندی', path: '/rules', group: '‏ابزارهای بیشتر', icon: ListChecks, secondary: true },
+  { label: '‏درآمد نامنظم', path: '/income-planning', group: '‏ابزارهای بیشتر', icon: CircleDollarSign, secondary: true },
+  { label: '‏سلامت مالی', path: '/health', group: '‏ابزارهای بیشتر', icon: ShieldCheck, secondary: true },
+  { label: '‏اعلان‌ها', path: '/notifications', group: '‏ابزارهای بیشتر', icon: Bell, secondary: true },
+  { label: '‏حساب کاربری', path: '/login', group: '‏حساب', icon: UserCheck },
 ]
 
 const routeSectionMap: Record<string, string> = Object.fromEntries(navItems.map((item) => [item.path, item.label]))

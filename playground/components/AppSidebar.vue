@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import { ChevronLeft, LogIn, X } from 'lucide-vue-next'
+import { ChevronDown, ChevronLeft, LogIn, X } from 'lucide-vue-next'
 
 interface NavItem {
   label: string
   path: string
   group: string
   icon: Component
+  secondary?: boolean
 }
 
 const props = defineProps<{
@@ -21,6 +22,49 @@ const emit = defineEmits<{
 
 const auth = useAuth()
 const { currentUser, activeAvatar, isAuthInitialized, initAuth } = auth
+const { isMobileViewport } = useBudgetyar()
+const sidebarRef = ref<HTMLElement | null>(null)
+const closeButtonRef = ref<HTMLButtonElement | null>(null)
+const secondaryItems = computed(() => props.items.filter((item) => item.secondary))
+const isSecondaryOpen = ref(false)
+
+watch(() => props.activePath, (path) => {
+  if (secondaryItems.value.some((item) => item.path === path)) isSecondaryOpen.value = true
+}, { immediate: true })
+
+watch(() => props.open, (open, _, onCleanup) => {
+  if (!open) return
+  const previousOverflow = document.body.style.overflow
+  const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  document.body.style.overflow = 'hidden'
+
+  function handleKeydown(event: KeyboardEvent) {
+    if (event.key === 'Escape') {
+      emit('close')
+      return
+    }
+    if (event.key !== 'Tab') return
+    const focusable = [...(sidebarRef.value?.querySelectorAll<HTMLElement>('a[href], button:not([disabled])') ?? [])]
+    if (!focusable.length) return
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
+    }
+  }
+
+  document.addEventListener('keydown', handleKeydown)
+  void nextTick(() => closeButtonRef.value?.focus())
+  onCleanup(() => {
+    document.body.style.overflow = previousOverflow
+    document.removeEventListener('keydown', handleKeydown)
+    previousFocus?.focus()
+  })
+})
 
 onMounted(() => {
   void initAuth()
@@ -29,7 +73,7 @@ onMounted(() => {
 const groupedItems = computed(() => {
   const groups: Array<{ label: string; items: NavItem[] }> = []
   // Exclude /login from scrolling nav groups since it's displayed sticky at the bottom
-  const visibleItems = props.items.filter((item) => item.path !== '/login')
+  const visibleItems = props.items.filter((item) => item.path !== '/login' && !item.secondary)
   for (const item of visibleItems) {
     const group = groups.find((entry) => entry.label === item.group)
     if (group) group.items.push(item)
@@ -40,7 +84,16 @@ const groupedItems = computed(() => {
 </script>
 
 <template>
-  <aside class="sidebar glass-panel" :class="{ open }" aria-label="‏منوی اصلی">
+  <aside
+    ref="sidebarRef"
+    class="sidebar glass-panel"
+    :class="{ open }"
+    :inert="isMobileViewport && !open"
+    :aria-hidden="isMobileViewport && !open ? 'true' : undefined"
+    :role="open ? 'dialog' : undefined"
+    :aria-modal="open ? 'true' : undefined"
+    aria-label="‏منوی اصلی"
+  >
     <div class="brand">
       <span class="brand-mark" aria-hidden="true">
         <img src="/icons/icon-192.png" alt="‏جیب‌طلا" class="brand-mark-img" width="42" height="42" />
@@ -49,7 +102,7 @@ const groupedItems = computed(() => {
         <strong>‏جیب‌طلا</strong>
         <small>‏مدیریت مالی شخصی</small>
       </div>
-      <button class="drawer-close" type="button" aria-label="‏بستن منو" @click="emit('close')">
+      <button ref="closeButtonRef" class="drawer-close" type="button" aria-label="‏بستن منو" @click="emit('close')">
         <X :size="18" aria-hidden="true" />
       </button>
     </div>
@@ -68,6 +121,31 @@ const groupedItems = computed(() => {
           <component :is="item.icon" class="nav-icon" :size="18" stroke-width="2.2" aria-hidden="true" />
           <span>{{ item.label }}</span>
         </NuxtLink>
+      </section>
+      <section v-if="secondaryItems.length" class="nav-group nav-secondary">
+        <button
+          class="nav-more-toggle"
+          type="button"
+          :aria-expanded="isSecondaryOpen"
+          aria-controls="secondary-nav-items"
+          @click="isSecondaryOpen = !isSecondaryOpen"
+        >
+          <span>‏ابزارهای بیشتر</span>
+          <ChevronDown :size="16" :class="{ rotated: isSecondaryOpen }" aria-hidden="true" />
+        </button>
+        <div v-if="isSecondaryOpen" id="secondary-nav-items" class="nav-secondary-items">
+          <NuxtLink
+            v-for="item in secondaryItems"
+            :key="item.path"
+            class="nav-item"
+            :class="{ active: activePath === item.path }"
+            :to="item.path"
+            @click="emit('close')"
+          >
+            <component :is="item.icon" class="nav-icon" :size="18" stroke-width="2.2" aria-hidden="true" />
+            <span>{{ item.label }}</span>
+          </NuxtLink>
+        </div>
       </section>
     </nav>
 
@@ -120,6 +198,24 @@ const groupedItems = computed(() => {
 </template>
 
 <style scoped>
+.nav-more-toggle {
+  align-items: center;
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  display: flex;
+  font: inherit;
+  justify-content: space-between;
+  min-height: 42px;
+  padding: 9px 10px;
+  text-align: right;
+  width: 100%;
+}
+
+.nav-more-toggle .rotated { transform: rotate(180deg); }
+.nav-secondary-items { display: grid; gap: 5px; }
+
 .sidebar {
   display: flex;
   flex-direction: column;
@@ -302,5 +398,110 @@ const groupedItems = computed(() => {
   border-color: var(--primary);
   color: #fff;
   box-shadow: 0 4px 14px color-mix(in srgb, var(--primary) 28%, transparent);
+}
+
+@media (max-width: 760px) {
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .brand {
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 12px;
+  }
+
+  .brand strong { font-size: 1rem; }
+  .brand small { font-size: .76rem; }
+  .drawer-close { border-radius: 12px; }
+
+  .nav-groups {
+    align-content: start;
+    display: grid;
+    flex: 1 1 auto;
+    gap: 14px;
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0 2px 18px;
+    scrollbar-width: thin;
+  }
+
+  .nav-group {
+    gap: 8px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .nav-group > p {
+    grid-column: 1 / -1;
+    padding: 0 4px;
+  }
+
+  .nav-group > .nav-item {
+    align-content: center;
+    background: var(--panel-soft);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    gap: 7px;
+    grid-template-columns: 1fr;
+    justify-items: start;
+    min-height: 78px;
+    padding: 10px 12px;
+  }
+
+  .nav-group > .nav-item.active {
+    background: color-mix(in srgb, var(--primary) 16%, var(--panel-strong));
+    border-color: color-mix(in srgb, var(--primary) 60%, var(--line));
+  }
+
+  .nav-group > .nav-item .nav-icon {
+    background: color-mix(in srgb, var(--primary) 12%, transparent);
+    border-radius: 9px;
+    box-sizing: content-box;
+    padding: 6px;
+  }
+
+  .nav-group > .nav-item span {
+    font-size: .82rem;
+    font-weight: 700;
+  }
+
+  .nav-secondary {
+    display: block;
+  }
+
+  .nav-more-toggle {
+    background: var(--panel-soft);
+    border-radius: 12px;
+    min-height: 48px;
+    padding-inline: 14px;
+  }
+
+  .nav-secondary-items {
+    gap: 4px;
+    padding-top: 8px;
+  }
+
+  .nav-secondary-items .nav-item {
+    border-bottom: 1px solid var(--line);
+    border-radius: 9px;
+    min-height: 46px;
+  }
+
+  .sidebar-user-footer {
+    background: var(--panel-strong);
+    flex: 0 0 auto;
+    padding-top: 12px;
+  }
+
+  .sidebar-user-card,
+  .sidebar-auth-button,
+  .sidebar-account-loading { min-height: 58px; }
+}
+
+@media (max-width: 360px) {
+  .nav-group > .nav-item { min-height: 72px; padding: 8px 10px; }
+  .nav-group > .nav-item span { font-size: .78rem; }
 }
 </style>

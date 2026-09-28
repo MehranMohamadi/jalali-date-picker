@@ -949,6 +949,34 @@ const recurringSummaries = computed(() =>
 const dueRecurringItems = computed(() => recurringSummaries.value.filter((item) => item.status === 'due'))
 const overdueRecurringItems = computed(() => recurringSummaries.value.filter((item) => item.status === 'overdue'))
 const upcomingRecurringItems = computed(() => recurringSummaries.value.filter((item) => item.status === 'upcoming').slice(0, 5))
+const upcomingExpenseItems = computed(() => [
+  ...recurringSummaries.value
+    .filter((item) => item.isActive && item.type === 'expense' && item.nextDueDate)
+    .map((item) => ({
+      id: `recurring-${item.id}`,
+      title: item.title,
+      amount: item.amount,
+      date: item.nextDueDate,
+      icon: item.categoryId ? getCategory(item.categoryId).icon : '🔁',
+      typeLabel: item.isSubscription ? 'اشتراک' : 'پرداخت دوره‌ای',
+      status: item.status,
+      statusLabel: item.statusLabel,
+      path: '/recurring',
+    })),
+  ...activeInstallmentSummaries.value
+    .filter((item) => item.nextDueDate)
+    .map((item) => ({
+      id: `installment-${item.id}`,
+      title: item.title,
+      amount: item.amount,
+      date: item.nextDueDate,
+      icon: '🧾',
+      typeLabel: 'قسط',
+      status: item.status,
+      statusLabel: item.statusLabel,
+      path: '/installments',
+    })),
+].sort((a, b) => a.date.localeCompare(b.date)))
 const monthlyRecurringIncomeTotal = computed(() => activeRecurringItems.value.filter((item) => item.type === 'income').reduce((sum, item) => sum + getMonthlyRecurringAmount(item), 0))
 const monthlyRecurringExpenseTotal = computed(() => activeRecurringItems.value.filter((item) => item.type === 'expense').reduce((sum, item) => sum + getMonthlyRecurringAmount(item), 0))
 const monthlySubscriptionsTotal = computed(() => activeRecurringItems.value.filter((item) => item.type === 'expense' && item.isSubscription).reduce((sum, item) => sum + getMonthlyRecurringAmount(item), 0))
@@ -4088,6 +4116,14 @@ async function importBackup(event: Event) {
       pushToast('این فایل بکاپ جیب‌طلا نیست')
       return
     }
+    const confirmed = await confirmDialog.askConfirm({
+      title: '‏بازیابی اطلاعات',
+      message: 'اطلاعات فعلی این دستگاه با محتوای فایل پشتیبان جایگزین شوند؟',
+      confirmText: '‏بازیابی و جایگزینی',
+      cancelText: '‏انصراف',
+      tone: 'warning',
+    })
+    if (!confirmed) return
     applyBackupRecord(backup)
     pushToast('بکاپ با موفقیت بازیابی شد ✅')
   } catch {
@@ -4688,7 +4724,7 @@ export function useBudgetyar() {
   return {
     activeSection, isMobileMenuOpen, isMobileViewport, navItems, months, years, today, todayKey, currentMonthYear, currentJalaliDate, currentMonthLength,
     categories, transactions, budgets, installments, goals, goalTransactions, recurringItems, debts, categorizationRules, incomeSettings, creditLimit, creditAdjustments, cashFlowMode, themeMode, cashflowForecastPeriod, selectedDebtStrategy, marketRates, marketRatesLoading, marketRatesError,
-    cloudAuthStatus, cloudAuthMessage, cloudSnapshotVersion, cloudSyncStatus, cloudSyncMessage, storageMode, cloudDirty,
+    cloudAuthStatus, cloudAuthMessage, cloudSnapshotVersion, cloudSyncStatus, cloudSyncMessage, storageMode, cloudDirty, canLoadDevelopmentData, loadDevelopmentData,
     query, selectedMonth, selectedYear, selectedCategory, selectedType, dateRange, pickerDateRange,
     isModalOpen, formType, form, formAmountInWords, formDatePickerValue, editingId, toasts,
     categoryForm, installmentForm, editingInstallmentId, installmentAmountInWords, installmentStartDatePickerValue,
@@ -4705,7 +4741,7 @@ export function useBudgetyar() {
     categoryTotals, weeklyCategoryBudgets, weeklyBudgetAnalysis, sortedCategoryTotals, visibleCategoryTotals, safeMaxCategory, highestExpense, lowestExpense, todayExpense, todayIncome, averageDailyExpense, latestExpenses, latestLoans,
     installmentSummaries, installmentMonthlySchedule, activeInstallmentSummaries, overdueInstallments, upcomingInstallments, dueInstallmentsThisMonth, monthlyInstallmentDue, commitmentInstallmentDue, balanceDeductionBreakdown,
     activeGoals, archivedGoals, totalGoalsTarget, totalGoalsSaved, totalGoalsRemaining, nearestGoal,
-    activeRecurringItems, recurringSummaries, upcomingRecurringItems, dueRecurringItems, overdueRecurringItems, monthlyRecurringIncomeTotal, monthlyRecurringExpenseTotal, monthlySubscriptionsTotal, annualSubscriptionsTotal, subscriptionSummaries, generalRecurringSummaries, activeSubscriptionSummaries, nearDueSubscriptions,
+    activeRecurringItems, recurringSummaries, upcomingRecurringItems, dueRecurringItems, overdueRecurringItems, upcomingExpenseItems, monthlyRecurringIncomeTotal, monthlyRecurringExpenseTotal, monthlySubscriptionsTotal, annualSubscriptionsTotal, subscriptionSummaries, generalRecurringSummaries, activeSubscriptionSummaries, nearDueSubscriptions,
     cashflowForecastDays, projectedEndOfMonthBalance, lowestProjectedBalance, cashflowRiskLevel, cashflowWarnings, safeDailySpend, safeWeeklySpend,
     activeDebts, totalDebtRemaining, totalMinimumDebtPayments, totalExtraDebtPayments, snowballDebtPlan, avalancheDebtPlan, selectedDebtPayoffPlan, recommendedDebtStrategy, debtFreedomDate, estimatedInterestSavings, nextDebtDue,
     activeCategorizationRules, suggestedCategorizationRules,
@@ -4763,12 +4799,21 @@ function refreshCalendarOnVisibilityChange() {
 }
 
 function seedDevelopmentDataIfEmpty() {
-  if (!import.meta.env.DEV || storageMode.value !== 'local') return
+  if (!canLoadDevelopmentData.value) return
   if ([STORAGE_KEY, CATEGORIES_STORAGE_KEY, BUDGETS_STORAGE_KEY, CREDIT_STORAGE_KEY,
     CREDIT_ADJUSTMENTS_STORAGE_KEY, INSTALLMENTS_STORAGE_KEY, GOALS_STORAGE_KEY,
-    GOAL_TRANSACTIONS_STORAGE_KEY, RECURRING_ITEMS_STORAGE_KEY, DEBTS_STORAGE_KEY,
-    INCOME_SETTINGS_STORAGE_KEY, CLOUD_SETTINGS_STORAGE_KEY]
+    GOAL_TRANSACTIONS_STORAGE_KEY, RECURRING_ITEMS_STORAGE_KEY, DEBTS_STORAGE_KEY]
     .some((key) => localStorage.getItem(key) !== null)) return
+
+  loadDevelopmentData()
+}
+
+const canLoadDevelopmentData = computed(() => import.meta.env.DEV && storageMode.value === 'local'
+  && !transactions.value.length && !installments.value.length && !recurringItems.value.length
+  && !goals.value.length && !debts.value.length)
+
+function loadDevelopmentData() {
+  if (!canLoadDevelopmentData.value) return
 
   const monthDay = (daysAgo: number) => formatJalaliInputDate({
     ...currentJalaliDate,
@@ -4786,6 +4831,9 @@ function seedDevelopmentDataIfEmpty() {
     { id: -4, type: 'expense', title: 'رفت‌وآمد آزمایشی', amount: 380000, date: monthDay(1), category: 'transport', paymentMethod: 'credit' },
     { id: -5, type: 'expense', title: 'تفریح آزمایشی', amount: 720000, date: monthDay(0), category: 'fun', paymentMethod: 'cash' },
     { id: -6, type: 'income', title: 'درآمد ماه قبل آزمایشی', amount: 42000000, date: previousMonthDate, category: 'other', paymentMethod: 'cash' },
+    { id: -7, type: 'expense', title: 'قبض اینترنت آزمایشی', amount: 450000, date: monthDay(3), category: 'bills', paymentMethod: 'cash', isEssential: true },
+    { id: -8, type: 'expense', title: 'خرید پوشاک آزمایشی', amount: 1800000, date: monthDay(4), category: 'clothes', paymentMethod: 'cash', isEssential: false },
+    { id: -9, type: 'expense', title: 'خرید ماه قبل آزمایشی', amount: 950000, date: previousMonthDate, category: 'food', paymentMethod: 'cash' },
   ]
   installments.value = [{
     id: -1,
@@ -4797,6 +4845,23 @@ function seedDevelopmentDataIfEmpty() {
     totalCount: 6,
     paidCount: 0,
     paymentMethod: 'cash',
+  }]
+  const nextPaymentDate = formatJalaliInputDate(addJalaliDays(currentJalaliDate, 3))
+  recurringItems.value = [{
+    id: 'dev-recurring-internet',
+    title: 'اشتراک اینترنت آزمایشی',
+    type: 'expense',
+    amount: 850000,
+    categoryId: 'bills',
+    frequency: 'monthly',
+    startDate: nextPaymentDate,
+    dueDay: Number(nextPaymentDate.slice(-2)),
+    paymentMethod: 'cash',
+    isSubscription: true,
+    isActive: true,
+    reminderDaysBefore: 5,
+    createdAt: todayKey.value,
+    updatedAt: todayKey.value,
   }]
 }
 
