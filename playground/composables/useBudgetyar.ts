@@ -9,6 +9,7 @@ import {
 } from 'chart.js'
 import { Capacitor, registerPlugin } from '@capacitor/core'
 import { requestCloudApi } from './cloudApi'
+import { useConfirm } from './useConfirm'
 import { addJalaliDays, getJalaliMonthLength, parseJalaliInput, toGregorian, toJalali } from '../../src/utils/jalali'
 import { applyCreditAdjustments, getCreditMonths } from '../../src/utils/creditLedger'
 import { localAccountKey, planLocalAccountSwitch } from '../../src/utils/accountLocal'
@@ -49,6 +50,8 @@ Chart.register(...registerables)
 const BankNotifications = registerPlugin<BankNotificationsPlugin>('BankNotifications')
 
 export type TransactionType = 'income' | 'expense'
+
+const confirmDialog = useConfirm()
 export type PaymentMethod = 'cash' | 'credit'
 export type CashFlowMode = 'regular' | 'afterCredit' | 'afterCommitments'
 export type ThemeMode = 'dark' | 'light' | 'forest'
@@ -1747,12 +1750,25 @@ function recordCreditPayment(month: string) {
   pushToast('پرداخت بدهی اعتبار ثبت شد ✅')
 }
 
+function ignoreCreditDebt(row: { month: string; remaining: number }) {
+  const month = row.month
+  const message = `ماندهٔ ${formatMoney(row.remaining)} اعتبار ${month} از بدهی باز نادیده گرفته شود؟ تراکنش‌ها و آمار هزینه تغییر نمی‌کنند و این اصلاح قابل بازگردانی است.`
+  confirmDialog.executeWithConfirm(() => {
+    creditAdjustments.value = { ...creditAdjustments.value, [row.month]: (creditAdjustments.value[row.month] ?? 0) + row.remaining }
+    pushToast('ماندهٔ اعتبار از بدهی باز کنار گذاشته شد')
+  }, {
+    title: '‏نادیده گرفتن بدهی اعتبار',
+    message,
+    confirmText: '‏نادیده گرفتن',
+    cancelText: '‏انصراف',
+    tone: 'warning',
+  })
+}
+
 function ignoreCreditMonth(month: string) {
   const row = creditMonths.value.find((item) => item.month === month)
   if (!row?.remaining) return
-  if (!window.confirm(`ماندهٔ ${formatMoney(row.remaining)} اعتبار ${month} از بدهی باز نادیده گرفته شود؟ تراکنش‌ها و آمار هزینه تغییر نمی‌کنند و این اصلاح قابل بازگردانی است.`)) return
-  creditAdjustments.value = { ...creditAdjustments.value, [month]: (creditAdjustments.value[month] ?? 0) + row.remaining }
-  pushToast('ماندهٔ اعتبار از بدهی باز کنار گذاشته شد')
+  ignoreCreditDebt(row)
 }
 
 function restoreIgnoredCredit(month: string) {
@@ -1918,10 +1934,20 @@ function saveTransaction() {
 
 function removeTransaction(id: number) {
   const transaction = transactions.value.find((item) => item.id === id)
-  if (!transaction || !window.confirm(`تراکنش «${transaction.title}» حذف شود؟`)) return
-  reopenInstallmentPayment(transaction)
-  transactions.value = transactions.value.filter((item) => item.id !== id)
-  pushToast('حذف شد 🗑️')
+  if (!transaction) return
+  const message = `تراکنش «${transaction.title}» حذف شود؟`
+  confirmDialog.executeWithConfirm(() => {
+    reopenInstallmentPayment(transaction)
+    transactions.value = transactions.value.filter((item) => item.id !== id)
+    pushToast('حذف شد 🗑️')
+  }, {
+    title: '‏حذف تراکنش',
+    message: `‏آیا از حذف تراکنش «${transaction.title}» مطمئن هستید؟ این عملیات قابل بازگشت نیست.`,
+    confirmText: '‏حذف تراکنش',
+    cancelText: '‏انصراف',
+    tone: 'danger',
+    icon: 'trash',
+  })
 }
 
 async function refreshBankNotifications(showToast = false) {
@@ -2071,14 +2097,23 @@ function deleteCategory(key: CategoryKey) {
   }
 
   const deleted = getCategory(key)
-  categories.value = categories.value.filter((category) => category.key !== key)
-  budgets.value = budgets.value.filter((goal) => goal.category !== key)
-  transactions.value = transactions.value.map((item) => (item.category === key ? { ...item, category: 'other' } : item))
+  confirmDialog.executeWithConfirm(() => {
+    categories.value = categories.value.filter((category) => category.key !== key)
+    budgets.value = budgets.value.filter((goal) => goal.category !== key)
+    transactions.value = transactions.value.map((item) => (item.category === key ? { ...item, category: 'other' } : item))
 
-  if (form.category === key) form.category = 'other'
-  if (selectedCategory.value === deleted.label) selectedCategory.value = 'همه'
+    if (form.category === key) form.category = 'other'
+    if (selectedCategory.value === deleted.label) selectedCategory.value = 'همه'
 
-  pushToast('دسته‌بندی حذف شد 🗑️')
+    pushToast('دسته‌بندی حذف شد 🗑️')
+  }, {
+    title: '‏حذف دسته‌بندی',
+    message: `‏دسته‌بندی «${deleted.label}» حذف شود؟ تراکنش‌های مرتبط به این دسته، به دسته «سایر» منتقل خواهند شد.`,
+    confirmText: '‏حذف دسته‌بندی',
+    cancelText: '‏انصراف',
+    tone: 'danger',
+    icon: 'trash',
+  })
 }
 
 function resetInstallmentForm() {
@@ -2208,23 +2243,41 @@ function undoInstallmentPayment(planId: number, index: number) {
   const message = payment
     ? `پرداخت قسط «${plan.title}» با سررسید ${dueDate} برگردانده شود؟ تراکنش پرداخت آن هم حذف می‌شود.`
     : `وضعیت پرداخت قسط «${plan.title}» با سررسید ${dueDate} برگردانده شود؟`
-  if (!window.confirm(message)) return
 
-  if (payment) {
-    reopenInstallmentPayment(payment)
-    transactions.value = transactions.value.filter((item) => item.id !== payment.id)
-  } else {
-    installments.value = installments.value.map((item) =>
-      item.id === planId ? { ...item, ...setInstallmentPaid(item, index, false) } : item,
-    )
-  }
-  pushToast('پرداخت قسط برگردانده شد')
+  confirmDialog.executeWithConfirm(() => {
+    if (payment) {
+      reopenInstallmentPayment(payment)
+      transactions.value = transactions.value.filter((item) => item.id !== payment.id)
+    } else {
+      installments.value = installments.value.map((item) =>
+        item.id === planId ? { ...item, ...setInstallmentPaid(item, index, false) } : item,
+      )
+    }
+    pushToast('پرداخت قسط برگردانده شد')
+  }, {
+    title: '‏بازگردانی پرداخت قسط',
+    message,
+    confirmText: '‏بازگردانی وضعیت',
+    cancelText: '‏انصراف',
+    tone: 'warning',
+  })
 }
 
 function removeInstallmentPlan(id: number) {
-  installments.value = installments.value.filter((item) => item.id !== id)
-  if (editingInstallmentId.value === id) resetInstallmentForm()
-  pushToast('قسط حذف شد')
+  const plan = installments.value.find((item) => item.id === id)
+  const title = plan ? ` «${plan.title}»` : ''
+  confirmDialog.executeWithConfirm(() => {
+    installments.value = installments.value.filter((item) => item.id !== id)
+    if (editingInstallmentId.value === id) resetInstallmentForm()
+    pushToast('قسط حذف شد 🗑️')
+  }, {
+    title: '‏حذف طرح اقساطی',
+    message: `‏طرح اقساطی${title} حذف شود؟ تراکنش‌های پرداخت قبلی این قسط باقی خواهند ماند.`,
+    confirmText: '‏حذف قسط',
+    cancelText: '‏انصراف',
+    tone: 'danger',
+    icon: 'trash',
+  })
 }
 
 function getGoalSnapshot(goal: BudgetyarGoal) {
@@ -2420,10 +2473,21 @@ function updateGoal(id: string, patch: Partial<BudgetyarGoal>) {
 }
 
 function deleteGoal(id: string) {
-  goals.value = goals.value.filter((goal) => goal.id !== id)
-  goalTransactions.value = goalTransactions.value.filter((transaction) => transaction.goalId !== id)
-  if (editingGoalId.value === id) resetGoalForm()
-  pushToast('هدف حذف شد')
+  const goal = goals.value.find((item) => item.id === id)
+  const title = goal ? ` «${goal.title}»` : ''
+  confirmDialog.executeWithConfirm(() => {
+    goals.value = goals.value.filter((item) => item.id !== id)
+    goalTransactions.value = goalTransactions.value.filter((transaction) => transaction.goalId !== id)
+    if (editingGoalId.value === id) resetGoalForm()
+    pushToast('هدف حذف شد 🗑️')
+  }, {
+    title: '‏حذف هدف پس‌انداز',
+    message: `‏هدف مالی${title} حذف شود؟ تراکنش‌های پس‌انداز این هدف نیز پاک خواهند شد.`,
+    confirmText: '‏حذف هدف',
+    cancelText: '‏انصراف',
+    tone: 'danger',
+    icon: 'trash',
+  })
 }
 
 function archiveGoal(id: string) {
@@ -2665,9 +2729,19 @@ function updateRecurringItem(id: string, patch: Partial<BudgetyarRecurringItem>)
 function deleteRecurringItem(id: string) {
   const item = recurringItems.value.find((entry) => entry.id === id)
   const isSub = Boolean(item?.isSubscription)
-  recurringItems.value = recurringItems.value.filter((entry) => entry.id !== id)
-  if (editingRecurringItemId.value === id) resetRecurringForm(isSub)
-  pushToast(isSub ? 'اشتراک حذف شد' : 'آیتم تکراری حذف شد')
+  const title = item ? ` «${item.title}»` : ''
+  confirmDialog.executeWithConfirm(() => {
+    recurringItems.value = recurringItems.value.filter((entry) => entry.id !== id)
+    if (editingRecurringItemId.value === id) resetRecurringForm(isSub)
+    pushToast(isSub ? 'اشتراک حذف شد 🗑️' : 'پرداخت دوره‌ای حذف شد 🗑️')
+  }, {
+    title: isSub ? '‏حذف اشتراک' : '‏حذف پرداخت دوره‌ای',
+    message: `‏آیا از حذف${title} مطمئن هستید؟`,
+    confirmText: '‏حذف',
+    cancelText: '‏انصراف',
+    tone: 'danger',
+    icon: 'trash',
+  })
 }
 
 function toggleRecurringItem(id: string) {
@@ -3062,9 +3136,20 @@ function updateDebt(id: string, patch: Partial<BudgetyarDebt>) {
 }
 
 function deleteDebt(id: string) {
-  debts.value = debts.value.filter((debt) => debt.id !== id)
-  if (editingDebtId.value === id) resetDebtForm()
-  pushToast('بدهی حذف شد')
+  const debt = debts.value.find((item) => item.id === id)
+  const title = debt ? ` «${debt.title}»` : ''
+  confirmDialog.executeWithConfirm(() => {
+    debts.value = debts.value.filter((item) => item.id !== id)
+    if (editingDebtId.value === id) resetDebtForm()
+    pushToast('بدهی حذف شد 🗑️')
+  }, {
+    title: '‏حذف بدهی',
+    message: `‏آیا از حذف پرونده بدهی${title} مطمئن هستید؟`,
+    confirmText: '‏حذف بدهی',
+    cancelText: '‏انصراف',
+    tone: 'danger',
+    icon: 'trash',
+  })
 }
 
 function toggleDebt(id: string) {
@@ -3266,17 +3351,26 @@ function updateIncomeSettings(patch: Partial<BudgetyarIncomeSettings>) {
 }
 
 function applyRecommendedBudgetPlan() {
-  if (!window.confirm('بودجه‌های اصلی بر اساس پیشنهاد درآمد نامنظم به‌روزرسانی شوند؟')) return
-  const essentialKeys = ['food', 'transport', 'rent', 'bills', 'health', 'education']
-  const flexibleKeys = categories.value.filter((category) => !essentialKeys.includes(category.key)).map((category) => category.key)
-  const essentialShare = Math.round(recommendedEssentialBudget.value / Math.max(essentialKeys.length, 1))
-  const flexibleShare = Math.round(recommendedFlexibleBudget.value / Math.max(flexibleKeys.length, 1))
+  const proceed = () => {
+    const essentialKeys = ['food', 'transport', 'rent', 'bills', 'health', 'education']
+    const flexibleKeys = categories.value.filter((category) => !essentialKeys.includes(category.key)).map((category) => category.key)
+    const essentialShare = Math.round(recommendedEssentialBudget.value / Math.max(essentialKeys.length, 1))
+    const flexibleShare = Math.round(recommendedFlexibleBudget.value / Math.max(flexibleKeys.length, 1))
 
-  budgets.value = categories.value.map((category) => ({
-    category: category.key,
-    budget: essentialKeys.includes(category.key) ? essentialShare : flexibleShare,
-  }))
-  pushToast('بودجه پیشنهادی اعمال شد ✅')
+    budgets.value = categories.value.map((category) => ({
+      category: category.key,
+      budget: essentialKeys.includes(category.key) ? essentialShare : flexibleShare,
+    }))
+    pushToast('بودجه پیشنهادی اعمال شد ✅')
+  }
+
+  confirmDialog.executeWithConfirm(proceed, {
+    title: '‏به‌روزرسانی بودجه‌ها',
+    message: 'بودجه‌های اصلی بر اساس پیشنهاد درآمد نامنظم به‌روزرسانی شوند؟',
+    confirmText: '‏اعمال بودجه',
+    cancelText: '‏انصراف',
+    tone: 'primary',
+  })
 }
 
 function getRecentMonthlyIncome(count: 3 | 6 | 12) {
@@ -3659,7 +3753,16 @@ async function uploadCloudSnapshot() {
 }
 
 async function migrateLocalDataToCloud() {
-  if (cloudSnapshotVersion.value > 0 && !window.confirm('داده‌های ابری با اطلاعات فعلی این دستگاه جایگزین شوند؟')) return
+  if (cloudSnapshotVersion.value > 0) {
+    const ok = await confirmDialog.askConfirm({
+      title: '‏جایگزینی داده‌های ابری',
+      message: 'داده‌های ابری با اطلاعات فعلی این دستگاه جایگزین شوند؟',
+      confirmText: '‏جایگزینی',
+      cancelText: '‏انصراف',
+      tone: 'warning',
+    })
+    if (!ok) return
+  }
   await syncCloudSnapshot(false, true)
 }
 
@@ -3687,7 +3790,16 @@ function applyBackupRecord(backup: Record<string, unknown>) {
 }
 
 async function fetchCloudSnapshot(confirmReplace: boolean, silent: boolean) {
-  if (confirmReplace && !window.confirm('داده‌های ابری جایگزین داده‌های فعلی این دستگاه شوند؟')) return false
+  if (confirmReplace) {
+    const ok = await confirmDialog.askConfirm({
+      title: '‏دریافت داده‌های ابری',
+      message: 'داده‌های ابری جایگزین داده‌های فعلی این دستگاه شوند؟ تغییرات ثبت‌نشده روی دستگاه بازنویسی خواهند شد.',
+      confirmText: '‏جایگزینی داده‌های فعلی',
+      cancelText: '‏انصراف',
+      tone: 'danger',
+    })
+    if (!ok) return false
+  }
   cloudSyncStatus.value = 'working'
   cloudSyncMessage.value = 'در حال دریافت داده‌ها…'
   try {
@@ -4610,6 +4722,7 @@ export function useBudgetyar() {
     updateIncomeSettings, applyRecommendedBudgetPlan,
     getTransactionCategoryLabel, getPaymentMethodLabel, getNecessityLabel, buildCsvReport, buildExcelReport, buildBackupJson, importBackup, createExportFile, saveBlobToDevice, exportReport, installApp, pushToast,
     setStorageMode, checkCloudSession, testCloudConnection, uploadCloudSnapshot, migrateLocalDataToCloud, downloadCloudSnapshot,
+    askConfirm: confirmDialog.askConfirm, executeWithConfirm: confirmDialog.executeWithConfirm, confirmDialog,
     createCharts, syncCharts, scheduleChartSync, destroyCharts,
   }
 }

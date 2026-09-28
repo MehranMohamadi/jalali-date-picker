@@ -110,6 +110,7 @@ function quickAdd() {
       <span>‏ثبت هزینه</span>
     </button>
     <TransactionModal />
+    <ConfirmBottomSheet />
     <ToastStack :toasts="toasts" />
     <AppUpdateNotice />
   </main>

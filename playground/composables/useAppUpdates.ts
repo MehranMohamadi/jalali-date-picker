@@ -1,4 +1,5 @@
 import { APP_VERSION } from '../version'
+import { useConfirm } from './useConfirm'
 
 interface Release { buildId: string; version: string; minNativeVersion: number; notes: string }
 declare global { interface Window { budgetyarWorker?: Promise<ServiceWorkerRegistration> } }
@@ -21,6 +22,7 @@ export function useAppUpdates() {
   const buildId = String(useRuntimeConfig().public.buildId)
   const state = useState('budgetyar-updates', () => ({ ready: false, busy: false, dismissed: false, demo: false, notes: '', version: '', message: '' }))
   const { isModalOpen } = useBudgetyar()
+  const { askConfirm } = useConfirm()
 
   async function inspectWaiting() {
     if (!registration?.waiting) return
@@ -66,9 +68,19 @@ export function useAppUpdates() {
     finally { state.value.busy = Boolean(registration?.installing) }
   }
 
-  function apply() {
+  async function apply() {
     if (isModalOpen.value) { state.value.message = '‏ابتدا فرم تراکنش را ذخیره کنید یا ببندید.'; return }
-    if (edited && !window.confirm('‏برای اعمال آپدیت، صفحه دوباره باز می‌شود. تغییرات فرم‌ها را ذخیره کرده‌اید؟')) return
+    if (edited) {
+      const ok = await askConfirm({
+        title: '‏اعمال به‌روزرسانی',
+        message: '‏برای اعمال آپدیت، صفحه دوباره باز می‌شود. آیا تغییرات فرم‌ها را ذخیره کرده‌اید؟',
+        confirmText: '‏ادامه و بازنشانی',
+        cancelText: '‏انصراف',
+        tone: 'warning',
+        icon: 'refresh',
+      })
+      if (!ok) return
+    }
     edited = false
     if (changedController) { location.reload(); return }
     if (!registration?.waiting) { void check(); return }

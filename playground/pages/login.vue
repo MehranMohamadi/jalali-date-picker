@@ -2,7 +2,7 @@
 import { Cloud, KeyRound, LogIn, LogOut, UserRoundPlus } from 'lucide-vue-next'
 
 const router = useRouter()
-const { pushToast } = useBudgetyar()
+const { pushToast, askConfirm } = useBudgetyar()
 const auth = useAuth()
 const {
   currentUser,
@@ -87,7 +87,15 @@ async function signOut() {
 }
 
 async function removeAccount() {
-  if (!window.confirm('\u200Fحساب و همهٔ داده‌های ابری آن برای همیشه حذف شوند؟')) return
+  const ok = await askConfirm({
+    title: '‏حذف حساب کاربری',
+    message: '‏حساب و همهٔ داده‌های ابری آن برای همیشه حذف شوند؟ این عملیات غیرقابل بازگشت است.',
+    confirmText: '‏حذف حساب کاربری',
+    cancelText: '‏انصراف',
+    tone: 'danger',
+    icon: 'trash',
+  })
+  if (!ok) return
   busy.value = true
   const result = await deleteAccount(deletePassword.value)
   busy.value = false
