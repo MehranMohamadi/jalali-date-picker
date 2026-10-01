@@ -15,11 +15,11 @@ const {
   filteredTransactions,
   isMobileViewport,
   getCategory,
+  getTag,
   getPaymentMethodLabel,
   formatMoney,
   editTransaction,
   removeTransaction,
-  getTransactionSubCategories,
 } = budgetyar
 
 const visibleTransactionLimit = ref(isMobileViewport.value ? 24 : 80)
@@ -140,12 +140,12 @@ function showMoreTransactions() {
 
         <div v-if="item.type === 'expense'" class="transaction-compact-tags">
           <span
-            v-for="subKey in getTransactionSubCategories(item)"
+            v-for="subKey in item.tags ?? []"
             :key="subKey"
             class="sub-category-tag"
-            :title="`دسته تکمیلی: ${getCategory(subKey).label}`"
+            :title="`تگ: ${getTag(subKey)?.label ?? ''}`"
           >
-            {{ getCategory(subKey).icon }} {{ getCategory(subKey).label }}
+            {{ getTag(subKey)?.icon }} {{ getTag(subKey)?.label }}
           </span>
           <span>{{ getPaymentMethodLabel(item) }}</span>
           <span v-if="item.isEssential === false" class="nonessential-meta" title="غیرضروری" aria-label="غیرضروری">⚠️</span>

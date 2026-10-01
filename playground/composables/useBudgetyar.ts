@@ -79,6 +79,13 @@ export interface Category {
   color: string
 }
 
+export interface Tag {
+  key: string
+  label: string
+  icon: string
+  color: string
+}
+
 export interface Transaction {
   id: number
   type: TransactionType
@@ -87,6 +94,7 @@ export interface Transaction {
   date: string
   category?: CategoryKey
   categories?: CategoryKey[]
+  tags?: string[]
   description?: string
   paymentMethod?: PaymentMethod
   isEssential?: boolean
@@ -312,6 +320,7 @@ const persianHundreds = ['', 'صد', 'دویست', 'سیصد', 'چهارصد', '
 const persianScales = ['', 'هزار', 'میلیون', 'میلیارد', 'تریلیون', 'کوادریلیون']
 
 const categories = ref<Category[]>([...defaultCategories])
+const tags = ref<Tag[]>([])
 
 const transactions = ref<Transaction[]>([
 
@@ -339,6 +348,7 @@ const isMobileMenuOpen = ref(false)
 const isMobileViewport = ref(false)
 const STORAGE_KEY = 'budgetyar-transactions-v1'
 const CATEGORIES_STORAGE_KEY = 'budgetyar-categories-v1'
+const TAGS_STORAGE_KEY = 'budgetyar-tags-v1'
 const BUDGETS_STORAGE_KEY = 'budgetyar-budgets-v1'
 const CREDIT_STORAGE_KEY = 'budgetyar-credit-limit-v1'
 const CREDIT_ADJUSTMENTS_STORAGE_KEY = 'budgetyar-credit-adjustments-v1'
@@ -492,7 +502,7 @@ const form = reactive({
   title: '',
   date: todayKey.value,
   category: 'food' as CategoryKey,
-  subCategories: [] as CategoryKey[],
+  subCategories: [] as string[],
   description: '',
   paymentMethod: 'cash' as PaymentMethod,
   isEssential: true,
@@ -501,7 +511,7 @@ const form = reactive({
 })
 
 function toggleSubCategory(key: CategoryKey) {
-  if (key === form.category) return
+  if (!tags.value.some((tag) => tag.key === key)) return
   const index = form.subCategories.indexOf(key)
   if (index > -1) {
     form.subCategories.splice(index, 1)
@@ -1101,7 +1111,8 @@ const filteredTransactions = computed(() => {
     const categoryLabels = item.type === 'income'
       ? ['درآمد']
       : itemCats.map((catKey) => getCategory(catKey).label)
-    const matchesQuery = !normalizedQuery || `${item.title} ${categoryLabels.join(' ')} ${item.loanPerson ?? ''} ${item.description ?? ''}`.includes(normalizedQuery)
+    const tagLabels = (item.tags ?? []).map((key) => getTag(key)?.label ?? '')
+    const matchesQuery = !normalizedQuery || `${item.title} ${categoryLabels.join(' ')} ${tagLabels.join(' ')} ${item.loanPerson ?? ''} ${item.description ?? ''}`.includes(normalizedQuery)
     const matchesCategory = selectedCategory.value === 'همه' || categoryLabels.includes(selectedCategory.value)
     const matchesType =
       selectedType.value === 'همه' ||
@@ -1559,6 +1570,10 @@ function getCategory(key?: CategoryKey) {
   return categories.value.find((category) => category.key === key) ?? categories.value.find((category) => category.key === 'other') ?? defaultCategories[defaultCategories.length - 1]
 }
 
+function getTag(key: string) {
+  return tags.value.find((tag) => tag.key === key)
+}
+
 function normalizeDigits(value: string | number) {
   return String(value)
     .replace(/[۰-۹]/g, (digit) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)))
@@ -1910,7 +1925,7 @@ function editTransaction(item: Transaction) {
   formType.value = item.type
   editingId.value = item.id
   const primaryCat = item.category ?? 'food'
-  const subCats = getTransactionSubCategories(item)
+  const subCats = item.tags ?? []
   Object.assign(form, {
     amount: item.amount,
     title: item.title,
@@ -1934,7 +1949,7 @@ function saveTransaction() {
   }
 
   const categoryResolution = formType.value === 'expense'
-    ? resolveTransactionCategories(form.category, form.subCategories)
+    ? resolveTransactionCategories(form.category)
     : { category: undefined, categories: undefined }
 
   let payload: Transaction = {
@@ -1945,6 +1960,7 @@ function saveTransaction() {
     date: normalizeJalaliDate(form.date),
     category: categoryResolution.category,
     categories: categoryResolution.categories,
+    tags: formType.value === 'expense' ? [...new Set(form.subCategories.filter((key) => getTag(key)))] : undefined,
     description: form.description,
     paymentMethod: formType.value === 'expense' ? form.paymentMethod : undefined,
     isEssential: formType.value === 'expense' ? form.isEssential : undefined,
@@ -2129,11 +2145,11 @@ function addCategory() {
   pushToast('دسته‌بندی اضافه شد ✅')
 }
 
-function quickAddCategory(label: string, icon = '🏷️'): CategoryKey | null {
+function addTag(label: string, icon = '🏷️'): string | null {
   const trimmed = label.trim()
   if (!trimmed) return null
 
-  const existing = categories.value.find(
+  const existing = tags.value.find(
     (c) => c.label.trim().toLocaleLowerCase('fa') === trimmed.toLocaleLowerCase('fa'),
   )
   if (existing) {
@@ -2141,14 +2157,33 @@ function quickAddCategory(label: string, icon = '🏷️'): CategoryKey | null {
     return existing.key
   }
 
-  const key = `custom-${Date.now()}`
+  const key = `tag-${crypto.randomUUID()}`
   const colorPalette = ['#22d3ee', '#60a5fa', '#a78bfa', '#f472b6', '#34d399', '#2dd4bf', '#fb923c']
-  const color = colorPalette[categories.value.length % colorPalette.length]
+  const color = colorPalette[tags.value.length % colorPalette.length]
 
-  categories.value = [...categories.value, { key, label: trimmed, icon: icon.trim() || '🏷️', color }]
-  budgets.value = [...budgets.value, { category: key, budget: 0 }]
+  tags.value = [...tags.value, { key, label: trimmed, icon: icon.trim() || '🏷️', color }]
   pushToast(`برچسب «${trimmed}» اضافه شد ✅`)
   return key
+}
+
+function deleteTag(key: string) {
+  const tag = getTag(key)
+  if (!tag) return
+  confirmDialog.executeWithConfirm(() => {
+    tags.value = tags.value.filter((item) => item.key !== key)
+    transactions.value = transactions.value.map((item) => item.tags?.includes(key)
+      ? { ...item, tags: item.tags.filter((tagKey) => tagKey !== key) }
+      : item)
+    form.subCategories = form.subCategories.filter((tagKey) => tagKey !== key)
+    pushToast('تگ حذف شد 🗑️')
+  }, {
+    title: '‏حذف تگ',
+    message: `‏تگ «${tag.label}» از همهٔ هزینه‌ها حذف شود؟`,
+    confirmText: '‏حذف تگ',
+    cancelText: '‏انصراف',
+    tone: 'danger',
+    icon: 'trash',
+  })
 }
 
 function renameCategory(key: CategoryKey, value: string) {
@@ -3503,11 +3538,7 @@ function getSortedTransactions() {
 
 function getTransactionCategoryLabel(item: Transaction) {
   if (item.type === 'income') return 'درآمد'
-  const primary = getCategory(item.category ?? 'other').label
-  const subCats = getTransactionSubCategories(item)
-  if (subCats.length === 0) return primary
-  const subs = subCats.map((c) => getCategory(c).label).join('، ')
-  return `${primary} (${subs})`
+  return getCategory(item.category ?? 'other').label
 }
 
 function getPaymentMethodLabel(item: Transaction) {
@@ -3639,6 +3670,7 @@ function buildBackupJson() {
     exportedAt: new Date().toISOString(),
     transactions: transactions.value,
     categories: categories.value,
+    tags: tags.value,
     budgets: budgets.value,
     installments: installments.value,
     goals: goals.value,
@@ -3682,7 +3714,7 @@ function buildCloudSnapshotJson() {
 
 function emptyAccountSnapshot(): Record<string, unknown> {
   return {
-    app: 'budgetyar', version: 1, transactions: [], categories: [...defaultCategories], budgets: [],
+    app: 'budgetyar', version: 1, transactions: [], categories: [...defaultCategories], tags: [], budgets: [],
     installments: [], goals: [], goalTransactions: [], recurringItems: [], debts: [],
     categorizationRules: [], incomeSettings: {}, creditLimit: 0, creditAdjustments: {},
   }
@@ -3866,6 +3898,8 @@ function applyBackupRecord(backup: Record<string, unknown>) {
   const summary = isRecord(backup.summary) ? backup.summary : {}
   transactions.value = restoreTransactions(backup.transactions)
   categories.value = restoreCategories(backup.categories)
+  tags.value = Array.isArray(backup.tags) ? restoreTags(backup.tags) : []
+  migrateLegacyTags()
   budgets.value = restoreBudgets(backup.budgets)
   installments.value = restoreInstallments(backup.installments)
   goals.value = restoreGoals(backup.goals)
@@ -3877,6 +3911,7 @@ function applyBackupRecord(backup: Record<string, unknown>) {
   incomeSettings.value = restoreIncomeSettings(backup.incomeSettings)
   creditLimit.value = Math.max(0, Number(backup.creditLimit ?? summary.creditLimit ?? 0) || 0)
   creditAdjustments.value = restoreCreditAdjustments(backup.creditAdjustments)
+  pruneLegacyTagCategories()
   selectedCategory.value = 'همه'
   selectedType.value = 'همه'
   query.value = ''
@@ -4817,7 +4852,8 @@ export function useBudgetyar() {
     filteredTransactions, dailyTrend, hasExpenseData, expenseShareChartData, categoryBarChartData, trendLineChartData, dailyExpensePoints, weeklyFlowPoints, budgetAnalysisItems, monthlyTrendPoints, hasMonthlyTrendData, commitmentTotal, flexibleAfterCommitments, statsExpenseMixChartData, statsBudgetUsageChartData, statsDailyExpenseChartData, statsWeeklyFlowChartData, statsCashFlowChartData, statsEssentialChartData, statsPaymentMethodChartData, statsMonthlyTrendChartData, statsCommitmentChartData,
     summaryLines, insights, dashboardCards, widgets, statsItems,
     getCategory, normalizeDigits, normalizeJalaliDate, getJalaliInputDay, getTrendDays, getPreviousMonthPrefix, addJalaliMonths, getInstallmentDueDate, getInstallmentStatus, getInstallmentStatusLabel, getCurrentWeekRange, getWeekdayLabel, getJalaliMonthPrefix, getCurrentJalaliDate, formatJalaliInputDate, formatDisplayJalaliDate, jalaliInputToIso, isoToJalaliInput, toPersianNumber, parseMoneyInput, formatMoneyInput, formatMoneyWords, formatMoney, formatCompact, progressPercent, getChangePercent, formatPercentHint, formatChangeSentence, getRiskLabel, getFinancialHealthLevelLabel,
-    getTransactionCategories, getTransactionSubCategories, toggleSubCategory, quickAddCategory,
+    getTransactionCategories, getTransactionSubCategories, toggleSubCategory, addTag, deleteTag,
+    tags, getTag,
     selectSection, openModal, editTransaction, saveTransaction, removeTransaction, refreshBankNotifications, openNotificationAccessSettings, updateSelectedBankPackage, acceptBankSuggestion, dismissBankSuggestion, formatSuggestionDate, updateMoneyInput, updateCreditLimit, recordCreditPayment, ignoreCreditMonth, restoreIgnoredCredit, updateBudget, addCategory, renameCategory, deleteCategory, addInstallmentPlan, editInstallmentPlan, cancelInstallmentEdit, payInstallment, undoInstallmentPayment, removeInstallmentPlan,
     addGoal, editGoal, updateGoal, deleteGoal, archiveGoal, pauseGoal, resumeGoal, addGoalContribution, withdrawFromGoal, getGoalProgress, getGoalRemainingAmount, getGoalSuggestedMonthlySaving, getGoalSuggestedWeeklySaving, getGoalUnitLabel, getGoalTransactionTypeLabel, formatGoalAmount, formatGoalTrackedAmount, getGoalEstimatedValue, getGoalTrackingModeLabel, getGoalHealthLabel, getGoalScenario, getGoalTransactions, getGoalSummary, getGoalSavedValue, getGoalTargetValue,
     addRecurringItem, editRecurringItem, updateRecurringItem, deleteRecurringItem, toggleRecurringItem, getRecurringNextDueDate, markRecurringItemPaid, skipRecurringOccurrence, createTransactionFromRecurringItem, getRecurringStatusLabel, createPurchaseTransaction, setThemeMode, refreshMarketRates, getDaysUntilDue, resetRecurringForm,
@@ -4867,9 +4903,56 @@ function refreshCalendarOnVisibilityChange() {
   if (isAndroidNative.value) void refreshBankNotifications()
 }
 
+function restoreTags(value: unknown): Tag[] {
+  if (!Array.isArray(value)) return []
+  return value.filter((item): item is Tag =>
+    isRecord(item) && typeof item.key === 'string' && item.key.startsWith('tag-') &&
+    typeof item.label === 'string' && typeof item.icon === 'string' && typeof item.color === 'string')
+}
+
+function migrateLegacyTags() {
+  const legacy = new Map<string, Tag>()
+  transactions.value = transactions.value.map((item) => {
+    if (item.type !== 'expense') return item
+    const secondary = getTransactionSubCategories(item)
+    if (!secondary.length) return item
+    const migrated = secondary.flatMap((key) => {
+      const category = categories.value.find((entry) => entry.key === key)
+      if (!category) return []
+      const tagKey = `tag-legacy-${key}`
+      legacy.set(tagKey, { ...category, key: tagKey })
+      return [tagKey]
+    })
+    return { ...item, categories: item.category ? [item.category] : undefined,
+      tags: [...new Set([...(item.tags ?? []), ...migrated])] }
+  })
+  if (legacy.size) {
+    const existing = new Set(tags.value.map((tag) => tag.key))
+    tags.value = [...tags.value, ...[...legacy.values()].filter((tag) => !existing.has(tag.key))]
+  }
+  return legacy.size > 0
+}
+
+function pruneLegacyTagCategories() {
+  const removable = new Set(tags.value
+    .filter((tag) => tag.key.startsWith('tag-legacy-custom-'))
+    .map((tag) => tag.key.slice('tag-legacy-'.length))
+    .filter((key) =>
+      !transactions.value.some((item) => item.category === key) &&
+      !installments.value.some((item) => item.category === key) &&
+      !goals.value.some((item) => item.categoryId === key) &&
+      !recurringItems.value.some((item) => item.categoryId === key) &&
+      !categorizationRules.value.some((item) => item.categoryId === key) &&
+      !budgets.value.some((item) => item.category === key && item.budget > 0)))
+  if (!removable.size) return false
+  categories.value = categories.value.filter((item) => !removable.has(item.key))
+  budgets.value = budgets.value.filter((item) => !removable.has(item.category))
+  return true
+}
+
 function seedDevelopmentDataIfEmpty() {
   if (!canLoadDevelopmentData.value) return
-  if ([STORAGE_KEY, CATEGORIES_STORAGE_KEY, BUDGETS_STORAGE_KEY, CREDIT_STORAGE_KEY,
+  if ([STORAGE_KEY, CATEGORIES_STORAGE_KEY, TAGS_STORAGE_KEY, BUDGETS_STORAGE_KEY, CREDIT_STORAGE_KEY,
     CREDIT_ADJUSTMENTS_STORAGE_KEY, INSTALLMENTS_STORAGE_KEY, GOALS_STORAGE_KEY,
     GOAL_TRANSACTIONS_STORAGE_KEY, RECURRING_ITEMS_STORAGE_KEY, DEBTS_STORAGE_KEY]
     .some((key) => localStorage.getItem(key) !== null)) return
@@ -4960,6 +5043,7 @@ export function startBudgetyar() {
   
     const savedTransactions = localStorage.getItem(STORAGE_KEY)
     const savedCategories = localStorage.getItem(CATEGORIES_STORAGE_KEY)
+    const savedTags = localStorage.getItem(TAGS_STORAGE_KEY)
     const savedBudgets = localStorage.getItem(BUDGETS_STORAGE_KEY)
     const savedCreditLimit = localStorage.getItem(CREDIT_STORAGE_KEY)
     const savedCreditAdjustments = localStorage.getItem(CREDIT_ADJUSTMENTS_STORAGE_KEY)
@@ -4992,6 +5076,14 @@ export function startBudgetyar() {
       } catch {
         localStorage.removeItem(CATEGORIES_STORAGE_KEY)
       }
+    }
+
+    if (savedTags) {
+      try { tags.value = restoreTags(JSON.parse(savedTags)) } catch { localStorage.removeItem(TAGS_STORAGE_KEY) }
+    }
+    if (migrateLegacyTags()) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions.value))
+      localStorage.setItem(TAGS_STORAGE_KEY, JSON.stringify(tags.value))
     }
   
     if (savedBudgets) {
@@ -5092,6 +5184,10 @@ export function startBudgetyar() {
     if (savedThemeMode === 'light' || savedThemeMode === 'dark' || savedThemeMode === 'forest') {
       themeMode.value = savedThemeMode
     }
+    if (pruneLegacyTagCategories()) {
+      localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(categories.value))
+      localStorage.setItem(BUDGETS_STORAGE_KEY, JSON.stringify(budgets.value))
+    }
     applyTheme()
     seedDevelopmentDataIfEmpty()
   
@@ -5154,6 +5250,10 @@ export function startBudgetyar() {
     },
     { deep: true },
   )
+
+  watch(tags, (value) => {
+    localStorage.setItem(TAGS_STORAGE_KEY, JSON.stringify(value))
+  }, { deep: true })
   
   watch(
     budgets,
@@ -5251,7 +5351,7 @@ export function startBudgetyar() {
   )
 
   watch(
-    [transactions, categories, budgets, creditLimit, creditAdjustments, installments, goals, goalTransactions, recurringItems, debts, categorizationRules, incomeSettings],
+    [transactions, categories, tags, budgets, creditLimit, creditAdjustments, installments, goals, goalTransactions, recurringItems, debts, categorizationRules, incomeSettings],
     scheduleCloudAutoSync,
     { deep: true },
   )

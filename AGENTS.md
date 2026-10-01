@@ -91,7 +91,7 @@ Compact project guide for future Codex turns. Keep it accurate and update it whe
 ## Data And Storage
 
 - localStorage keys are defined in `useBudgetyar.ts`:
-  `budgetyar-transactions-v1`, `budgetyar-categories-v1`, `budgetyar-budgets-v1`, `budgetyar-credit-limit-v1`, `budgetyar-installments-v1`, `budgetyar-theme-v1`.
+  `budgetyar-transactions-v1`, `budgetyar-categories-v1`, `budgetyar-tags-v1`, `budgetyar-budgets-v1`, `budgetyar-credit-limit-v1`, `budgetyar-installments-v1`, `budgetyar-theme-v1`.
 - Schema changes must remain compatible with import/export and old saved data.
 - Amounts are in toman. Use `parseMoneyInput`, `formatMoneyInput`, `formatMoney`, and `formatCompact` for money input/display.
 - Validate imported/local data at boundaries and preserve compatibility with older saved records; avoid changing storage keys or shapes without a migration/fallback.

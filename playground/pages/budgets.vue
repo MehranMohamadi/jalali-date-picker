@@ -4,6 +4,7 @@ import { Check, Pencil, Plus, Trash2, X } from 'lucide-vue-next'
 const budgetyar = useBudgetyar()
 const {
   categories,
+  tags,
   categoryForm,
   categoryTotals,
   formatMoneyInput,
@@ -18,7 +19,8 @@ const {
   totalBudget,
   totalExpense,
   formatCompact,
-  quickAddCategory,
+  addTag,
+  deleteTag,
 } = budgetyar
 
 const suggestedCategories = [
@@ -90,7 +92,7 @@ const newTagIcon = ref('🏷️')
 function handleCreateTag() {
   const name = newTagName.value.trim()
   if (!name) return
-  if (quickAddCategory(name, newTagIcon.value || '🏷️')) {
+  if (addTag(name, newTagIcon.value || '🏷️')) {
     newTagName.value = ''
     newTagIcon.value = '🏷️'
   }
@@ -159,11 +161,11 @@ function handleCreateTag() {
       </details>
     </details>
 
-    <section class="tags-manager-section" aria-label="‏مدیریت برچسب‌های تکمیلی">
+    <section class="tags-manager-section" aria-label="‏مدیریت تگ‌ها">
       <div class="tags-manager-head">
         <div>
-          <h3>‏برچسب‌های تکمیلی (تگ‌های هزینه)</h3>
-          <p>‏تعریف برچسب‌ها برای دسته‌بندی چندگانه، فیلتر و جستجوی آسان‌تر هزینه‌ها</p>
+          <h3>‏تگ‌ها</h3>
+          <p>‏تگ‌های مستقل برای مرتب‌سازی و جستجوی هزینه‌ها</p>
         </div>
       </div>
 
@@ -191,16 +193,15 @@ function handleCreateTag() {
       </form>
 
       <div class="defined-tags-list">
-        <div v-for="cat in categories" :key="cat.key" class="defined-tag-chip">
+        <div v-for="cat in tags" :key="cat.key" class="defined-tag-chip">
           <span class="defined-tag-icon">{{ cat.icon }}</span>
           <span class="defined-tag-label">{{ cat.label }}</span>
           <button
-            v-if="cat.key !== 'other'"
             class="defined-tag-delete"
             type="button"
             :aria-label="`حذف برچسب ${cat.label}`"
             title="‏حذف برچسب"
-            @click="deleteCategory(cat.key)"
+            @click="deleteTag(cat.key)"
           >
             <X :size="13" aria-hidden="true" />
           </button>

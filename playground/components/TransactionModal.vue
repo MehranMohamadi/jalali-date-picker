@@ -9,35 +9,31 @@ const {
   formAmountInWords,
   formDatePickerValue,
   categories,
+  tags,
   getCategory,
+  getTag,
   matchTransactionCategoryRule,
   formatMoneyInput,
   updateMoneyInput,
   saveTransaction,
   toggleSubCategory,
   toPersianNumber,
-  quickAddCategory,
-  deleteCategory,
+  addTag,
+  deleteTag,
 } = budgetyar
 
 const availableSubCategories = computed(() =>
-  categories.value.filter((cat) => cat.key !== form.category),
+  tags.value,
 )
-
-function onPrimaryCategoryChange() {
-  if (form.subCategories.includes(form.category)) {
-    form.subCategories = form.subCategories.filter((k: string) => k !== form.category)
-  }
-}
 
 const newTagLabel = ref('')
 
 function handleAddQuickTag() {
   const trimmed = newTagLabel.value.trim()
   if (!trimmed) return
-  const key = quickAddCategory(trimmed, '🏷️')
+  const key = addTag(trimmed, '🏷️')
   if (key) {
-    if (!form.subCategories.includes(key) && key !== form.category) {
+    if (!form.subCategories.includes(key)) {
       form.subCategories.push(key)
     }
     newTagLabel.value = ''
@@ -48,9 +44,9 @@ function removeSubCategory(key: string) {
   form.subCategories = form.subCategories.filter((k: string) => k !== key)
 }
 
-function handleDeleteCategory(key: string, event: Event) {
+function handleDeleteTag(key: string, event: Event) {
   event.stopPropagation()
-  deleteCategory(key)
+  deleteTag(key)
 }
 
 const suggestedRule = computed(() => {
@@ -63,7 +59,7 @@ const suggestedRule = computed(() => {
     amount: Number(form.amount),
     date: form.date,
     category: form.category,
-    categories: [form.category, ...form.subCategories],
+    categories: [form.category],
     description: form.description,
     paymentMethod: form.paymentMethod,
   })
@@ -72,7 +68,6 @@ const suggestedRule = computed(() => {
 function applySuggestedCategory() {
   if (suggestedRule.value) {
     form.category = suggestedRule.value.categoryId
-    onPrimaryCategoryChange()
   }
 }
 </script>
@@ -125,16 +120,16 @@ function applySuggestedCategory() {
           <div v-if="formType === 'expense'" class="category-selection-container">
             <div class="primary-category-field">
               <label class="category-field-label">‏دسته اصلی (محاسبه در بودجه)</label>
-              <BudgetyarSelect v-model="form.category" aria-label="‏دسته اصلی" @change="onPrimaryCategoryChange">
+              <BudgetyarSelect v-model="form.category" aria-label="‏دسته اصلی">
                 <option v-for="category in categories" :key="category.key" :value="category.key">{{ category.icon }} {{ category.label }}</option>
               </BudgetyarSelect>
             </div>
 
             <div class="subcategories-container">
               <div class="subcategories-header">
-                <span class="subcategories-title">‏سایر دسته‌ها (برچسب‌های تکمیلی):</span>
+                <span class="subcategories-title">‏تگ‌ها:</span>
                 <span v-if="form.subCategories.length" class="subcategories-badge">
-                  {{ toPersianNumber(form.subCategories.length) }} ‏دسته تکمیلی
+                  {{ toPersianNumber(form.subCategories.length) }} ‏تگ
                 </span>
               </div>
 
@@ -168,11 +163,11 @@ function applySuggestedCategory() {
                     :key="subKey"
                     class="selected-sub-tag"
                   >
-                    <span class="selected-sub-tag__text">{{ getCategory(subKey).icon }} {{ getCategory(subKey).label }}</span>
+                    <span class="selected-sub-tag__text">{{ getTag(subKey)?.icon }} {{ getTag(subKey)?.label }}</span>
                     <button
                       type="button"
                       class="selected-sub-tag__remove"
-                      :aria-label="`حذف ${getCategory(subKey).label} از این هزینه`"
+                      :aria-label="`حذف ${getTag(subKey)?.label} از این هزینه`"
                       title="‏حذف از این هزینه"
                       @click="removeSubCategory(subKey)"
                     >
@@ -182,7 +177,7 @@ function applySuggestedCategory() {
                 </div>
               </div>
 
-              <div v-if="availableSubCategories.length" class="subcategories-chips" role="group" aria-label="‏دسته‌های تکمیلی">
+              <div v-if="availableSubCategories.length" class="subcategories-chips" role="group" aria-label="‏تگ‌ها">
                 <div
                   v-for="cat in availableSubCategories"
                   :key="cat.key"
@@ -202,12 +197,11 @@ function applySuggestedCategory() {
                     </span>
                   </button>
                   <button
-                    v-if="cat.key.startsWith('custom-')"
                     type="button"
                     class="subcategory-chip-delete"
                     :aria-label="`حذف کامل برچسب ${cat.label}`"
                     title="‏حذف کامل برچسب"
-                    @click="handleDeleteCategory(cat.key, $event)"
+                    @click="handleDeleteTag(cat.key, $event)"
                   >
                     <X :size="11" aria-hidden="true" />
                   </button>
