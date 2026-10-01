@@ -4,6 +4,7 @@ Compact project guide for future Codex turns. Keep it accurate and update it whe
 
 ## Overview
 
+- Product-facing overview and current feature inventory: `docs/product-overview.fa.md`.
 - This repo contains a Nuxt 3 / Vue 3 Jalali date-picker package and a larger Budgetyar finance playground.
 - The root package is published as `nuxt-jalali-minical`; `src/` builds into `dist/` via `unbuild`.
 - `playground/` is the Persian RTL Budgetyar demo app: a personal finance dashboard.

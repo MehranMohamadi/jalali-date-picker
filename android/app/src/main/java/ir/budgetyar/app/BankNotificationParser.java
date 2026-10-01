@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
 
 final class BankNotificationParser {
     private static final List<String> EXPENSE_WORDS = Arrays.asList("خرید", "پرداخت", "برداشت", "کسر", "انتقال", "هزینه", "پرید");
-    private static final List<String> IGNORED_WORDS = Arrays.asList("واریز", "دریافت", "نشست", "رمز", "پویا", "کد", "تایید", "تأیید", "otp", "رمز یکبار مصرف");
+    private static final List<String> IGNORED_WORDS = Arrays.asList("واریز", "دریافت", "نشست", "رمز", "پویا", "تایید", "تأیید", "otp", "رمز یکبار مصرف");
     private static final Pattern MONEY_PATTERN = Pattern.compile("(\\d[\\d,\\s٬،.]*)\\s*(ریال|تومان)?");
 
     private BankNotificationParser() {}
@@ -31,7 +31,7 @@ final class BankNotificationParser {
             JSONObject suggestion = new JSONObject();
             suggestion.put("id", createId(packageName, postTime, amount, normalized));
             suggestion.put("sourcePackage", packageName);
-            suggestion.put("sourceApp", appName.length() > 0 ? appName : "بلو بانک");
+            suggestion.put("sourceApp", appName.length() > 0 ? appName : packageName);
             suggestion.put("title", buildTitle(rawText));
             suggestion.put("amount", amount);
             suggestion.put("category", suggestCategory(normalized));

@@ -44,7 +44,7 @@ public class BlueBankNotificationListener extends NotificationListenerService {
             ApplicationInfo info = packageManager.getApplicationInfo(packageName, 0);
             return packageManager.getApplicationLabel(info).toString();
         } catch (PackageManager.NameNotFoundException exception) {
-            return "بلو بانک";
+            return packageName;
         }
     }
 }

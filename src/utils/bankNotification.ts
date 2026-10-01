@@ -18,7 +18,7 @@ export interface ParsedBankExpense {
 }
 
 const expenseWords = ['خرید', 'پرداخت', 'برداشت', 'کسر', 'انتقال', 'هزینه', 'پرید']
-const ignoredWords = ['واریز', 'دریافت', 'نشست', 'رمز', 'پویا', 'کد', 'تایید', 'تأیید', 'otp', 'رمز یکبار مصرف']
+const ignoredWords = ['واریز', 'دریافت', 'نشست', 'رمز', 'پویا', 'تایید', 'تأیید', 'otp', 'رمز یکبار مصرف']
 
 const categoryHints: Array<{ category: string; words: string[] }> = [
   { category: 'food', words: ['رستوران', 'کافه', 'غذا', 'سوپرمارکت', 'مارکت'] },
@@ -44,7 +44,7 @@ export function parseBankExpenseNotification(input: BankNotificationInput): Pars
   return {
     id: createNotificationId(input.packageName, input.postTime, amount, normalizedText),
     sourcePackage: input.packageName,
-    sourceApp: input.appName || 'بلو بانک',
+    sourceApp: input.appName || input.packageName,
     title: buildTitle(rawText),
     amount,
     category: suggestCategory(normalizedText),

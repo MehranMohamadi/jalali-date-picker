@@ -18,6 +18,8 @@ import org.json.JSONObject;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.HashSet;
+import java.util.Set;
 
 @CapacitorPlugin(name = "BankNotifications")
 public class BankNotificationsPlugin extends Plugin {
@@ -46,11 +48,12 @@ public class BankNotificationsPlugin extends Plugin {
         launcherIntent.addCategory(Intent.CATEGORY_LAUNCHER);
         List<ResolveInfo> launchableApps = packageManager.queryIntentActivities(launcherIntent, 0);
         JSArray apps = new JSArray();
+        Set<String> seenPackages = new HashSet<>();
 
         for (ResolveInfo info : launchableApps) {
             String packageName = info.activityInfo.packageName;
+            if (!seenPackages.add(packageName)) continue;
             String label = info.loadLabel(packageManager).toString();
-            if (!isLikelyBlueBank(label, packageName)) continue;
 
             JSObject app = new JSObject();
             app.put("packageName", packageName);
@@ -106,11 +109,6 @@ public class BankNotificationsPlugin extends Plugin {
 
         ComponentName componentName = new ComponentName(getContext(), BlueBankNotificationListener.class);
         return enabledListeners.toLowerCase(Locale.ROOT).contains(componentName.flattenToString().toLowerCase(Locale.ROOT));
-    }
-
-    private boolean isLikelyBlueBank(String label, String packageName) {
-        String value = (label + " " + packageName).toLowerCase(Locale.ROOT);
-        return value.contains("بلو") || value.contains("blue") || value.contains("blu") || value.contains("bank") || value.contains("بانک");
     }
 
     private boolean containsPackage(JSArray apps, String packageName) {

@@ -73,4 +73,15 @@ describe('parseBankExpenseNotification', () => {
     })
     expect(incoming).toBeNull()
   })
+
+  it('accepts a purchase notification with a merchant code from another app', () => {
+    const result = parseBankExpenseNotification({
+      packageName: 'com.example.bank',
+      title: 'خرید موفق',
+      text: 'مبلغ ۱۲۰٬۰۰۰ تومان، کد پذیرنده ۱۲۳۴',
+      postTime: 1783000000007,
+    })
+
+    expect(result).toMatchObject({ amount: 120000, sourceApp: 'com.example.bank' })
+  })
 })

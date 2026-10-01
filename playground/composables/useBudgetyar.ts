@@ -2047,7 +2047,7 @@ async function updateSelectedBankPackage(event: Event) {
   try {
     await BankNotifications.setSelectedPackage({ packageName })
     await refreshBankNotifications()
-    pushToast(packageName ? 'بلو بانک انتخاب شد' : 'انتخاب اپ پاک شد')
+    pushToast(packageName ? 'اپ منبع انتخاب شد' : 'انتخاب اپ پاک شد')
   } catch {
     pushToast('انتخاب اپ ذخیره نشد')
   }
@@ -4864,6 +4864,7 @@ function refreshCalendarOnVisibilityChange() {
   if (document.visibilityState !== 'visible') return
   refreshCurrentCalendar()
   scheduleCalendarRefresh()
+  if (isAndroidNative.value) void refreshBankNotifications()
 }
 
 function seedDevelopmentDataIfEmpty() {
