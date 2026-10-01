@@ -18,6 +18,7 @@ const {
   totalBudget,
   totalExpense,
   formatCompact,
+  quickAddCategory,
 } = budgetyar
 
 const suggestedCategories = [
@@ -82,6 +83,18 @@ function addSuggestedCategory(suggestion: (typeof suggestedCategories)[number]) 
   })
   addCategory()
 }
+
+const newTagName = ref('')
+const newTagIcon = ref('🏷️')
+
+function handleCreateTag() {
+  const name = newTagName.value.trim()
+  if (!name) return
+  if (quickAddCategory(name, newTagIcon.value || '🏷️')) {
+    newTagName.value = ''
+    newTagIcon.value = '🏷️'
+  }
+}
 </script>
 
 <template>
@@ -145,6 +158,55 @@ function addSuggestedCategory(suggestion: (typeof suggestedCategories)[number]) 
         </div>
       </details>
     </details>
+
+    <section class="tags-manager-section" aria-label="‏مدیریت برچسب‌های تکمیلی">
+      <div class="tags-manager-head">
+        <div>
+          <h3>‏برچسب‌های تکمیلی (تگ‌های هزینه)</h3>
+          <p>‏تعریف برچسب‌ها برای دسته‌بندی چندگانه، فیلتر و جستجوی آسان‌تر هزینه‌ها</p>
+        </div>
+      </div>
+
+      <form class="quick-tag-form" @submit.prevent="handleCreateTag">
+        <input
+          v-model="newTagIcon"
+          type="text"
+          maxlength="3"
+          placeholder="🏷️"
+          class="tag-icon-input"
+          aria-label="‏آیکون برچسب"
+        />
+        <input
+          v-model="newTagName"
+          type="text"
+          placeholder="‏نام برچسب جدید (مثلاً: ناهار کاری، هدیه، تفریح، اسنپ...)"
+          class="tag-name-input"
+          aria-label="‏نام برچسب"
+          required
+        />
+        <button class="primary-button quick-tag-submit" type="submit" :disabled="!newTagName.trim()">
+          <Plus :size="16" aria-hidden="true" />
+          <span>‏افزودن برچسب</span>
+        </button>
+      </form>
+
+      <div class="defined-tags-list">
+        <div v-for="cat in categories" :key="cat.key" class="defined-tag-chip">
+          <span class="defined-tag-icon">{{ cat.icon }}</span>
+          <span class="defined-tag-label">{{ cat.label }}</span>
+          <button
+            v-if="cat.key !== 'other'"
+            class="defined-tag-delete"
+            type="button"
+            :aria-label="`حذف برچسب ${cat.label}`"
+            title="‏حذف برچسب"
+            @click="deleteCategory(cat.key)"
+          >
+            <X :size="13" aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+    </section>
 
     <div class="budget-grid">
       <article v-for="item in categoryTotals" :key="item.key" class="budget-item">

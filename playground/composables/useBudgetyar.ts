@@ -45,6 +45,12 @@ import {
   type GoalTargetValuePolicy,
   type GoalTrackingMode,
 } from '../../src/utils/budgetyarGoals'
+import {
+  getTransactionCategories,
+  getTransactionSubCategories,
+  matchesTransactionCategory,
+  resolveTransactionCategories,
+} from '../../src/utils/transactionCategories'
 
 Chart.register(...registerables)
 const BankNotifications = registerPlugin<BankNotificationsPlugin>('BankNotifications')
@@ -80,6 +86,7 @@ export interface Transaction {
   amount: number
   date: string
   category?: CategoryKey
+  categories?: CategoryKey[]
   description?: string
   paymentMethod?: PaymentMethod
   isEssential?: boolean
@@ -485,12 +492,23 @@ const form = reactive({
   title: '',
   date: todayKey.value,
   category: 'food' as CategoryKey,
+  subCategories: [] as CategoryKey[],
   description: '',
   paymentMethod: 'cash' as PaymentMethod,
   isEssential: true,
   isLoan: false,
   loanPerson: '',
 })
+
+function toggleSubCategory(key: CategoryKey) {
+  if (key === form.category) return
+  const index = form.subCategories.indexOf(key)
+  if (index > -1) {
+    form.subCategories.splice(index, 1)
+  } else {
+    form.subCategories.push(key)
+  }
+}
 const formAmountInWords = computed(() => formatMoneyWords(form.amount))
 const formDatePickerValue = computed({
   get: () => jalaliInputToIso(form.date),
@@ -1079,9 +1097,12 @@ const filteredTransactions = computed(() => {
 
   return transactions.value.filter((item) => {
     const itemDate = normalizeJalaliDate(item.date)
-    const category = item.category ? getCategory(item.category).label : 'درآمد'
-    const matchesQuery = !normalizedQuery || `${item.title} ${category} ${item.loanPerson ?? ''} ${item.description ?? ''}`.includes(normalizedQuery)
-    const matchesCategory = selectedCategory.value === 'همه' || category === selectedCategory.value
+    const itemCats = item.type === 'expense' ? getTransactionCategories(item) : []
+    const categoryLabels = item.type === 'income'
+      ? ['درآمد']
+      : itemCats.map((catKey) => getCategory(catKey).label)
+    const matchesQuery = !normalizedQuery || `${item.title} ${categoryLabels.join(' ')} ${item.loanPerson ?? ''} ${item.description ?? ''}`.includes(normalizedQuery)
+    const matchesCategory = selectedCategory.value === 'همه' || categoryLabels.includes(selectedCategory.value)
     const matchesType =
       selectedType.value === 'همه' ||
       (selectedType.value === 'درآمد' && item.type === 'income') ||
@@ -1875,6 +1896,7 @@ function openModal(type: TransactionType) {
     title: '',
     date: todayKey.value,
     category: categories.value[0]?.key ?? 'other',
+    subCategories: [],
     description: '',
     paymentMethod: 'cash',
     isEssential: true,
@@ -1887,11 +1909,14 @@ function openModal(type: TransactionType) {
 function editTransaction(item: Transaction) {
   formType.value = item.type
   editingId.value = item.id
+  const primaryCat = item.category ?? 'food'
+  const subCats = getTransactionSubCategories(item)
   Object.assign(form, {
     amount: item.amount,
     title: item.title,
     date: item.date,
-    category: item.category ?? 'food',
+    category: primaryCat,
+    subCategories: subCats,
     description: item.description ?? '',
     paymentMethod: item.paymentMethod ?? 'cash',
     isEssential: item.isEssential ?? true,
@@ -1908,13 +1933,18 @@ function saveTransaction() {
     return
   }
 
+  const categoryResolution = formType.value === 'expense'
+    ? resolveTransactionCategories(form.category, form.subCategories)
+    : { category: undefined, categories: undefined }
+
   let payload: Transaction = {
     id: editingId.value ?? Date.now(),
     type: formType.value,
     title: form.title,
     amount: Number(form.amount),
     date: normalizeJalaliDate(form.date),
-    category: formType.value === 'expense' ? form.category : undefined,
+    category: categoryResolution.category,
+    categories: categoryResolution.categories,
     description: form.description,
     paymentMethod: formType.value === 'expense' ? form.paymentMethod : undefined,
     isEssential: formType.value === 'expense' ? form.isEssential : undefined,
@@ -2099,6 +2129,28 @@ function addCategory() {
   pushToast('دسته‌بندی اضافه شد ✅')
 }
 
+function quickAddCategory(label: string, icon = '🏷️'): CategoryKey | null {
+  const trimmed = label.trim()
+  if (!trimmed) return null
+
+  const existing = categories.value.find(
+    (c) => c.label.trim().toLocaleLowerCase('fa') === trimmed.toLocaleLowerCase('fa'),
+  )
+  if (existing) {
+    pushToast(`برچسب «${existing.label}» انتخاب شد`)
+    return existing.key
+  }
+
+  const key = `custom-${Date.now()}`
+  const colorPalette = ['#22d3ee', '#60a5fa', '#a78bfa', '#f472b6', '#34d399', '#2dd4bf', '#fb923c']
+  const color = colorPalette[categories.value.length % colorPalette.length]
+
+  categories.value = [...categories.value, { key, label: trimmed, icon: icon.trim() || '🏷️', color }]
+  budgets.value = [...budgets.value, { category: key, budget: 0 }]
+  pushToast(`برچسب «${trimmed}» اضافه شد ✅`)
+  return key
+}
+
 function renameCategory(key: CategoryKey, value: string) {
   const category = categories.value.find((item) => item.key === key)
   const label = value.trim()
@@ -2128,9 +2180,19 @@ function deleteCategory(key: CategoryKey) {
   confirmDialog.executeWithConfirm(() => {
     categories.value = categories.value.filter((category) => category.key !== key)
     budgets.value = budgets.value.filter((goal) => goal.category !== key)
-    transactions.value = transactions.value.map((item) => (item.category === key ? { ...item, category: 'other' } : item))
+    transactions.value = transactions.value.map((item) => {
+      const needsPrimaryUpdate = item.category === key
+      const hasInCategories = item.categories?.includes(key)
+      if (!needsPrimaryUpdate && !hasInCategories) return item
+      const newCategory = needsPrimaryUpdate ? 'other' : item.category
+      const newCategories = item.categories
+        ? Array.from(new Set(item.categories.map((c) => (c === key ? 'other' : c))))
+        : undefined
+      return { ...item, category: newCategory, categories: newCategories }
+    })
 
     if (form.category === key) form.category = 'other'
+    form.subCategories = form.subCategories.filter((c) => c !== key)
     if (selectedCategory.value === deleted.label) selectedCategory.value = 'همه'
 
     pushToast('دسته‌بندی حذف شد 🗑️')
@@ -3440,7 +3502,12 @@ function getSortedTransactions() {
 }
 
 function getTransactionCategoryLabel(item: Transaction) {
-  return item.type === 'income' ? 'درآمد' : getCategory(item.category ?? 'other').label
+  if (item.type === 'income') return 'درآمد'
+  const primary = getCategory(item.category ?? 'other').label
+  const subCats = getTransactionSubCategories(item)
+  if (subCats.length === 0) return primary
+  const subs = subCats.map((c) => getCategory(c).label).join('، ')
+  return `${primary} (${subs})`
 }
 
 function getPaymentMethodLabel(item: Transaction) {
@@ -4750,6 +4817,7 @@ export function useBudgetyar() {
     filteredTransactions, dailyTrend, hasExpenseData, expenseShareChartData, categoryBarChartData, trendLineChartData, dailyExpensePoints, weeklyFlowPoints, budgetAnalysisItems, monthlyTrendPoints, hasMonthlyTrendData, commitmentTotal, flexibleAfterCommitments, statsExpenseMixChartData, statsBudgetUsageChartData, statsDailyExpenseChartData, statsWeeklyFlowChartData, statsCashFlowChartData, statsEssentialChartData, statsPaymentMethodChartData, statsMonthlyTrendChartData, statsCommitmentChartData,
     summaryLines, insights, dashboardCards, widgets, statsItems,
     getCategory, normalizeDigits, normalizeJalaliDate, getJalaliInputDay, getTrendDays, getPreviousMonthPrefix, addJalaliMonths, getInstallmentDueDate, getInstallmentStatus, getInstallmentStatusLabel, getCurrentWeekRange, getWeekdayLabel, getJalaliMonthPrefix, getCurrentJalaliDate, formatJalaliInputDate, formatDisplayJalaliDate, jalaliInputToIso, isoToJalaliInput, toPersianNumber, parseMoneyInput, formatMoneyInput, formatMoneyWords, formatMoney, formatCompact, progressPercent, getChangePercent, formatPercentHint, formatChangeSentence, getRiskLabel, getFinancialHealthLevelLabel,
+    getTransactionCategories, getTransactionSubCategories, toggleSubCategory, quickAddCategory,
     selectSection, openModal, editTransaction, saveTransaction, removeTransaction, refreshBankNotifications, openNotificationAccessSettings, updateSelectedBankPackage, acceptBankSuggestion, dismissBankSuggestion, formatSuggestionDate, updateMoneyInput, updateCreditLimit, recordCreditPayment, ignoreCreditMonth, restoreIgnoredCredit, updateBudget, addCategory, renameCategory, deleteCategory, addInstallmentPlan, editInstallmentPlan, cancelInstallmentEdit, payInstallment, undoInstallmentPayment, removeInstallmentPlan,
     addGoal, editGoal, updateGoal, deleteGoal, archiveGoal, pauseGoal, resumeGoal, addGoalContribution, withdrawFromGoal, getGoalProgress, getGoalRemainingAmount, getGoalSuggestedMonthlySaving, getGoalSuggestedWeeklySaving, getGoalUnitLabel, getGoalTransactionTypeLabel, formatGoalAmount, formatGoalTrackedAmount, getGoalEstimatedValue, getGoalTrackingModeLabel, getGoalHealthLabel, getGoalScenario, getGoalTransactions, getGoalSummary, getGoalSavedValue, getGoalTargetValue,
     addRecurringItem, editRecurringItem, updateRecurringItem, deleteRecurringItem, toggleRecurringItem, getRecurringNextDueDate, markRecurringItemPaid, skipRecurringOccurrence, createTransactionFromRecurringItem, getRecurringStatusLabel, createPurchaseTransaction, setThemeMode, refreshMarketRates, getDaysUntilDue, resetRecurringForm,

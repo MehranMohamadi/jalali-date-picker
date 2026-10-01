@@ -775,3 +775,343 @@ body.budgetyar-light .sub-equivalent {
   object-fit: cover;
   width: 34px;
 }
+
+/* Multi-category picker in Transaction Modal */
+.category-selection-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.primary-category-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.category-field-label {
+  color: var(--muted, #94a3b8);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.subcategories-container {
+  background: var(--panel-soft, rgba(255, 255, 255, 0.03));
+  border: 1px dashed var(--line, rgba(255, 255, 255, 0.12));
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+}
+
+.subcategories-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.subcategories-title {
+  color: var(--muted, #94a3b8);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.subcategories-badge {
+  background: color-mix(in srgb, var(--accent, #38bdf8) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent, #38bdf8) 35%, transparent);
+  border-radius: 999px;
+  color: var(--accent, #38bdf8);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 1px 8px;
+}
+
+.subcategories-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 125px;
+  overflow-y: auto;
+  padding: 2px 0;
+}
+
+.subcategory-chip {
+  align-items: center;
+  background: var(--panel-soft, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.1));
+  border-radius: 8px;
+  color: var(--muted-2, #cbd5e1);
+  cursor: pointer;
+  display: inline-flex;
+  font-family: inherit;
+  font-size: 0.76rem;
+  gap: 5px;
+  padding: 5px 9px;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.subcategory-chip:hover {
+  background: var(--surface-soft, rgba(255, 255, 255, 0.08));
+  border-color: var(--line-active, rgba(255, 255, 255, 0.2));
+  color: var(--text, #fff);
+}
+
+.subcategory-chip.active {
+  background: color-mix(in srgb, var(--accent, #38bdf8) 22%, transparent);
+  border-color: var(--accent, #38bdf8);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent, #38bdf8) 25%, transparent);
+  color: #fff;
+  font-weight: 700;
+}
+
+.subcategory-chip__icon {
+  font-size: 0.88rem;
+  line-height: 1;
+}
+
+.subcategory-chip__label {
+  line-height: 1.2;
+}
+
+.subcategory-chip__indicator {
+  font-size: 0.75rem;
+  font-weight: bold;
+  opacity: 0.75;
+}
+
+.subcategory-chip.active .subcategory-chip__indicator {
+  color: var(--accent, #38bdf8);
+  opacity: 1;
+}
+
+/* Secondary category tags in transaction list */
+.sub-category-tag {
+  background: color-mix(in srgb, var(--accent, #38bdf8) 12%, transparent) !important;
+  border-color: color-mix(in srgb, var(--accent, #38bdf8) 28%, transparent) !important;
+  color: var(--accent-light, #7dd3fc) !important;
+}
+
+body.budgetyar-light .subcategories-container {
+  background: rgba(15, 23, 42, 0.02);
+  border-color: rgba(15, 23, 42, 0.12);
+}
+
+body.budgetyar-light .subcategory-chip {
+  background: rgba(15, 23, 42, 0.04);
+  border-color: rgba(15, 23, 42, 0.12);
+  color: #334155;
+}
+
+body.budgetyar-light .subcategory-chip:hover {
+  background: rgba(15, 23, 42, 0.08);
+}
+
+body.budgetyar-light .subcategory-chip.active {
+  background: rgba(14, 165, 233, 0.14);
+  border-color: #0284c7;
+  color: #0369a1;
+}
+
+body.budgetyar-light .sub-category-tag {
+  background: rgba(14, 165, 233, 0.12) !important;
+  border-color: rgba(14, 165, 233, 0.3) !important;
+  color: #0369a1 !important;
+}
+
+/* Quick tag creator inside Transaction Modal */
+.quick-tag-creator {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+}
+
+.quick-tag-input {
+  background: var(--surface-soft, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.12));
+  border-radius: 8px;
+  color: var(--text, #fff);
+  flex: 1;
+  font-family: inherit;
+  font-size: 0.76rem;
+  min-width: 0;
+  padding: 5px 9px;
+}
+
+.quick-tag-input:focus {
+  border-color: var(--accent, #38bdf8);
+  outline: none;
+}
+
+.quick-tag-btn {
+  align-items: center;
+  background: color-mix(in srgb, var(--accent, #38bdf8) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent, #38bdf8) 35%, transparent);
+  border-radius: 8px;
+  color: var(--accent, #38bdf8);
+  cursor: pointer;
+  display: inline-flex;
+  font-family: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  gap: 4px;
+  padding: 5px 10px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.quick-tag-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent, #38bdf8) 28%, transparent);
+  border-color: var(--accent, #38bdf8);
+}
+
+.quick-tag-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+/* Supplementary tags manager section in budgets.vue */
+.tags-manager-section {
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.1));
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 16px;
+}
+
+.tags-manager-head h3 {
+  font-size: 0.96rem;
+  margin: 0 0 4px;
+}
+
+.tags-manager-head p {
+  color: var(--muted, #94a3b8);
+  font-size: 0.76rem;
+  margin: 0;
+}
+
+.quick-tag-form {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+}
+
+.tag-icon-input {
+  background: var(--surface-soft, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.12));
+  border-radius: 10px;
+  color: var(--text, #fff);
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 8px;
+  text-align: center;
+}
+
+.tag-name-input {
+  background: var(--surface-soft, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.12));
+  border-radius: 10px;
+  color: var(--text, #fff);
+  font-family: inherit;
+  font-size: 0.85rem;
+  min-width: 0;
+  padding: 8px 12px;
+}
+
+.tag-name-input:focus,
+.tag-icon-input:focus {
+  border-color: var(--accent, #38bdf8);
+  outline: none;
+}
+
+.quick-tag-submit {
+  font-size: 0.8rem;
+  gap: 5px;
+  padding: 8px 14px;
+}
+
+.defined-tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.defined-tag-chip {
+  align-items: center;
+  background: var(--panel-soft, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.1));
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.78rem;
+  gap: 6px;
+  padding: 4px 10px 4px 6px;
+  transition: all 0.2s ease;
+}
+
+.defined-tag-chip:hover {
+  background: var(--surface-soft, rgba(255, 255, 255, 0.08));
+  border-color: var(--line-active, rgba(255, 255, 255, 0.2));
+}
+
+.defined-tag-icon {
+  font-size: 0.9rem;
+}
+
+.defined-tag-label {
+  color: var(--text, #fff);
+  font-weight: 500;
+}
+
+.defined-tag-delete {
+  align-items: center;
+  background: rgba(239, 68, 68, 0.15);
+  border: none;
+  border-radius: 50%;
+  color: #f87171;
+  cursor: pointer;
+  display: inline-flex;
+  height: 20px;
+  justify-content: center;
+  padding: 0;
+  transition: all 0.2s ease;
+  width: 20px;
+}
+
+.defined-tag-delete:hover {
+  background: rgba(239, 68, 68, 0.3);
+  color: #fff;
+}
+
+/* Light mode overrides for quick tag and tags manager */
+body.budgetyar-light .quick-tag-input,
+body.budgetyar-light .tag-name-input,
+body.budgetyar-light .tag-icon-input {
+  background: #f8fafc;
+  border-color: rgba(15, 23, 42, 0.12);
+  color: #0f172a;
+}
+
+body.budgetyar-light .defined-tag-chip {
+  background: #f1f5f9;
+  border-color: rgba(15, 23, 42, 0.1);
+}
+
+body.budgetyar-light .defined-tag-label {
+  color: #1e293b;
+}
+
+@media (max-width: 640px) {
+  .quick-tag-form {
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+  .quick-tag-submit {
+    grid-column: 1 / -1;
+  }
+}
+
+

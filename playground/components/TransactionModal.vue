@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowDownCircle, ArrowUpCircle, Check, Sparkles, X } from 'lucide-vue-next'
+import { ArrowDownCircle, ArrowUpCircle, Check, Plus, Sparkles, X } from 'lucide-vue-next'
 
 const budgetyar = useBudgetyar()
 const {
@@ -14,7 +14,34 @@ const {
   formatMoneyInput,
   updateMoneyInput,
   saveTransaction,
+  toggleSubCategory,
+  toPersianNumber,
+  quickAddCategory,
 } = budgetyar
+
+const availableSubCategories = computed(() =>
+  categories.value.filter((cat) => cat.key !== form.category),
+)
+
+function onPrimaryCategoryChange() {
+  if (form.subCategories.includes(form.category)) {
+    form.subCategories = form.subCategories.filter((k: string) => k !== form.category)
+  }
+}
+
+const newTagLabel = ref('')
+
+function handleAddQuickTag() {
+  const trimmed = newTagLabel.value.trim()
+  if (!trimmed) return
+  const key = quickAddCategory(trimmed, '🏷️')
+  if (key) {
+    if (!form.subCategories.includes(key) && key !== form.category) {
+      form.subCategories.push(key)
+    }
+    newTagLabel.value = ''
+  }
+}
 
 const suggestedRule = computed(() => {
   if (formType.value !== 'expense' || !form.title) return undefined
@@ -26,13 +53,17 @@ const suggestedRule = computed(() => {
     amount: Number(form.amount),
     date: form.date,
     category: form.category,
+    categories: [form.category, ...form.subCategories],
     description: form.description,
     paymentMethod: form.paymentMethod,
   })
 })
 
 function applySuggestedCategory() {
-  if (suggestedRule.value) form.category = suggestedRule.value.categoryId
+  if (suggestedRule.value) {
+    form.category = suggestedRule.value.categoryId
+    onPrimaryCategoryChange()
+  }
 }
 </script>
 
@@ -81,9 +112,63 @@ function applySuggestedCategory() {
             <small v-else class="rule-suggestion-confirmed">‏انتخاب شد ✓</small>
           </div>
 
-          <BudgetyarSelect v-if="formType === 'expense'" v-model="form.category" aria-label="‏دسته">
-            <option v-for="category in categories" :key="category.key" :value="category.key">{{ category.icon }} {{ category.label }}</option>
-          </BudgetyarSelect>
+          <div v-if="formType === 'expense'" class="category-selection-container">
+            <div class="primary-category-field">
+              <label class="category-field-label">‏دسته اصلی (محاسبه در بودجه)</label>
+              <BudgetyarSelect v-model="form.category" aria-label="‏دسته اصلی" @change="onPrimaryCategoryChange">
+                <option v-for="category in categories" :key="category.key" :value="category.key">{{ category.icon }} {{ category.label }}</option>
+              </BudgetyarSelect>
+            </div>
+
+            <div class="subcategories-container">
+              <div class="subcategories-header">
+                <span class="subcategories-title">‏سایر دسته‌ها (برچسب‌های تکمیلی):</span>
+                <span v-if="form.subCategories.length" class="subcategories-badge">
+                  {{ toPersianNumber(form.subCategories.length) }} ‏دسته تکمیلی
+                </span>
+              </div>
+
+              <div class="quick-tag-creator">
+                <input
+                  v-model="newTagLabel"
+                  type="text"
+                  placeholder="‏تعریف برچسب جدید..."
+                  class="quick-tag-input"
+                  aria-label="‏نام برچسب جدید"
+                  maxlength="40"
+                  @keydown.enter.prevent="handleAddQuickTag"
+                />
+                <button
+                  type="button"
+                  class="quick-tag-btn"
+                  :disabled="!newTagLabel.trim()"
+                  aria-label="‏افزودن برچسب جدید"
+                  @click="handleAddQuickTag"
+                >
+                  <Plus :size="14" aria-hidden="true" />
+                  <span>‏افزودن</span>
+                </button>
+              </div>
+
+              <div v-if="availableSubCategories.length" class="subcategories-chips" role="group" aria-label="‏دسته‌های تکمیلی">
+                <button
+                  v-for="cat in availableSubCategories"
+                  :key="cat.key"
+                  type="button"
+                  class="subcategory-chip"
+                  :class="{ active: form.subCategories.includes(cat.key) }"
+                  :aria-pressed="form.subCategories.includes(cat.key)"
+                  @click="toggleSubCategory(cat.key)"
+                >
+                  <span class="subcategory-chip__icon" aria-hidden="true">{{ cat.icon }}</span>
+                  <span class="subcategory-chip__label">{{ cat.label }}</span>
+                  <span class="subcategory-chip__indicator" aria-hidden="true">
+                    {{ form.subCategories.includes(cat.key) ? '✓' : '+' }}
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
 
           <JalaliDatePicker
             v-model="formDatePickerValue"
