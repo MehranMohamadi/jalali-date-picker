@@ -61,3 +61,14 @@ export function matchesTransactionCategory(
   const labels = categories.map(getCategoryLabel)
   return labels.includes(selectedCategory)
 }
+
+/**
+ * Removes a category from a categories array.
+ */
+export function removeTransactionCategory(
+  categories: string[],
+  categoryToRemove: string,
+): string[] {
+  return categories.filter((cat) => cat !== categoryToRemove)
+}
+

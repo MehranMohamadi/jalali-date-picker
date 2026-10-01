@@ -17,6 +17,7 @@ const {
   toggleSubCategory,
   toPersianNumber,
   quickAddCategory,
+  deleteCategory,
 } = budgetyar
 
 const availableSubCategories = computed(() =>
@@ -41,6 +42,15 @@ function handleAddQuickTag() {
     }
     newTagLabel.value = ''
   }
+}
+
+function removeSubCategory(key: string) {
+  form.subCategories = form.subCategories.filter((k: string) => k !== key)
+}
+
+function handleDeleteCategory(key: string, event: Event) {
+  event.stopPropagation()
+  deleteCategory(key)
 }
 
 const suggestedRule = computed(() => {
@@ -150,22 +160,58 @@ function applySuggestedCategory() {
                 </button>
               </div>
 
+              <div v-if="form.subCategories.length" class="selected-subcategories-bar">
+                <span class="selected-subcategories-title">‏برچسب‌های انتخاب‌شده برای این هزینه:</span>
+                <div class="selected-subcategories-tags">
+                  <span
+                    v-for="subKey in form.subCategories"
+                    :key="subKey"
+                    class="selected-sub-tag"
+                  >
+                    <span class="selected-sub-tag__text">{{ getCategory(subKey).icon }} {{ getCategory(subKey).label }}</span>
+                    <button
+                      type="button"
+                      class="selected-sub-tag__remove"
+                      :aria-label="`حذف ${getCategory(subKey).label} از این هزینه`"
+                      title="‏حذف از این هزینه"
+                      @click="removeSubCategory(subKey)"
+                    >
+                      <X :size="12" aria-hidden="true" />
+                    </button>
+                  </span>
+                </div>
+              </div>
+
               <div v-if="availableSubCategories.length" class="subcategories-chips" role="group" aria-label="‏دسته‌های تکمیلی">
-                <button
+                <div
                   v-for="cat in availableSubCategories"
                   :key="cat.key"
-                  type="button"
-                  class="subcategory-chip"
-                  :class="{ active: form.subCategories.includes(cat.key) }"
-                  :aria-pressed="form.subCategories.includes(cat.key)"
-                  @click="toggleSubCategory(cat.key)"
+                  class="subcategory-chip-item"
                 >
-                  <span class="subcategory-chip__icon" aria-hidden="true">{{ cat.icon }}</span>
-                  <span class="subcategory-chip__label">{{ cat.label }}</span>
-                  <span class="subcategory-chip__indicator" aria-hidden="true">
-                    {{ form.subCategories.includes(cat.key) ? '✓' : '+' }}
-                  </span>
-                </button>
+                  <button
+                    type="button"
+                    class="subcategory-chip"
+                    :class="{ active: form.subCategories.includes(cat.key) }"
+                    :aria-pressed="form.subCategories.includes(cat.key)"
+                    @click="toggleSubCategory(cat.key)"
+                  >
+                    <span class="subcategory-chip__icon" aria-hidden="true">{{ cat.icon }}</span>
+                    <span class="subcategory-chip__label">{{ cat.label }}</span>
+                    <span class="subcategory-chip__indicator" aria-hidden="true">
+                      {{ form.subCategories.includes(cat.key) ? '✓' : '+' }}
+                    </span>
+                  </button>
+                  <button
+                    v-if="cat.key.startsWith('custom-')"
+                    type="button"
+                    class="subcategory-chip-delete"
+                    :aria-label="`حذف کامل برچسب ${cat.label}`"
+                    title="‏حذف کامل برچسب"
+                    @click="handleDeleteCategory(cat.key, $event)"
+                  >
+                    <X :size="11" aria-hidden="true" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>

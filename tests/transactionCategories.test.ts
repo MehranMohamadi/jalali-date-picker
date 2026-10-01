@@ -3,6 +3,7 @@ import {
   getTransactionCategories,
   getTransactionSubCategories,
   matchesTransactionCategory,
+  removeTransactionCategory,
   resolveTransactionCategories,
 } from '../src/utils/transactionCategories'
 
@@ -45,6 +46,11 @@ describe('transactionCategories utility', () => {
     expect(empty.categories).toBeUndefined()
   })
 
+  it('removes a category from category list correctly', () => {
+    expect(removeTransactionCategory(['food', 'fun', 'bills'], 'fun')).toEqual(['food', 'bills'])
+    expect(removeTransactionCategory(['food'], 'fun')).toEqual(['food'])
+  })
+
   it('matches transaction when selected category matches primary or secondary', () => {
     const labelMap: Record<string, string> = {
       food: 'خوراکی',
@@ -64,3 +70,4 @@ describe('transactionCategories utility', () => {
     expect(matchesTransactionCategory(tx, 'قبوض', getLabel)).toBe(false)
   })
 })
+
