@@ -1,1 +1,7 @@
 /public/
+/.kilo/
+/.output/
+/dist/
+/android/
+/playground/.nuxt/
+/playground/.output/
