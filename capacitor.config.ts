@@ -14,7 +14,7 @@ const config: CapacitorConfig = {
     allowNavigation: [mobileOrigin.host],
     errorPath: 'error.html',
   },
-  android: { appendUserAgent: ' BudgetyarAndroid/2' },
+  android: { appendUserAgent: ' BudgetyarAndroid/3' },
   plugins: {
     BudgetyarApi: {
       baseUrl: mobileOrigin.origin,

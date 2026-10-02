@@ -160,6 +160,8 @@ Set-Location android
 rtk proxy .\gradlew.bat :app:assembleDebug --offline --no-daemon --max-workers=2 --console=plain
 ```
 
+⁧پس از بررسی APK، از پوشهٔ اصلی پروژه `rtk npm run stage:apk` را اجرا کنید. این دستور فایل `playground/public/downloads/budgetyar-latest.apk` را جایگزین می‌کند. سپس سایت را با `rtk npm run build:vercel` منتشر کنید تا دکمهٔ دانلود در تنظیمات همیشه فقط به آخرین APK اشاره کند.
+
 ⁧فایل نصب خروجی در این مسیر ساخته می‌شود:
 
 ```text

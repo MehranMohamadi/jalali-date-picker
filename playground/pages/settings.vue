@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { registerPlugin } from '@capacitor/core'
 import { Cloud, CloudDownload, CloudUpload, Download, HardDrive, Palette, PlugZap, RefreshCw, Smartphone, Upload } from 'lucide-vue-next'
 import { APP_VERSION } from '../version'
 
+const latestApkUrl = '/downloads/budgetyar-latest.apk'
+const nativeUpdates = registerPlugin<{ openApkDownload(): Promise<void> }>('BudgetyarUpdates')
 const budgetyar = useBudgetyar()
 const updates = useAppUpdates()
 const updateState = updates.state
@@ -28,10 +31,26 @@ const {
   testCloudConnection,
   migrateLocalDataToCloud,
   downloadCloudSnapshot,
+  pushToast,
 } = budgetyar
 
 function chooseBackupFile() {
   backupInput.value?.click()
+}
+
+async function downloadLatestApk(event: MouseEvent) {
+  if (!isAndroidNative.value) return
+  event.preventDefault()
+  try {
+    await nativeUpdates.openApkDownload()
+  } catch {
+    try {
+      await navigator.clipboard.writeText(new URL(latestApkUrl, location.origin).href)
+      pushToast('‏لینک دانلود کپی شد؛ آن را در مرورگر گوشی باز کنید.')
+    } catch {
+      location.assign(latestApkUrl)
+    }
+  }
 }
 </script>
 
@@ -122,6 +141,9 @@ function chooseBackupFile() {
           <div><h2>‏برنامه</h2><p>‏نسخهٔ فعلی: {{ APP_VERSION }}</p></div>
         </div>
         <div class="settings-actions">
+          <a :href="latestApkUrl" class="primary-button settings-action" download="budgetyar-latest.apk" @click="downloadLatestApk">
+            <Download :size="18" aria-hidden="true" />‏دانلود آخرین APK اندروید
+          </a>
           <button class="soft-button settings-action" type="button" :disabled="updateState.busy" @click="updates.check">
             <RefreshCw :size="18" aria-hidden="true" />{{ updateState.busy ? '‏در حال بررسی…' : '‏بررسی نسخهٔ جدید' }}
           </button>

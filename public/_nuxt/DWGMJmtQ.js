@@ -1,0 +1,1 @@
+import{j as n,a5 as a,a6 as s}from"./Ct4NKPjc.js";const m=n({__name:"upcoming-expenses",async setup(o){let e,t;return[e,t]=a(()=>s("/planning#commitments",{replace:!0})),await e,t(),()=>{}}});export{m as default};

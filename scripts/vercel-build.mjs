@@ -36,6 +36,10 @@ if (!output) {
   throw new Error(`Nuxt output was not generated. Checked: ${outputCandidates.join(', ')}`)
 }
 
+if (!existsSync(resolve(output, 'downloads/budgetyar-latest.apk'))) {
+  throw new Error('Latest APK is missing. Build Android and run npm run stage:apk before deploying.')
+}
+
 rmSync(publicDir, { recursive: true, force: true })
 cpSync(output, publicDir, { recursive: true })
 

@@ -25,6 +25,7 @@
     "build": "unbuild",
     "build:app": "node scripts/build-app.mjs",
     "build:mobile": "node scripts/build-mobile.mjs",
+    "stage:apk": "node scripts/stage-apk.mjs",
     "build:vercel": "node scripts/vercel-build.mjs",
     "version:patch": "node scripts/bump-version.mjs",
     "dev": "nuxi dev playground",

@@ -1,9 +1,1 @@
-.git/
-.kilo/
-node_modules/
-android/
-mobile/dist/
-**/.nuxt/
-**/.output/
-**/.env*
-coverage/
+/public/

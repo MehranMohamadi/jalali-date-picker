@@ -17,6 +17,10 @@ export async function finalizeRelease(directory, buildId) {
   const manifest = []
   for (const path of files.sort()) {
     const url = '/' + relative(root, path).replaceAll('\\', '/')
+    if (url.endsWith('.apk')) {
+      if (url !== '/downloads/budgetyar-latest.apk') throw new Error(`Only the latest APK may be published: ${url}`)
+      continue
+    }
     // Hosting platforms can deliberately return HTTP 404 for their error template.
     if (['/200.html', '/404.html', '/sw.js', '/version.json', '/application-shell.json'].includes(url) || url.endsWith('.map')) continue
     const content = await readFile(path)
@@ -26,7 +30,7 @@ export async function finalizeRelease(directory, buildId) {
   if (!manifest.some(entry => entry.url === '/index.html')) throw new Error('Missing app shell')
   const versionSource = await readFile(new URL('../playground/version.ts', import.meta.url), 'utf8')
   const version = versionSource.match(/APP_VERSION = '([^']+)'/)[1]
-  const release = { buildId, version, minNativeVersion: 2, notes: '‏ظاهر ورود و ثبت‌نام، مودال ثبت هزینه، بخش اعلان‌ها و انتخاب تصویر بهبود یافت.' }
+  const release = { buildId, version, minNativeVersion: 2, notes: '‏لینک ثابت دانلود آخرین APK به تنظیمات اضافه شد.' }
   const template = await readFile(new URL('../playground/public/sw.js', import.meta.url), 'utf8')
   const worker = template.replace('/* RELEASE */ null', JSON.stringify(release)).replace('/* MANIFEST */ []', JSON.stringify(manifest))
   await writeFile(join(root, 'sw.js'), worker)

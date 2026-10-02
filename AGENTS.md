@@ -47,6 +47,7 @@ Compact project guide for future Codex turns. Keep it accurate and update it whe
 - Build package: `npm run build`
 - Generate static playground: `npm run build:app`
 - Generate the Android remote bootstrap: `npm run build:mobile`, then `npx cap sync android`. APK builds remain manual.
+- After an authorized APK build, run `npm run stage:apk` before `npm run build:vercel`; Settings serves the single stable `playground/public/downloads/budgetyar-latest.apk` file. Keep APKs out of the service worker cache.
 - Build the frontend for Vercel: `npm run build:vercel`
 - Backend tests: from `backend/`, run `go test ./...` (if Go is installed).
 - If Nuxt generate is blocked by a dev-server lock, use PowerShell:

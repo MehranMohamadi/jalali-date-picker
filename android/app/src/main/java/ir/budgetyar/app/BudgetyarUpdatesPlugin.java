@@ -1,7 +1,10 @@
 package ir.budgetyar.app;
 
+import android.content.ActivityNotFoundException;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -16,6 +19,8 @@ import java.util.Set;
 
 @CapacitorPlugin(name = "BudgetyarUpdates")
 public class BudgetyarUpdatesPlugin extends Plugin {
+    private static final String LATEST_APK_PATH = "/downloads/budgetyar-latest.apk";
+
     private SharedPreferences preferences() {
         return getContext().getSharedPreferences("budgetyar-origin-migration-v1", Context.MODE_PRIVATE);
     }
@@ -62,7 +67,7 @@ public class BudgetyarUpdatesPlugin extends Plugin {
             JSObject result = new JSObject();
             result.put("entries", new JSONObject(preferences().getString("entries", "{}")));
             result.put("completed", preferences().getBoolean("completed", false));
-            result.put("nativeVersion", 2);
+            result.put("nativeVersion", 3);
             call.resolve(result);
         } catch (Exception error) { call.reject("Migration could not be read"); }
     }
@@ -72,5 +77,23 @@ public class BudgetyarUpdatesPlugin extends Plugin {
         if (!atOrigin(MainActivity.remoteOrigin)) { call.reject("Remote app only"); return; }
         if (preferences().edit().putBoolean("completed", true).remove("entries").commit()) call.resolve();
         else call.reject("Migration could not be saved");
+    }
+
+    @PluginMethod
+    public void openApkDownload(PluginCall call) {
+        if (!atOrigin(MainActivity.remoteOrigin) || !MainActivity.remoteOrigin.startsWith("https://")) {
+            call.reject("Remote app only");
+            return;
+        }
+        getActivity().runOnUiThread(() -> {
+            try {
+                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(MainActivity.remoteOrigin + LATEST_APK_PATH));
+                intent.addCategory(Intent.CATEGORY_BROWSABLE);
+                getActivity().startActivity(intent);
+                call.resolve();
+            } catch (ActivityNotFoundException error) {
+                call.reject("‏مرورگری برای دانلود APK پیدا نشد.");
+            }
+        });
     }
 }

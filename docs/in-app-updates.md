@@ -8,6 +8,7 @@ Android shell version 2 opens the hosted HTTPS app at `/`. Web and Android use t
 - `npm run build:vercel` runs the same build and copies it to the configured `public/` output. Deploy the entire release together. Never edit only `version.json`.
 - Update `playground/version.ts` for a visible version change. The build ID changes every build, even for the same app version.
 - For the native shell, run `npm run build:mobile`, `npx cap sync android`, then the documented PowerShell APK commands in the root README. `build:mobile` only creates the bootstrap; it does not build an APK.
+- After building and verifying a new APK, run `npm run stage:apk` from the repository root. It replaces `playground/public/downloads/budgetyar-latest.apk`. Publish the full web release so Settings always links to this single file. `build:vercel` requires it; other APK names fail the release build. The APK is excluded from the service worker cache and release manifest.
 - `BUDGETYAR_MOBILE_API_URL` selects a trusted HTTPS origin at Capacitor sync time. Its default is the production frontend. No wildcard navigation is allowed.
 
 ## Runtime and data
