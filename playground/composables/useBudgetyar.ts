@@ -11,6 +11,7 @@ import { Capacitor, registerPlugin } from '@capacitor/core'
 import { requestCloudApi } from './cloudApi'
 import { useConfirm } from './useConfirm'
 import { addJalaliDays, getJalaliMonthLength, parseJalaliInput, toGregorian, toJalali } from '../../src/utils/jalali'
+import { getBankSuggestionAmount } from '../../src/utils/bankNotification'
 import { applyCreditAdjustments, getCreditMonths } from '../../src/utils/creditLedger'
 import { localAccountKey, planLocalAccountSwitch } from '../../src/utils/accountLocal'
 import { getForecastInstallmentEvents, getNextUnpaidInstallmentIndex, getPaidInstallmentIndexes, setInstallmentPaid } from '../../src/utils/installmentLedger'
@@ -2037,7 +2038,10 @@ async function refreshBankNotifications(showToast = false) {
 
     Object.assign(bankNotificationStatus, status)
     bankApps.value = apps.apps
-    bankSuggestions.value = suggestions.suggestions
+    bankSuggestions.value = suggestions.suggestions.map((suggestion) => ({
+      ...suggestion,
+      amount: getBankSuggestionAmount(suggestion),
+    }))
     selectedBankPackage.value = status.selectedPackage
     if (showToast) pushToast('اعلان‌ها به‌روزرسانی شد')
   } catch {
@@ -2081,7 +2085,7 @@ async function acceptBankSuggestion(suggestion: BankNotificationSuggestion) {
     id: Date.now(),
     type: 'expense',
     title: suggestion.title || 'هزینه بلو بانک',
-    amount: suggestion.amount,
+    amount: getBankSuggestionAmount(suggestion),
     date,
     category,
     description: `ثبت‌شده از اعلان ${suggestion.sourceApp}\n${suggestion.rawText}`,

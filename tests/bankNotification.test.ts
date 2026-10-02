@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseBankExpenseNotification } from '../src/utils/bankNotification'
+import { getBankSuggestionAmount, parseBankExpenseNotification } from '../src/utils/bankNotification'
 
 describe('parseBankExpenseNotification', () => {
   it('parses Persian toman purchase notifications', () => {
@@ -27,6 +27,43 @@ describe('parseBankExpenseNotification', () => {
     })
 
     expect(result?.amount).toBe(120000)
+  })
+
+  it('uses rial for blu amounts without a currency label', () => {
+    const result = parseBankExpenseNotification({
+      packageName: 'ir.bluebank.mobile',
+      appName: 'بلو بانک',
+      title: 'برداشت از حساب',
+      text: 'مبلغ ۱٬۲۰۰٬۰۰۰ از حسابت پرید.',
+      postTime: 1783000000008,
+    })
+
+    expect(result?.amount).toBe(120000)
+  })
+
+  it('corrects existing blu suggestions using their original message', () => {
+    const suggestion = {
+      sourcePackage: 'ir.bluebank.mobile',
+      sourceApp: 'بلو بانک',
+      rawText: 'برداشت ۱٬۲۰۰٬۰۰۰ ريال از حساب',
+      postTime: 1783000000009,
+      amount: 1200000,
+    }
+
+    expect(getBankSuggestionAmount(suggestion)).toBe(120000)
+    expect(getBankSuggestionAmount({ ...suggestion, rawText: 'برداشت ۱۲۰٬۰۰۰ تومان از حساب' })).toBe(120000)
+    expect(getBankSuggestionAmount({ ...suggestion, sourcePackage: 'com.example.bank', sourceApp: 'Example Bank' })).toBe(1200000)
+  })
+
+  it('uses the withdrawal amount rather than the larger balance in a blu message', () => {
+    const result = parseBankExpenseNotification({
+      packageName: 'ir.bluebank.mobile',
+      title: 'بلو برداشت پول',
+      text: 'مهران عزیز 1,599,599 ریال از حسابت پرید. مانده 50,000,000 ریال',
+      postTime: 1783000000010,
+    })
+
+    expect(result?.amount).toBe(159960)
   })
 
   it('suggests categories from merchant words', () => {

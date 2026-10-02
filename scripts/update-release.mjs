@@ -30,7 +30,7 @@ export async function finalizeRelease(directory, buildId) {
   if (!manifest.some(entry => entry.url === '/index.html')) throw new Error('Missing app shell')
   const versionSource = await readFile(new URL('../playground/version.ts', import.meta.url), 'utf8')
   const version = versionSource.match(/APP_VERSION = '([^']+)'/)[1]
-  const release = { buildId, version, minNativeVersion: 2, notes: '‏لینک ثابت دانلود آخرین APK به تنظیمات اضافه شد.' }
+  const release = { buildId, version, minNativeVersion: 2, notes: '‏مبلغ اعلان‌های بلو بانک پیش از ثبت از ریال به تومان تبدیل می‌شود.' }
   const template = await readFile(new URL('../playground/public/sw.js', import.meta.url), 'utf8')
   const worker = template.replace('/* RELEASE */ null', JSON.stringify(release)).replace('/* MANIFEST */ []', JSON.stringify(manifest))
   await writeFile(join(root, 'sw.js'), worker)

@@ -33,12 +33,16 @@ const categoryHints: Array<{ category: string; words: string[] }> = [
 
 export function parseBankExpenseNotification(input: BankNotificationInput): ParsedBankExpense | null {
   const rawText = [input.title, input.text].filter(Boolean).join(' ').trim()
-  const normalizedText = normalizeDigits(rawText).toLowerCase()
+  const normalizedText = normalizeDigits(rawText)
+    .replace(/ي/g, 'ی')
+    .replace(/[\u200c\u200d\u200e\u200f\u202a-\u202e]/g, '')
+    .toLowerCase()
 
   if (!normalizedText || ignoredWords.some((word) => normalizedText.includes(word.toLowerCase()))) return null
   if (!expenseWords.some((word) => normalizedText.includes(word))) return null
 
-  const amount = extractAmount(normalizedText)
+  const isBlu = isBluBankSource(input.packageName, input.appName)
+  const amount = extractAmount(normalizedText, isBlu)
   if (!amount) return null
 
   return {
@@ -53,23 +57,40 @@ export function parseBankExpenseNotification(input: BankNotificationInput): Pars
   }
 }
 
+export function getBankSuggestionAmount(suggestion: Pick<ParsedBankExpense, 'sourcePackage' | 'sourceApp' | 'rawText' | 'postTime' | 'amount'>) {
+  if (!isBluBankSource(suggestion.sourcePackage, suggestion.sourceApp)) return suggestion.amount
+
+  const parsed = parseBankExpenseNotification({
+    packageName: suggestion.sourcePackage,
+    appName: suggestion.sourceApp,
+    text: suggestion.rawText,
+    postTime: suggestion.postTime,
+  })
+  return parsed?.amount ?? suggestion.amount
+}
+
+function isBluBankSource(packageName: string, appName = '') {
+  return /bluebank|blubank|(?:^|[.\s_-])blu(?:$|[.\s_-])|بلو/i.test(`${packageName} ${appName}`)
+}
+
 export function normalizeDigits(value: string) {
   return value
     .replace(/[۰-۹]/g, (digit) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)))
     .replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)))
 }
 
-function extractAmount(text: string) {
-  const moneyMatches = [...text.matchAll(/(\d[\d,\s٬،.]*)\s*(ریال|تومان)?/g)]
+function extractAmount(text: string, isBlu: boolean) {
+  const moneyMatches = [...text.matchAll(/(\d[\d,\s٬،.]*)\s*(ریال|﷼|تومان|تومن)?/g)]
   const amounts = moneyMatches
     .map((match) => {
       const value = Number(match[1].replace(/[^\d]/g, ''))
-      if (!value) return 0
-      return match[2] === 'ریال' ? Math.round(value / 10) : value
+      const amount = match[2] === 'ریال' || match[2] === '﷼' || (isBlu && !match[2]) ? Math.round(value / 10) : value
+      return { amount, hasUnit: Boolean(match[2]) }
     })
-    .filter((value) => value >= 1000)
+    .filter(({ amount }) => amount >= 1000)
 
-  return amounts.length ? Math.max(...amounts) : 0
+  if (isBlu) return amounts.find(({ hasUnit }) => hasUnit)?.amount ?? amounts[0]?.amount ?? 0
+  return amounts.length ? Math.max(...amounts.map(({ amount }) => amount)) : 0
 }
 
 function suggestCategory(text: string) {
