@@ -37,10 +37,10 @@ const {
     />
 
     <div v-else class="notification-panel">
-      <div class="notification-status-grid">
-        <article class="notification-status">
+      <div class="notification-status-grid" :class="{ 'notification-status-grid--single': bankNotificationStatus.isEnabled }">
+        <article v-if="!bankNotificationStatus.isEnabled" class="notification-status">
           <small>دسترسی اعلان</small>
-          <strong>{{ bankNotificationStatus.isEnabled ? 'فعال' : 'غیرفعال' }}</strong>
+          <strong>غیرفعال</strong>
           <button class="soft-button" type="button" @click="openNotificationAccessSettings">
             تنظیم دسترسی
           </button>
@@ -74,7 +74,7 @@ const {
         v-else
         compact
         title="پیشنهاد تازه‌ای ندارید."
-        text="بعد از فعال‌سازی دسترسی و انتخاب اپ، اعلان‌های هزینه اینجا می‌آیند."
+        :text="bankNotificationStatus.isEnabled ? 'اعلان‌های هزینهٔ اپ انتخاب‌شده اینجا نمایش داده می‌شوند.' : 'بعد از فعال‌سازی دسترسی و انتخاب اپ، اعلان‌های هزینه اینجا می‌آیند.'"
       />
     </div>
   </section>

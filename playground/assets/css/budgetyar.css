@@ -1936,6 +1936,10 @@ th {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.notification-status-grid--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .notification-status,
 .notification-suggestion {
   display: grid;
@@ -2391,7 +2395,7 @@ th {
   padding: 16px;
   place-items: center;
   position: fixed;
-  z-index: 30;
+  z-index: 50;
 }
 
 .modal {
@@ -2413,14 +2417,27 @@ th {
   background: linear-gradient(160deg, rgba(15, 23, 42, 0.98), rgba(11, 29, 42, 0.98)) !important;
   border: 1px solid rgba(94, 234, 212, 0.14);
   border-radius: 20px;
-  display: grid;
-  gap: 0;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-direction: column;
   max-height: calc(100dvh - 32px);
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
   padding: 0;
   width: min(480px, 100%);
+}
+
+.transaction-modal__body {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: 8px;
+}
+
+.transaction-modal__footer {
+  background: rgba(11, 29, 42, 0.98);
+  border-top: 1px solid var(--line);
+  flex: 0 0 auto;
+  padding: 10px 12px;
 }
 
 .transaction-modal__header {
@@ -2579,9 +2596,9 @@ th {
   background: linear-gradient(135deg, #14b8a6, #0f766e 58%, #2563eb) !important;
   border-radius: 12px;
   box-shadow: 0 -8px 24px rgba(20, 184, 166, 0.1);
-  margin: 12px;
+  margin: 0;
   min-height: 46px;
-  width: calc(100% - 24px);
+  width: 100%;
 }
 
 .transaction-submit:hover {
@@ -3272,7 +3289,6 @@ body .date-picker-popover .jalali-calendar.jalali-calendar {
   .transaction-modal {
     max-height: calc(100dvh - 16px);
     min-height: 0;
-    overscroll-behavior: contain;
     width: min(440px, 100%);
   }
 

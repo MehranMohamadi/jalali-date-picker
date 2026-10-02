@@ -64,8 +64,12 @@ async function choosePhoto(event: Event) {
   if (!file) return
   cancelCrop()
   imageError.value = ''
-  if (!/^image\/(jpeg|png|webp|gif|avif)$/.test(file.type) || file.size > 10 * 1024 * 1024) {
-    imageError.value = '\u200Fعکس JPG، PNG یا WebP با حجم حداکثر ۱۰ مگابایت انتخاب کنید.'
+  if (file.size > 10 * 1024 * 1024) {
+    imageError.value = '\u200Fحجم عکس نباید بیشتر از ۱۰ مگابایت باشد.'
+    return
+  }
+  if (file.type === 'image/svg+xml' || (!file.type.startsWith('image/') && !/\.(jpe?g|png|webp|gif|avif|heic|heif)$/i.test(file.name))) {
+    imageError.value = '\u200Fفقط فایل تصویر انتخاب کنید.'
     return
   }
   loading.value = true
@@ -89,7 +93,7 @@ async function choosePhoto(event: Event) {
   } catch {
     if (revision !== selectionRevision) return
     cancelCrop()
-    imageError.value = '\u200Fاین عکس قابل باز شدن نیست. عکس دیگری انتخاب کنید.'
+    imageError.value = '\u200Fباز کردن این تصویر ممکن نشد. عکس JPG یا PNG انتخاب کنید.'
   } finally {
     if (revision === selectionRevision) loading.value = false
   }
@@ -127,7 +131,7 @@ function selectAvatar(avatar: AvatarOption) {
       <span class="avatar-title">{{ title }}</span>
     </div>
 
-    <input ref="fileInput" class="avatar-file-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" aria-label="‏انتخاب عکس از گالری" @change="choosePhoto" />
+    <input ref="fileInput" class="avatar-file-input" type="file" accept="image/*" aria-label="‏انتخاب عکس از گالری" @change="choosePhoto" />
     <button type="button" class="avatar-gallery-button" :disabled="loading" @click="fileInput?.click()">
       <ImagePlus :size="18" aria-hidden="true" />
       <span>{{ loading ? '\u200Fدر حال آماده‌سازی عکس…' : '\u200Fانتخاب از گالری' }}</span>

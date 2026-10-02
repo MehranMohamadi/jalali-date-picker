@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowDownCircle, ArrowUpCircle, Check, Plus, Sparkles, X } from 'lucide-vue-next'
+import { ArrowDownCircle, ArrowUpCircle, Check, ChevronDown, Plus, Sparkles, X } from 'lucide-vue-next'
 
 const budgetyar = useBudgetyar()
 const {
@@ -11,7 +11,6 @@ const {
   categories,
   tags,
   getCategory,
-  getTag,
   matchTransactionCategoryRule,
   formatMoneyInput,
   updateMoneyInput,
@@ -21,10 +20,6 @@ const {
   addTag,
   deleteTag,
 } = budgetyar
-
-const availableSubCategories = computed(() =>
-  tags.value,
-)
 
 const newTagLabel = ref('')
 
@@ -38,10 +33,6 @@ function handleAddQuickTag() {
     }
     newTagLabel.value = ''
   }
-}
-
-function removeSubCategory(key: string) {
-  form.subCategories = form.subCategories.filter((k: string) => k !== key)
 }
 
 function handleDeleteTag(key: string, event: Event) {
@@ -75,7 +66,7 @@ function applySuggestedCategory() {
 <template>
   <Transition name="modal">
     <div v-if="isModalOpen" class="modal-backdrop" @click.self="isModalOpen = false">
-      <form class="modal transaction-modal glass-panel" @submit.prevent="saveTransaction">
+      <form class="modal transaction-modal glass-panel" @submit.prevent="saveTransaction" @keydown.esc="isModalOpen = false">
         <div class="transaction-modal__header compact">
           <div class="transaction-type-switch" role="group" aria-label="‏نوع تراکنش">
             <button type="button" :class="{ active: formType === 'expense' }" @click="formType = 'expense'">
@@ -92,6 +83,7 @@ function applySuggestedCategory() {
           </button>
         </div>
 
+        <div class="transaction-modal__body">
         <label class="amount-field transaction-amount">
           <input
             :value="formatMoneyInput(form.amount)"
@@ -125,14 +117,16 @@ function applySuggestedCategory() {
               </BudgetyarSelect>
             </div>
 
-            <div class="subcategories-container">
-              <div class="subcategories-header">
-                <span class="subcategories-title">‏تگ‌ها:</span>
+            <details class="subcategories-container">
+              <summary class="subcategories-header">
+                <span class="subcategories-title">‏تگ‌ها <small>‏اختیاری</small></span>
                 <span v-if="form.subCategories.length" class="subcategories-badge">
-                  {{ toPersianNumber(form.subCategories.length) }} ‏تگ
+                  {{ toPersianNumber(form.subCategories.length) }} ‏انتخاب‌شده
                 </span>
-              </div>
+                <ChevronDown :size="16" class="subcategories-chevron" aria-hidden="true" />
+              </summary>
 
+              <div class="subcategories-content">
               <div class="quick-tag-creator">
                 <input
                   v-model="newTagLabel"
@@ -155,31 +149,9 @@ function applySuggestedCategory() {
                 </button>
               </div>
 
-              <div v-if="form.subCategories.length" class="selected-subcategories-bar">
-                <span class="selected-subcategories-title">‏برچسب‌های انتخاب‌شده برای این هزینه:</span>
-                <div class="selected-subcategories-tags">
-                  <span
-                    v-for="subKey in form.subCategories"
-                    :key="subKey"
-                    class="selected-sub-tag"
-                  >
-                    <span class="selected-sub-tag__text">{{ getTag(subKey)?.icon }} {{ getTag(subKey)?.label }}</span>
-                    <button
-                      type="button"
-                      class="selected-sub-tag__remove"
-                      :aria-label="`حذف ${getTag(subKey)?.label} از این هزینه`"
-                      title="‏حذف از این هزینه"
-                      @click="removeSubCategory(subKey)"
-                    >
-                      <X :size="12" aria-hidden="true" />
-                    </button>
-                  </span>
-                </div>
-              </div>
-
-              <div v-if="availableSubCategories.length" class="subcategories-chips" role="group" aria-label="‏تگ‌ها">
+              <div v-if="tags.length" class="subcategories-chips" role="group" aria-label="‏تگ‌ها">
                 <div
-                  v-for="cat in availableSubCategories"
+                  v-for="cat in tags"
                   :key="cat.key"
                   class="subcategory-chip-item"
                 >
@@ -207,7 +179,8 @@ function applySuggestedCategory() {
                   </button>
                 </div>
               </div>
-            </div>
+              </div>
+            </details>
           </div>
 
           <JalaliDatePicker
@@ -244,11 +217,14 @@ function applySuggestedCategory() {
 
           <textarea v-model="form.description" rows="1" placeholder="‏توضیحات اختیاری" aria-label="‏توضیحات" />
         </div>
+        </div>
 
-        <button class="primary-button transaction-submit" type="submit">
-          <Check :size="18" aria-hidden="true" />
-          <span>{{ formType === 'expense' ? '‏ثبت هزینه' : '‏ثبت درآمد' }}</span>
-        </button>
+        <div class="transaction-modal__footer">
+          <button class="primary-button transaction-submit" type="submit">
+            <Check :size="18" aria-hidden="true" />
+            <span>{{ formType === 'expense' ? '‏ثبت هزینه' : '‏ثبت درآمد' }}</span>
+          </button>
+        </div>
       </form>
     </div>
   </Transition>

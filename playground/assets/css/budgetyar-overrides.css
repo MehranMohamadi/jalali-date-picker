@@ -1235,5 +1235,77 @@ body.budgetyar-light .subcategory-chip-delete:hover {
   color: #fff;
 }
 
+/* Keep the transaction form compact while leaving tags easy to edit. */
+.transaction-modal .subcategories-container {
+  border-style: solid;
+  display: block;
+  overflow: hidden;
+  padding: 0;
+}
+
+.transaction-modal .subcategories-header {
+  cursor: pointer;
+  gap: 8px;
+  list-style: none;
+  min-height: 42px;
+  padding: 8px 10px;
+}
+
+.transaction-modal .subcategories-header::-webkit-details-marker {
+  display: none;
+}
+
+.transaction-modal .subcategories-title {
+  color: var(--text);
+  flex: 1;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.transaction-modal .subcategories-title small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
+.transaction-modal .subcategories-chevron {
+  color: var(--muted);
+  flex: 0 0 auto;
+  transition: transform 0.18s ease;
+}
+
+.transaction-modal .subcategories-container[open] .subcategories-chevron {
+  transform: rotate(180deg);
+}
+
+.transaction-modal .subcategories-container:not([open]) > .subcategories-content {
+  display: none;
+}
+
+.transaction-modal .subcategories-content {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 9px;
+  padding: 10px;
+}
+
+.transaction-modal .subcategories-chips {
+  max-height: min(120px, 24svh);
+}
+
+body.budgetyar-light .transaction-modal {
+  background: #fff !important;
+}
+
+body.budgetyar-light .transaction-modal__footer {
+  background: #fff;
+}
+
+@media (max-width: 640px) {
+  .transaction-modal__footer {
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+  }
+}
+
 
 
