@@ -6,6 +6,14 @@ import { APP_VERSION } from '../version'
 const latestApkUrl = '/downloads/budgetyar-latest.apk'
 const nativeUpdates = registerPlugin<{ openApkDownload(): Promise<void> }>('BudgetyarUpdates')
 const budgetyar = useBudgetyar()
+const auth = useAuth()
+const { billing, refreshBilling } = useBilling()
+onMounted(async () => { await auth.initAuth(); await refreshBilling() })
+const subscriptionStatusText = computed(() => {
+  const labels: Record<string, string> = { pending: '‏در انتظار تأیید', active: '‏فعال', expired: '‏پایان‌یافته', cancelled: '‏لغوشده' }
+  return labels[billing.value?.subscription?.status ?? ''] || ''
+})
+const subscriptionExpiryText = computed(() => billing.value?.subscription?.expiresAt ? new Intl.DateTimeFormat('fa-IR', { dateStyle: 'medium' }).format(new Date(billing.value.subscription.expiresAt)) : '')
 const updates = useAppUpdates()
 const updateState = updates.state
 const isDevelopment = import.meta.dev
@@ -57,6 +65,15 @@ async function downloadLatestApk(event: MouseEvent) {
 <template>
   <div class="settings-page">
     <div class="settings-layout">
+      <section class="settings-panel glass-panel">
+        <div class="settings-panel-head">
+          <span class="settings-panel-icon"><Cloud :size="20" aria-hidden="true" /></span>
+          <div><h2>‏حساب و اشتراک</h2><p>‏طرح فعلی: {{ billing ? (billing.plan === 'pro' ? 'Pro' : '‏رایگان') : '‏در حال بررسی' }}</p></div>
+        </div>
+        <p v-if="billing?.subscription" class="settings-hint">‏وضعیت اشتراک: {{ subscriptionStatusText }}<span v-if="subscriptionExpiryText"> · ‏اعتبار تا {{ subscriptionExpiryText }}</span></p>
+        <div class="settings-actions"><NuxtLink to="/pro" class="soft-button settings-action">‏مشاهده یا مدیریت Pro</NuxtLink></div>
+      </section>
+
       <section class="settings-panel glass-panel">
         <div class="settings-panel-head">
           <span class="settings-panel-icon"><Palette :size="20" aria-hidden="true" /></span>

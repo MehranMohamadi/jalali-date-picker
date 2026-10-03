@@ -8,6 +8,9 @@
     "api/account.ts": {
       "maxDuration": 30
     },
+    "api/billing.ts": {
+      "maxDuration": 30
+    },
     "api/financial-advice.ts": {
       "maxDuration": 30
     },

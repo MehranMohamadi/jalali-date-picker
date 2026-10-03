@@ -4,6 +4,7 @@ import { ArrowLeft, ChevronDown, Cloud, KeyRound, LogIn, LogOut, ShieldCheck, Us
 const router = useRouter()
 const { pushToast, askConfirm } = useBudgetyar()
 const auth = useAuth()
+const { billing, refreshBilling } = useBilling()
 const {
   currentUser,
   isAuthInitialized,
@@ -35,6 +36,7 @@ const error = ref('')
 
 onMounted(() => { void initAuth() })
 watch(currentUser, user => { if (user) editName.value = user.fullName }, { immediate: true })
+watch(currentUser, () => { void refreshBilling() }, { immediate: true })
 
 async function submitAuth() {
   error.value = ''
@@ -150,7 +152,7 @@ async function removeAccount() {
 
           <div class="auth-identity">
             <img :src="activeAvatar" :alt="currentUser.fullName" width="64" height="64" />
-            <div><strong>{{ currentUser.fullName }}</strong><span dir="ltr">@{{ currentUser.username }}</span></div>
+            <div><strong>{{ currentUser.fullName }} <span v-if="billing?.plan === 'pro'" class="account-pro-badge">PRO</span></strong><span dir="ltr">@{{ currentUser.username }}</span></div>
           </div>
 
           <NuxtLink to="/settings" class="auth-settings-link">
@@ -334,6 +336,7 @@ body.budgetyar-light .auth-feedback--error { color: #be123c; }
 body.budgetyar-light .auth-feedback--success { color: #166534; }
 body.budgetyar-light .auth-settings-link, body.budgetyar-light .auth-edit-head { color: #0f766e; }
 body.budgetyar-light .auth-outline-button { color: #0f766e; }
+.account-pro-badge { border: 1px solid var(--primary); border-radius: 6px; color: var(--primary); display: inline-block; font-size: .62rem; font-weight: 800; line-height: 1; margin-inline-start: 4px; padding: 4px; vertical-align: middle; }
 @media (max-width: 860px) {
   .auth-shell { grid-template-columns: 1fr; gap: 12px; max-width: 570px; }
   .auth-story { min-height: 0; gap: 20px; padding: 24px; }

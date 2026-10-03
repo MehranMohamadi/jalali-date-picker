@@ -37,7 +37,7 @@ export function sameOrigin(origin: string | undefined, host: string | undefined)
   } catch { return false }
 }
 
-export async function proxyBackend(config: CloudConfig, path: '/api/account' | '/api/sync', method: 'GET' | 'POST' | 'PUT', body?: string, sessionToken?: string) {
+export async function proxyBackend(config: CloudConfig, path: '/api/account' | '/api/sync' | '/api/billing', method: 'GET' | 'POST' | 'PUT', body?: string, sessionToken?: string) {
   const response = await fetch(`${config.backendUrl}${path}`, {
     method,
     headers: {

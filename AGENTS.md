@@ -10,6 +10,7 @@ Compact project guide for future Codex turns. Keep it accurate and update it whe
 - `playground/` is the Persian RTL Budgetyar demo app: a personal finance dashboard.
 - `api/` contains Vercel account, cloud-sync, and financial-advice endpoints; `playground/server/api/` contains matching Nuxt development endpoints.
 - `backend/` is a separate Go service with platform storage/HTTP code, finance models, health, sync, and MCP endpoints.
+- Billing uses the same Go account and PostgreSQL session: `backend/api/billing/`, `backend/pkg/platform/billing.go`, `testbilling.go`, and additive migration `003_billing.sql`. Pro checkout is a development-only simulator until provider, price, term, and entitlements are approved.
 - Budgetyar keeps device finance state in `localStorage`; account-owned cloud snapshots are stored in Neon PostgreSQL through the Go backend.
 - Finance UI and app logic usually live in `playground/composables/useBudgetyar.ts`, `playground/pages/*.vue`, and `playground/assets/css/`.
 - Reusable date-picker/date logic lives in `src/` and is covered by `tests/`.
@@ -25,6 +26,7 @@ Compact project guide for future Codex turns. Keep it accurate and update it whe
 - `playground/pages/analytics.vue`: reports, stats, charts, weekly budget analysis, and cash flow modes.
 - `playground/pages/notifications.vue`: Android/Capacitor bank notification suggestions.
 - `playground/pages/settings.vue`: account-based cloud transfer, export, backup/import, PWA install, and theme settings.
+- `playground/pages/pro.vue`, `playground/composables/useBilling.ts`, and `playground/components/ProGate.vue`: subscription status, plan catalog, and future feature access UI.
 - `playground/pages/login.vue` and `playground/composables/useAuth.ts`: account UI and client session state. Never store passwords or session tokens in browser storage.
 - `playground/components/*.vue`: small UI components; transaction form is `TransactionModal.vue`.
 - `playground/assets/css/budgetyar.css`: main Budgetyar styles.

@@ -1,6 +1,6 @@
 import { Capacitor, registerPlugin } from '@capacitor/core'
 
-type CloudPath = '/api/account' | '/api/cloud-sync'
+type CloudPath = '/api/account' | '/api/cloud-sync' | '/api/billing'
 
 interface NativeCloudApi {
   request: (options: { path: CloudPath, method: string, body?: string }) => Promise<{ status: number, data: unknown }>

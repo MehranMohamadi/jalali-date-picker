@@ -30,7 +30,7 @@ public class BudgetyarApiPlugin extends Plugin {
         String method = call.getString("method", "GET").toUpperCase(java.util.Locale.ROOT);
         String baseUrl = getBridge().getConfig().getPluginConfiguration("BudgetyarApi").getString("baseUrl", "").replaceAll("/+$", "");
 
-        if (!(path.equals("/api/account") || path.equals("/api/cloud-sync")) ||
+        if (!(path.equals("/api/account") || path.equals("/api/cloud-sync") || path.equals("/api/billing")) ||
             !(method.equals("GET") || method.equals("POST") || method.equals("PUT"))) {
             call.reject("Unsupported API request");
             return;
