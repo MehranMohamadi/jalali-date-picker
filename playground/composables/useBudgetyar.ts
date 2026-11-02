@@ -1124,7 +1124,7 @@ const filteredTransactions = computed(() => {
     const matchesYear = !selectedYearNumber || itemDate.startsWith(`${selectedYearNumber}/`)
     const matchesMonth = !selectedMonthNumber || itemDate.slice(5, 7) === selectedMonthNumber
     return matchesQuery && matchesCategory && matchesType && matchesYear && matchesMonth && matchesStart && matchesEnd
-  })
+  }).sort((a, b) => normalizeJalaliDate(b.date).localeCompare(normalizeJalaliDate(a.date)) || b.id - a.id)
 })
 
 const dailyTrend = computed(() => {
@@ -2333,7 +2333,7 @@ function payInstallment(plan: InstallmentPlan) {
     type: 'expense',
     title: `قسط: ${plan.title}`,
     amount: plan.amount,
-    date: todayKey.value,
+    date: dueDate,
     category: plan.category,
     description: [`سررسید قسط: ${dueDate}`, plan.description].filter(Boolean).join('\n'),
     paymentMethod: plan.paymentMethod,

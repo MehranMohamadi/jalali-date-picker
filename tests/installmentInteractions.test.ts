@@ -28,6 +28,24 @@ describe('installment payment interactions', () => {
 
   afterEach(() => vi.unstubAllGlobals())
 
+  it.each([
+    { startDate: '1400/01/01', paidIndexes: [], expectedDate: '1400/01/15' },
+    { startDate: '1500/01/01', paidIndexes: [0], expectedDate: '1500/02/15' },
+  ])('records payment on the installment due date ($expectedDate)', ({ startDate, paidIndexes, expectedDate }) => {
+    const plan = { ...makePlan(), startDate, dueDay: 15, paidIndexes, paidCount: paidIndexes.length }
+    app.installments.value = [plan]
+
+    app.payInstallment(plan)
+
+    expect(app.transactions.value).toHaveLength(1)
+    expect(app.transactions.value[0]).toMatchObject({
+      date: expectedDate,
+      sourceDate: expectedDate,
+      installmentIndex: paidIndexes.length,
+    })
+    expect(app.installmentSummaries.value[0]?.paidCount).toBe(paidIndexes.length + 1)
+  })
+
   it('reopens a paid installment when its payment transaction is deleted', () => {
     app.payInstallment(app.installments.value[0]!)
     expect(app.installmentSummaries.value[0]?.paidCount).toBe(1)

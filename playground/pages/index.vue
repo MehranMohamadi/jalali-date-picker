@@ -2,7 +2,7 @@
 import { ArrowLeft, CalendarDays, ChevronDown, Wallet, ReceiptText } from 'lucide-vue-next'
 
 const {
-  widgets, today, dashboardCards, latestExpenses, totalBudget, totalExpense,
+  widgets, today, dashboardCards, latestExpenses, totalBudget, totalExpense, balanceAfterCreditPayment,
   upcomingExpenseItems, cashflowRiskLevel, visibleCategoryTotals,
   getCategory, formatMoney, formatCompact, toPersianNumber, ignoreCreditMonth, openModal,
 } = useBudgetyar()
@@ -38,6 +38,10 @@ function categoryShare(spent: number) {
           <strong>{{ formatMoney(card.value) }}</strong>
         </div>
         <small>{{ card.hint }}</small>
+        <div v-if="index === 0" class="daily-deduction">
+          <span>‏مانده بدون کسر اقساط</span>
+          <b>{{ formatMoney(balanceAfterCreditPayment) }}</b>
+        </div>
         <details v-if="card.details?.length" class="daily-breakdown">
           <summary>‏جزئیات محاسبه <ChevronDown :size="14" aria-hidden="true" /></summary>
           <div v-for="detail in card.details" :key="detail.label" class="daily-deduction">
