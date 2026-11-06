@@ -10,6 +10,7 @@ import {
 import { Capacitor, registerPlugin } from '@capacitor/core'
 import { requestCloudApi } from './cloudApi'
 import { useConfirm } from './useConfirm'
+import { restoreSubscriptions, type Subscription } from '../../src/utils/subscriptions'
 import { addJalaliDays, getJalaliMonthLength, parseJalaliInput, toGregorian, toJalali } from '../../src/utils/jalali'
 import { getBankSuggestionAmount } from '../../src/utils/bankNotification'
 import { applyCreditAdjustments, getCreditMonths } from '../../src/utils/creditLedger'
@@ -356,6 +357,7 @@ const CREDIT_ADJUSTMENTS_STORAGE_KEY = 'budgetyar-credit-adjustments-v1'
 const INSTALLMENTS_STORAGE_KEY = 'budgetyar-installments-v1'
 const THEME_STORAGE_KEY = 'budgetyar-theme-v1'
 const GOALS_STORAGE_KEY = 'budgetyar-goals-v1'
+const SUBSCRIPTIONS_STORAGE_KEY = 'budgetyar-subscriptions-v1'
 const GOAL_TRANSACTIONS_STORAGE_KEY = 'budgetyar-goal-transactions-v1'
 const RECURRING_ITEMS_STORAGE_KEY = 'budgetyar-recurring-items-v1'
 const DEBTS_STORAGE_KEY = 'budgetyar-debts-v1'
@@ -535,6 +537,7 @@ const categoryForm = reactive({
 })
 const installments = ref<InstallmentPlan[]>([])
 const goals = ref<BudgetyarGoal[]>([])
+const subscriptions = ref<Subscription[]>([])
 const goalTransactions = ref<BudgetyarGoalTransaction[]>([])
 const marketRates = ref<GoalMarketRates | null>(null)
 const marketRatesLoading = ref(false)
@@ -2601,6 +2604,31 @@ function updateGoal(id: string, patch: Partial<BudgetyarGoal>) {
   goals.value = goals.value.map((goal) => (goal.id === id ? { ...goal, ...patch, updatedAt: todayKey.value } : goal))
 }
 
+function saveSubscription(title: string, endDate: string, id?: string): boolean {
+  if (id && !subscriptions.value.some((item) => item.id === id)) return false
+  const [item] = restoreSubscriptions([{ id: id ?? crypto.randomUUID(), title, endDate }])
+  if (!item) {
+    pushToast('‏نام و تاریخ پایان معتبر وارد کنید')
+    return false
+  }
+  subscriptions.value = id
+    ? subscriptions.value.map((entry) => entry.id === id ? item : entry)
+    : [...subscriptions.value, item]
+  pushToast('‏اشتراک ذخیره شد')
+  return true
+}
+
+function deleteSubscription(id: string) {
+  confirmDialog.executeWithConfirm(() => {
+    subscriptions.value = subscriptions.value.filter((item) => item.id !== id)
+    pushToast('‏اشتراک حذف شد')
+  }, {
+    title: '‏حذف اشتراک',
+    message: '‏این اشتراک از فهرست حذف شود؟',
+    confirmText: '‏حذف', cancelText: '‏انصراف', tone: 'danger', icon: 'trash',
+  })
+}
+
 function deleteGoal(id: string) {
   const goal = goals.value.find((item) => item.id === id)
   const title = goal ? ` «${goal.title}»` : ''
@@ -3678,6 +3706,7 @@ function buildBackupJson() {
     budgets: budgets.value,
     installments: installments.value,
     goals: goals.value,
+    subscriptions: subscriptions.value,
     goalTransactions: goalTransactions.value,
     recurringItems: recurringItems.value,
     debts: debts.value,
@@ -3719,7 +3748,7 @@ function buildCloudSnapshotJson() {
 function emptyAccountSnapshot(): Record<string, unknown> {
   return {
     app: 'budgetyar', version: 1, transactions: [], categories: [...defaultCategories], tags: [], budgets: [],
-    installments: [], goals: [], goalTransactions: [], recurringItems: [], debts: [],
+    installments: [], subscriptions: [], goals: [], goalTransactions: [], recurringItems: [], debts: [],
     categorizationRules: [], incomeSettings: {}, creditLimit: 0, creditAdjustments: {},
   }
 }
@@ -3907,6 +3936,7 @@ function applyBackupRecord(backup: Record<string, unknown>) {
   budgets.value = restoreBudgets(backup.budgets)
   installments.value = restoreInstallments(backup.installments)
   goals.value = restoreGoals(backup.goals)
+  subscriptions.value = restoreSubscriptions(backup.subscriptions)
   goalTransactions.value = restoreGoalTransactions(backup.goalTransactions)
   goals.value.forEach((goal) => refreshGoalState(goal.id))
   recurringItems.value = restoreRecurringItems(backup.recurringItems)
@@ -4828,6 +4858,7 @@ function unbindMobileViewport() {
 
 export function useBudgetyar() {
   return {
+    subscriptions, saveSubscription, deleteSubscription,
     activeSection, isMobileMenuOpen, isMobileViewport, navItems, months, years, today, todayKey, currentMonthYear, currentJalaliDate, currentMonthLength,
     categories, transactions, budgets, installments, goals, goalTransactions, recurringItems, debts, categorizationRules, incomeSettings, creditLimit, creditAdjustments, cashFlowMode, themeMode, cashflowForecastPeriod, selectedDebtStrategy, marketRates, marketRatesLoading, marketRatesError,
     cloudAuthStatus, cloudAuthMessage, cloudSnapshotVersion, cloudSyncStatus, cloudSyncMessage, storageMode, cloudDirty, canLoadDevelopmentData, loadDevelopmentData,
@@ -4957,7 +4988,7 @@ function pruneLegacyTagCategories() {
 function seedDevelopmentDataIfEmpty() {
   if (!canLoadDevelopmentData.value) return
   if ([STORAGE_KEY, CATEGORIES_STORAGE_KEY, TAGS_STORAGE_KEY, BUDGETS_STORAGE_KEY, CREDIT_STORAGE_KEY,
-    CREDIT_ADJUSTMENTS_STORAGE_KEY, INSTALLMENTS_STORAGE_KEY, GOALS_STORAGE_KEY,
+    CREDIT_ADJUSTMENTS_STORAGE_KEY, INSTALLMENTS_STORAGE_KEY, SUBSCRIPTIONS_STORAGE_KEY, GOALS_STORAGE_KEY,
     GOAL_TRANSACTIONS_STORAGE_KEY, RECURRING_ITEMS_STORAGE_KEY, DEBTS_STORAGE_KEY]
     .some((key) => localStorage.getItem(key) !== null)) return
 
@@ -4966,7 +4997,7 @@ function seedDevelopmentDataIfEmpty() {
 
 const canLoadDevelopmentData = computed(() => import.meta.env.DEV && storageMode.value === 'local'
   && !transactions.value.length && !installments.value.length && !recurringItems.value.length
-  && !goals.value.length && !debts.value.length)
+  && !subscriptions.value.length && !goals.value.length && !debts.value.length)
 
 function loadDevelopmentData() {
   if (!canLoadDevelopmentData.value) return
@@ -5054,6 +5085,11 @@ export function startBudgetyar() {
     const savedInstallments = localStorage.getItem(INSTALLMENTS_STORAGE_KEY)
     const savedThemeMode = localStorage.getItem(THEME_STORAGE_KEY)
     const savedGoals = localStorage.getItem(GOALS_STORAGE_KEY)
+    const savedSubscriptions = localStorage.getItem(SUBSCRIPTIONS_STORAGE_KEY)
+    if (savedSubscriptions) {
+      try { subscriptions.value = restoreSubscriptions(JSON.parse(savedSubscriptions)) }
+      catch { localStorage.removeItem(SUBSCRIPTIONS_STORAGE_KEY) }
+    }
     const savedRecurringItems = localStorage.getItem(RECURRING_ITEMS_STORAGE_KEY)
     const savedDebts = localStorage.getItem(DEBTS_STORAGE_KEY)
     const savedCategorizationRules = localStorage.getItem(CATEGORIZATION_RULES_STORAGE_KEY)
@@ -5296,6 +5332,10 @@ export function startBudgetyar() {
     { deep: true },
   )
 
+  watch(subscriptions, (value) => {
+    localStorage.setItem(SUBSCRIPTIONS_STORAGE_KEY, JSON.stringify(value))
+  }, { deep: true })
+
   watch(
     goals,
     (value) => {
@@ -5355,7 +5395,7 @@ export function startBudgetyar() {
   )
 
   watch(
-    [transactions, categories, tags, budgets, creditLimit, creditAdjustments, installments, goals, goalTransactions, recurringItems, debts, categorizationRules, incomeSettings],
+    [transactions, categories, tags, budgets, creditLimit, creditAdjustments, installments, subscriptions, goals, goalTransactions, recurringItems, debts, categorizationRules, incomeSettings],
     scheduleCloudAutoSync,
     { deep: true },
   )

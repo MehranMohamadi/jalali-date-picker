@@ -23,6 +23,7 @@ Compact project guide for future Codex turns. Keep it accurate and update it whe
 - `playground/pages/transactions.vue`: filters, transaction list, and lightweight pagination.
 - `playground/pages/budgets.vue`: categories, monthly budgets, spending, and budget progress.
 - `playground/pages/installments.vue`: installment form/list and payment/edit actions.
+- `playground/pages/subscriptions.vue` and `src/utils/subscriptions.ts`: simple subscription expiry tracking, separate from recurring payments; stored under `budgetyar-subscriptions-v1` and included in backups/account cloud snapshots.
 - `playground/pages/analytics.vue`: reports, stats, charts, weekly budget analysis, and cash flow modes.
 - `playground/pages/notifications.vue`: Android/Capacitor bank notification suggestions.
 - `playground/pages/settings.vue`: account-based cloud transfer, export, backup/import, PWA install, and theme settings.
