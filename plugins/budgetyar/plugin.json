@@ -1,0 +1,6 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "budgetyar",
+  "version": "0.1.0",
+  "description": "Read full Budgetyar cloud finance data and edit budgets, categories and transactions."
+}

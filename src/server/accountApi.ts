@@ -47,7 +47,7 @@ export async function handleAccountRequest(request: AccountRequest): Promise<Acc
   } catch {
     return json(400, { error: 'درخواست معتبر نیست' })
   }
-  if (!['register', 'login', 'logout', 'profile', 'password', 'delete'].includes(action)) return json(400, { error: 'عملیات نامعتبر است' })
+  if (!['register', 'login', 'logout', 'profile', 'password', 'delete', 'mcp_tokens_list', 'mcp_token_create', 'mcp_token_revoke'].includes(action)) return json(400, { error: 'عملیات نامعتبر است' })
   if (!['register', 'login'].includes(action) && !session) return json(401, { error: 'ابتدا وارد حساب شوید' })
   try {
     const result = await proxyBackend(config, '/api/account', 'POST', request.body, session)

@@ -65,6 +65,7 @@ async function downloadLatestApk(event: MouseEvent) {
 <template>
   <div class="settings-page">
     <div class="settings-layout">
+      <McpConnections />
       <section class="settings-panel glass-panel">
         <div class="settings-panel-head">
           <span class="settings-panel-icon"><Cloud :size="20" aria-hidden="true" /></span>

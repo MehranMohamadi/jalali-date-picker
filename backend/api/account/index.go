@@ -17,6 +17,10 @@ type accountRequest struct {
 	OldPassword string `json:"oldPassword"`
 	FullName    string `json:"fullName"`
 	Remember    bool   `json:"remember"`
+	TokenID     string `json:"tokenId"`
+	TokenName   string `json:"tokenName"`
+	CanWrite    bool   `json:"canWrite"`
+	ExpiresDays int    `json:"expiresDays"`
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
@@ -101,6 +105,36 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			switch input.Action {
+			case "mcp_tokens_list":
+				tokens, err := store.ListMCPTokens(r.Context(), account.ID)
+				if err != nil {
+					platform.WriteError(w, http.StatusInternalServerError, "could not list MCP tokens")
+				} else {
+					platform.WriteJSON(w, http.StatusOK, map[string]any{"tokens": tokens})
+				}
+			case "mcp_token_create":
+				if strings.TrimSpace(input.TokenName) == "" || len([]rune(input.TokenName)) > 80 || input.ExpiresDays < 1 || input.ExpiresDays > 365 {
+					platform.WriteError(w, http.StatusBadRequest, "invalid token name or expiry")
+					return
+				}
+				created, secret, err := store.CreateMCPToken(r.Context(), account.ID, input.TokenName, input.CanWrite, input.ExpiresDays)
+				if err != nil {
+					platform.WriteError(w, http.StatusInternalServerError, "could not create MCP token")
+				} else {
+					store.Audit(r.Context(), account.ID, "mcp.token_created", map[string]any{"id": created.ID, "canWrite": created.CanWrite})
+					platform.WriteJSON(w, http.StatusCreated, map[string]any{"token": created, "secret": secret})
+				}
+			case "mcp_token_revoke":
+				if input.TokenID == "" {
+					platform.WriteError(w, http.StatusBadRequest, "tokenId is required")
+					return
+				}
+				if err := store.RevokeMCPToken(r.Context(), account.ID, input.TokenID); err != nil {
+					platform.WriteError(w, http.StatusInternalServerError, "could not revoke MCP token")
+				} else {
+					store.Audit(r.Context(), account.ID, "mcp.token_revoked", map[string]any{"id": input.TokenID})
+					platform.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
+				}
 			case "logout":
 				if err := store.LogoutAccount(r.Context(), token); err != nil {
 					platform.WriteError(w, http.StatusInternalServerError, "could not log out")

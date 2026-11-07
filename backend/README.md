@@ -1,12 +1,12 @@
 # Budgetyar Go backend
 
-Serverless Go backend for account-owned cloud snapshots and read-only Remote MCP access.
+Serverless Go backend for account-owned cloud snapshots and account-scoped Remote MCP access.
 
 ## Endpoints
 
 - `GET /api/health`: deployment health and configuration status.
 - `GET /api/account`: resolve the current account session.
-- `POST /api/account`: register, log in, log out, update profile/password, or delete an account.
+- `POST /api/account`: account actions and session-authenticated MCP key create/list/revoke actions.
 - `GET /api/sync`: download the authenticated user's snapshot.
 - `PUT /api/sync`: upload a snapshot with optimistic version checking.
 - `POST /api/mcp`: stateless Streamable HTTP MCP endpoint.
@@ -17,13 +17,15 @@ The frontend server authenticates to this backend with `BUDGETYAR_API_TOKEN` and
 forwards an opaque account session in `X-Budgetyar-Session`. The backend resolves
 the account ID from PostgreSQL for `/api/sync`; browser-provided user IDs are
 never trusted. Passwords use Argon2id. Session tokens are stored only as SHA-256
-hashes in PostgreSQL. The MCP endpoint remains a separate, bearer-token-only
-read-only integration for the configured legacy `BUDGETYAR_USER_ID`.
+hashes in PostgreSQL. `/api/mcp` accepts only per-account `bymcp_` bearer keys,
+stored as SHA-256 hashes with read/write scope, expiry and revocation. It never
+accepts the frontend service token or a browser-selected account ID. The old
+`BUDGETYAR_USER_ID` integration is retired. Existing frontend account/sync authentication is unchanged.
 
 ## Setup
 
 1. Create a pooled PostgreSQL database in Neon or Supabase.
-2. Run `migrations/001_initial.sql`, `migrations/002_accounts.sql`, and `migrations/003_billing.sql` in order.
+2. Run migrations `001_initial.sql` through `004_mcp_tokens.sql` in numeric order.
 3. Create a separate Vercel project with `backend` as its Root Directory.
 4. Add the variables listed in `.env.example` to the Vercel project.
 5. Generate `BUDGETYAR_API_TOKEN` with at least 32 random characters.
@@ -31,6 +33,33 @@ read-only integration for the configured legacy `BUDGETYAR_USER_ID`.
 
 `BUDGETYAR_ALLOWED_ORIGIN` must exactly match the frontend origin and must not
 end in a slash.
+
+## Codex integration
+
+See [the complete setup guide](../docs/codex-plugin.md) for deployment prerequisites,
+account key creation, encrypted Windows credential setup, local plugin installation
+and direct MCP configuration. No OpenAI API key is required for this integration.
+
+MCP tools: `finance_snapshot_get`, `budgets_update`, `categories_create`,
+`categories_update`, `transactions_update`, plus the existing read helpers.
+Writes require `expectedVersion` and use the same transactional optimistic lock
+as `/api/sync`. Entire batches succeed or fail together. Unknown JSON fields are
+preserved; derived `summary` and `exportedAt` caches are removed on writes.
+
+Key management uses POST `/api/account` with the normal service token and account
+session, through the same-origin frontend proxy:
+
+- `mcp_tokens_list`: returns active keys' metadata, never their secrets/hashes.
+- `mcp_token_create`: `tokenName` (1–80 characters), `canWrite` (boolean),
+  `expiresDays` (1–365). Returns `token` metadata and `secret` once.
+- `mcp_token_revoke`: `tokenId`; deletion is scoped to the current account.
+
+Token expiry/revocation is checked on every HTTP request. Revocation prevents new
+requests; an already authenticated in-flight write may finish. Account deletion
+cascades to its keys. Ordinary logout/password change does not revoke independent
+MCP keys; revoke them in Settings when needed. Audit logs record key IDs and write
+counts/versions, not keys or financial payloads. There is no OAuth flow or public
+directory submission in this local/desktop plugin; `codex mcp login` is not used.
 
 ## Billing development
 

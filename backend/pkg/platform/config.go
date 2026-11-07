@@ -11,7 +11,6 @@ import (
 type Config struct {
 	DatabaseURL   string
 	APIToken      string
-	UserID        string
 	AllowedOrigin string
 }
 
@@ -19,11 +18,7 @@ func LoadConfig() (Config, error) {
 	cfg := Config{
 		DatabaseURL:   strings.TrimSpace(os.Getenv("DATABASE_URL")),
 		APIToken:      strings.TrimSpace(os.Getenv("BUDGETYAR_API_TOKEN")),
-		UserID:        strings.TrimSpace(os.Getenv("BUDGETYAR_USER_ID")),
 		AllowedOrigin: strings.TrimRight(strings.TrimSpace(os.Getenv("BUDGETYAR_ALLOWED_ORIGIN")), "/"),
-	}
-	if cfg.UserID == "" {
-		cfg.UserID = "owner"
 	}
 	if cfg.DatabaseURL == "" || len(cfg.APIToken) < 32 {
 		return Config{}, errors.New("DATABASE_URL and a BUDGETYAR_API_TOKEN of at least 32 characters are required")

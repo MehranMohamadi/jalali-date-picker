@@ -10,6 +10,7 @@ Compact project guide for future Codex turns. Keep it accurate and update it whe
 - `playground/` is the Persian RTL Budgetyar demo app: a personal finance dashboard.
 - `api/` contains Vercel account, cloud-sync, and financial-advice endpoints; `playground/server/api/` contains matching Nuxt development endpoints.
 - `backend/` is a separate Go service with platform storage/HTTP code, finance models, health, sync, and MCP endpoints.
+- Codex integration: `docs/codex-plugin.md`, `plugins/budgetyar/`, and `.agents/plugins/marketplace.json`. `/api/mcp` uses hashed, expiring account-owned keys from Settings (`004_mcp_tokens.sql`), never the frontend service token or legacy fixed user ID. Writes patch raw JSON with optimistic versions; preserve unknown fields and linked-payment ledger rules.
 - Billing uses the same Go account and PostgreSQL session: `backend/api/billing/`, `backend/pkg/platform/billing.go`, `testbilling.go`, and additive migration `003_billing.sql`. Pro checkout is a development-only simulator until provider, price, term, and entitlements are approved.
 - Budgetyar keeps device finance state in `localStorage`; account-owned cloud snapshots are stored in Neon PostgreSQL through the Go backend.
 - Finance UI and app logic usually live in `playground/composables/useBudgetyar.ts`, `playground/pages/*.vue`, and `playground/assets/css/`.

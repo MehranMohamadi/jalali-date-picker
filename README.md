@@ -2,6 +2,8 @@
 
 A small, TypeScript-first Jalali calendar library for Nuxt 3 and Vue 3. It provides an accessible calendar, single date picker, range date picker, Persian digits, RTL defaults, and date-only Gregorian ISO model values. No Moment.js or runtime date dependency.
 
+Budgetyar playground integration: [Codex plugin setup and financial MCP tools](docs/codex-plugin.md).
+
 ## Installation
 
 ```bash
