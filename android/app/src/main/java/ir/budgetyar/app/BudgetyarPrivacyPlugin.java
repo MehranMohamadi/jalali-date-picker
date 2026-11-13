@@ -2,13 +2,17 @@ package ir.budgetyar.app;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.graphics.Color;
+import android.content.res.ColorStateList;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.RippleDrawable;
 import android.os.Build;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -88,29 +92,89 @@ public class BudgetyarPrivacyPlugin extends Plugin {
         cover = new LinearLayout(getActivity());
         cover.setOrientation(LinearLayout.VERTICAL);
         cover.setGravity(Gravity.CENTER);
-        cover.setPadding(48, 48, 48, 48);
-        cover.setBackgroundColor(Color.rgb(17, 24, 39));
+        cover.setPadding(dp(24), dp(24), dp(24), dp(24));
+        cover.setBackgroundColor(0xFF111113);
         cover.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         cover.setClickable(true);
         cover.setFocusableInTouchMode(true);
+
+        LinearLayout panel = new LinearLayout(getActivity());
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setGravity(Gravity.CENTER);
+        panel.setPadding(dp(24), dp(24), dp(24), dp(24));
+        GradientDrawable surface = roundedBackground(0xFF1B1B20, 24);
+        surface.setStroke(dp(1), 0xFF34343C);
+        panel.setBackground(surface);
+        int availableWidth = getActivity().getResources().getDisplayMetrics().widthPixels - dp(48);
+        cover.addView(panel, new LinearLayout.LayoutParams(
+            Math.min(dp(340), availableWidth), ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        ImageView icon = new ImageView(getActivity());
+        icon.setImageResource(android.R.drawable.ic_lock_lock);
+        icon.setImageTintList(ColorStateList.valueOf(0xFFE0DCFF));
+        icon.setBackground(roundedBackground(0xFF333044, 18));
+        icon.setPadding(dp(15), dp(15), dp(15), dp(15));
+        icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        panel.addView(icon, new LinearLayout.LayoutParams(dp(56), dp(56)));
+
         TextView title = new TextView(getActivity());
-        title.setText("‏برنامه قفل است");
-        title.setTextColor(Color.WHITE);
-        title.setTextSize(22);
+        title.setText("‏ورود به بودجه‌یار");
+        title.setTextColor(0xFFF6F5FA);
+        title.setTextSize(20);
+        title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         title.setGravity(Gravity.CENTER);
-        cover.addView(title);
-        message = new TextView(getActivity());
-        message.setTextColor(Color.LTGRAY);
-        message.setGravity(Gravity.CENTER);
-        message.setPadding(0, 24, 0, 32);
-        cover.addView(message);
+        if (Build.VERSION.SDK_INT >= 28) title.setAccessibilityHeading(true);
+        LinearLayout.LayoutParams titleLayout = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        titleLayout.topMargin = dp(14);
+        panel.addView(title, titleLayout);
+
         unlock = new Button(getActivity());
         unlock.setText("‏بازکردن قفل");
+        unlock.setTextColor(0xFF211A37);
+        unlock.setTextSize(15);
+        unlock.setAllCaps(false);
+        unlock.setBackgroundTintList(null);
+        GradientDrawable action = roundedBackground(0xFFD4C8FF, 14);
+        unlock.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33211A37), action, null));
+        unlock.setMinHeight(dp(48));
+        unlock.setMinimumHeight(dp(48));
         unlock.setOnClickListener(view -> authenticate(null, null));
-        cover.addView(unlock);
+        LinearLayout.LayoutParams buttonLayout = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        buttonLayout.topMargin = dp(20);
+        panel.addView(unlock, buttonLayout);
+
+        message = new TextView(getActivity());
+        message.setTextColor(0xFFC9C5D2);
+        message.setTextSize(13);
+        message.setGravity(Gravity.CENTER);
+        message.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+        message.setVisibility(View.GONE);
+        LinearLayout.LayoutParams messageLayout = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        messageLayout.topMargin = dp(12);
+        panel.addView(message, messageLayout);
+
         cover.setVisibility(View.GONE);
         getActivity().addContentView(cover, new ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+    }
+
+    private int dp(int value) {
+        return Math.round(value * getActivity().getResources().getDisplayMetrics().density);
+    }
+
+    private GradientDrawable roundedBackground(int color, int radius) {
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(color);
+        background.setCornerRadius(dp(radius));
+        return background;
+    }
+
+    private void showMessage(String text) {
+        message.setText(text);
+        message.setVisibility(View.VISIBLE);
     }
 
     private void updateSecureWindow() {
@@ -126,7 +190,7 @@ public class BudgetyarPrivacyPlugin extends Plugin {
         cover.setVisibility(View.VISIBLE);
         cover.bringToFront();
         cover.requestFocus();
-        message.setText("‏برای دیدن اطلاعات، با اثر انگشت یا رمز گوشی تأیید کن.");
+        message.setVisibility(View.GONE);
     }
 
     private void reveal() {
@@ -143,10 +207,11 @@ public class BudgetyarPrivacyPlugin extends Plugin {
             return;
         }
         if (!available()) {
-            message.setText("‏اثر انگشت یا رمز صفحهٔ قفل گوشی را در تنظیمات اندروید فعال کن و دوباره تلاش کن.");
+            showMessage("‏اثر انگشت یا رمز گوشی را فعال کن.");
             if (call != null) call.reject("Set up device authentication first");
             return;
         }
+        message.setVisibility(View.GONE);
         authenticating = true;
         unlock.setEnabled(false);
         prompt = new BiometricPrompt(getActivity(), ContextCompat.getMainExecutor(getContext()),
@@ -166,13 +231,13 @@ public class BudgetyarPrivacyPlugin extends Plugin {
                     authenticatedOnResume = null;
                     authenticating = false;
                     unlock.setEnabled(true);
-                    message.setText("‏تأیید انجام نشد؛ برای تلاش دوباره دکمهٔ بازکردن قفل را بزن.");
+                    if (call == null) showMessage("‏دوباره تلاش کن.");
                     if (call != null) call.reject("Authentication cancelled or unavailable");
                 }
             });
         BiometricPrompt.PromptInfo info = new BiometricPrompt.PromptInfo.Builder()
-            .setTitle("‏بازکردن بودجه‌یار")
-            .setSubtitle("‏اثر انگشت یا رمز گوشی را تأیید کن")
+            .setTitle(requested == null ? "‏ورود به بودجه‌یار"
+                : requested ? "‏فعال‌کردن قفل" : "‏غیرفعال‌کردن قفل")
             .setAllowedAuthenticators(authenticators())
             .build();
         try {
@@ -181,6 +246,7 @@ public class BudgetyarPrivacyPlugin extends Plugin {
             authenticating = false;
             unlock.setEnabled(true);
             if (call != null) call.reject("Authentication unavailable");
+            else showMessage("‏دوباره تلاش کن.");
         }
     }
 
