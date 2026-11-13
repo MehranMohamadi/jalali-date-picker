@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const { amountsHidden } = usePrivacy()
-import { Check, Pencil, Plus, Trash2, X } from 'lucide-vue-next'
+import { Check, Pencil, Plus, RotateCcw, Trash2, X } from 'lucide-vue-next'
 
 const budgetyar = useBudgetyar()
 const {
@@ -13,6 +13,7 @@ const {
   formatMoney,
   updateMoneyInput,
   updateBudget,
+  resetBudgetAmounts,
   addCategory,
   renameCategory,
   deleteCategory,
@@ -107,6 +108,10 @@ function handleCreateTag() {
         <h2>‏بودجه‌های این ماه</h2>
         <p>‏برای هر دسته سقف خرج مشخص کن.</p>
       </div>
+      <button class="soft-button reset-budget-button" type="button" :disabled="totalBudget <= 0" @click="resetBudgetAmounts">
+        <RotateCcw :size="16" aria-hidden="true" />
+        <span>‏صفرکردن مبلغ بودجه‌ها</span>
+      </button>
     </div>
 
     <div class="budget-overview" aria-label="‏خلاصه بودجه ماه">
@@ -254,6 +259,8 @@ function handleCreateTag() {
 </template>
 
 <style scoped>
+.budgets-card > .section-title { flex-wrap: wrap; gap: 10px; }
+.reset-budget-button { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }
 .budget-overview { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 12px 0; border-block: 1px solid var(--line); gap: 8px; }
 .budget-overview > div { display: grid; gap: 5px; min-width: 0; }
 .budget-overview > div + div { border-inline-start: 1px solid var(--line); padding-inline-start: 8px; }

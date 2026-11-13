@@ -2138,6 +2138,21 @@ function updateBudget(category: CategoryKey, event: Event) {
   pushToast('بودجه به‌روزرسانی شد ✨')
 }
 
+function resetBudgetAmounts() {
+  if (!budgets.value.some((goal) => goal.budget > 0)) return
+
+  return confirmDialog.executeWithConfirm(() => {
+    budgets.value = budgets.value.map((goal) => ({ ...goal, budget: 0 }))
+    pushToast('‏مبلغ همهٔ بودجه‌ها صفر شد.')
+  }, {
+    title: '‏صفرکردن مبلغ بودجه‌ها',
+    message: '‏مبلغ همهٔ بودجه‌های تعریف‌شده صفر شود؟ دسته‌ها، تگ‌ها و تراکنش‌ها حفظ می‌شوند.',
+    confirmText: '‏صفرکردن مبلغ‌ها',
+    cancelText: '‏انصراف',
+    tone: 'danger',
+  })
+}
+
 function addCategory() {
   const label = categoryForm.label.trim()
   const icon = categoryForm.icon.trim() || '✨'
@@ -4898,7 +4913,7 @@ export function useBudgetyar() {
     getCategory, normalizeDigits, normalizeJalaliDate, getJalaliInputDay, getTrendDays, getPreviousMonthPrefix, addJalaliMonths, getInstallmentDueDate, getInstallmentStatus, getInstallmentStatusLabel, getCurrentWeekRange, getWeekdayLabel, getJalaliMonthPrefix, getCurrentJalaliDate, formatJalaliInputDate, formatDisplayJalaliDate, jalaliInputToIso, isoToJalaliInput, toPersianNumber, parseMoneyInput, formatMoneyInput, progressPercent, getChangePercent, formatPercentHint, formatChangeSentence, getRiskLabel, getFinancialHealthLevelLabel,
     formatMoney: privateFormatter(formatMoney), formatCompact: privateFormatter(formatCompact), formatMoneyWords: privateFormatter(formatMoneyWords),
     getTransactionCategories, getTransactionSubCategories, toggleSubCategory, addTag, deleteTag,
-    tags, getTag,
+    tags, getTag, resetBudgetAmounts,
     selectSection, openModal, editTransaction, saveTransaction, removeTransaction, refreshBankNotifications, openNotificationAccessSettings, updateSelectedBankPackage, acceptBankSuggestion, dismissBankSuggestion, formatSuggestionDate, updateMoneyInput, updateCreditLimit, recordCreditPayment, ignoreCreditMonth, restoreIgnoredCredit, updateBudget, addCategory, renameCategory, deleteCategory, addInstallmentPlan, editInstallmentPlan, cancelInstallmentEdit, payInstallment, undoInstallmentPayment, removeInstallmentPlan,
     addGoal, editGoal, updateGoal, deleteGoal, archiveGoal, pauseGoal, resumeGoal, addGoalContribution, withdrawFromGoal, getGoalProgress, getGoalRemainingAmount, getGoalSuggestedMonthlySaving, getGoalSuggestedWeeklySaving, getGoalUnitLabel, getGoalTransactionTypeLabel, getGoalEstimatedValue, getGoalTrackingModeLabel, getGoalHealthLabel, getGoalScenario, getGoalTransactions, getGoalSummary, getGoalSavedValue, getGoalTargetValue,
     formatGoalAmount: privateFormatter(formatGoalAmount), formatGoalTrackedAmount: privateFormatter(formatGoalTrackedAmount),
