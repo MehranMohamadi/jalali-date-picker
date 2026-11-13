@@ -1,0 +1,81 @@
+/* Compact charcoal and lavender treatment shared by all app pages. */
+:root {
+  --bg: #09090b;
+  --bg-2: #111114;
+  --panel: #19191d;
+  --panel-strong: #1d1c22;
+  --panel-soft: #232228;
+  --panel-bg: var(--panel);
+  --line: #ffffff12;
+  --line-strong: #ffffff24;
+  --text: #f4f2f8;
+  --muted: #aaa5b4;
+  --muted-2: #cec9d7;
+  --primary: #c2adff;
+  --primary-2: #a48be8;
+  --on-primary: #211832;
+  --accent: var(--primary);
+  --accent-light: var(--primary);
+  --surface-soft: var(--panel-soft);
+  --success: #78d5ad;
+  --warning: #f1c27b;
+  --danger: #fb91a3;
+  --shadow: none;
+}
+
+body:not(.budgetyar-light):not(.budgetyar-forest) { background: var(--bg); }
+body.budgetyar-light { --primary: #7560b6; --primary-2: #6953aa; --on-primary: #fff; }
+body.budgetyar-forest { --on-primary: #211832; }
+html { scroll-padding-block: 72px 96px; }
+.app-shell { font-size: .8125rem; gap: 14px; }
+.app-shell .content { align-content: start; gap: 12px; }
+.app-shell h1 { font-size: 1.35rem; }
+.app-shell h2 { font-size: .94rem; }
+.app-shell h3 { font-size: .875rem; }
+.app-shell svg { stroke-width: 1.6; }
+.app-shell .glass-panel { border-radius: 18px; box-shadow: none; }
+.app-shell .daily-metric.glass-panel.daily-metric-primary { background: var(--primary) !important; }
+.app-shell .daily-metric.daily-metric-primary :is(small, strong, b) { color: inherit; }
+.app-shell .glass-panel:not(.sidebar):not(.mobile-topbar) { backdrop-filter: none; -webkit-backdrop-filter: none; }
+
+.app-shell :is(.settings-card, .budgets-card, .chart-card, .notifications-card, .reports-card, .stats-card, .summary-card, .table-card, .installments-card) { padding: 14px; }
+.app-shell .section-title { gap: 10px; margin-bottom: 12px; }
+.app-shell :is(.primary-button, .soft-button, .export-actions button, .segmented button) { border-radius: 12px; box-shadow: none; font-size: .75rem; font-weight: 500; min-height: 38px; padding: 7px 11px; }
+.app-shell :is(.primary-button, .segmented .active) { background: var(--primary); color: var(--on-primary); }
+.app-shell .soft-button { background: var(--panel-soft); }
+.app-shell :is(input:not([type='checkbox']):not([type='radio']):not([type='color']), select, textarea, .budgetyar-select-trigger) { border-radius: 11px; font-size: .8125rem; }
+.app-shell :is(input[type='checkbox'], input[type='radio']) { accent-color: var(--primary); }
+.app-shell :is(.installment-item, .notification-suggestion, .category-expense-summary) { background: var(--panel); border-radius: 14px; padding: 12px; }
+.app-shell .goal-item { background: var(--panel); box-shadow: none; gap: 10px; padding: 14px; }
+.app-shell .goal-item .progress { height: 5px; }
+.app-shell .goal-item .progress i { box-shadow: none; }
+.app-shell .goal-item .installment-item-head strong { font-size: .9rem; }
+.app-shell :is(.report-grid, .stats-grid) { gap: 8px; }
+.app-shell :is(.report-grid, .stats-grid) > span { border-radius: 12px; padding: 10px; }
+.app-shell .nav-item.active { background: color-mix(in srgb, var(--primary) 12%, transparent); border-color: color-mix(in srgb, var(--primary) 24%, transparent); color: var(--text); }
+.app-shell .nav-item.active .nav-icon { color: var(--primary); }
+.app-shell .brand-mark { background: var(--panel-soft); box-shadow: none; }
+.app-shell .sidebar-auth-button:hover, .app-shell .sidebar-auth-button.active { color: var(--on-primary); }
+.app-shell .fab { background: var(--primary); border-radius: 24px; box-shadow: none; color: var(--on-primary); font-size: .8rem; left: 20px; min-height: 44px; right: auto; }
+
+:is(a, button, input, select, textarea, summary):focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+
+@media (max-width: 760px) {
+  .app-shell { padding: calc(64px + env(safe-area-inset-top, 0px)) 14px calc(94px + env(safe-area-inset-bottom, 0px)); }
+  .app-shell .mobile-topbar { background: var(--bg); border: 0; border-radius: 0; gap: 6px; inset: env(safe-area-inset-top, 0px) 0 auto; min-height: 58px; padding: 8px 14px; }
+  .mobile-topbar .mobile-brand { gap: 8px; min-width: 0; }
+  .mobile-topbar .mobile-mascot { border-radius: 50%; height: 30px; width: 30px; }
+  .mobile-topbar .mobile-title strong { font-size: .8125rem; font-weight: 600; }
+  .mobile-topbar .mobile-title small { font-size: .625rem; }
+  .mobile-topbar :is(.mobile-privacy-toggle, .mobile-notifications) { align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 50%; color: var(--muted-2); display: flex; height: 36px; justify-content: center; min-height: 36px; padding: 0; width: 36px; }
+  .app-shell .sidebar { border-radius: 24px 24px 0 0; height: auto; inset: auto 0 0; max-height: 80dvh; opacity: 0; padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px)); pointer-events: none; transform: none; visibility: hidden; width: 100%; }
+  .app-shell .sidebar.open { opacity: 1; pointer-events: auto; visibility: visible; }
+  .app-shell .sidebar .brand { padding-block: 0 10px; }
+  .app-shell :is(.report-grid, .stats-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .app-shell .toast-stack { bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
+  .app-shell .app-update-notice { bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell .sidebar { transition: none; }
+}

@@ -8,8 +8,8 @@
   "dir": "rtl",
   "lang": "fa",
   "orientation": "portrait-primary",
-  "background_color": "#050816",
-  "theme_color": "#050816",
+  "background_color": "#09090b",
+  "theme_color": "#09090b",
   "categories": ["finance", "productivity", "utilities"],
   "icons": [
     {

@@ -19,7 +19,7 @@ export default defineNuxtConfig({
       },
       title: 'جیب‌طلا | مدیریت هوشمند دخل‌وخرج',
       meta: [
-        { name: 'theme-color', content: '#050816' },
+        { name: 'theme-color', content: '#09090b' },
         { name: 'mobile-web-app-capable', content: 'yes' },
         { name: 'apple-mobile-web-app-capable', content: 'yes' },
         { name: 'apple-mobile-web-app-title', content: 'جیب‌طلا' },

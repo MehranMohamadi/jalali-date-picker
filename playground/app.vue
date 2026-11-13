@@ -2,6 +2,7 @@
 import '@fontsource-variable/vazirmatn'
 import './assets/css/budgetyar.css'
 import './assets/css/budgetyar-overrides.css'
+import './assets/css/budgetyar-compact.css'
 import {
   Bell,
   CalendarClock,
@@ -71,6 +72,10 @@ const activePath = computed(() => {
 
 const activeTitle = computed(() => navItems.find((item) => item.path === activePath.value)?.label ?? '‏داشبورد')
 
+watch(isMobileViewport, (mobile) => {
+  if (!mobile) isMobileMenuOpen.value = false
+})
+
 watch(
   () => route.path,
   () => {
@@ -92,9 +97,7 @@ function quickAdd() {
   <main dir="rtl" class="app-shell" :class="{ 'mobile-perf': isMobileViewport, 'amounts-hidden': amountsHidden }">
     <MobileTopbar
       :title="activeTitle"
-      :open="isMobileMenuOpen"
-      @open-menu="isMobileMenuOpen = true"
-      @quick-add="quickAdd"
+      :inert="isMobileMenuOpen"
     />
     <div v-if="isMobileMenuOpen" class="mobile-menu-backdrop" @click="isMobileMenuOpen = false" />
 
@@ -105,7 +108,7 @@ function quickAdd() {
       @close="isMobileMenuOpen = false"
     />
 
-    <section class="content">
+    <section class="content" :inert="isMobileMenuOpen">
       <div class="desktop-privacy-tools"><PrivacyToggle /></div>
       <NuxtPage />
     </section>
@@ -114,6 +117,13 @@ function quickAdd() {
       <Plus :size="24" aria-hidden="true" />
       <span>‏ثبت هزینه</span>
     </button>
+    <BottomNavigation
+      :active-path="activePath"
+      :open="isMobileMenuOpen"
+      :inert="isMobileMenuOpen"
+      @open-menu="isMobileMenuOpen = true"
+      @quick-add="quickAdd"
+    />
     <TransactionModal />
     <ConfirmBottomSheet />
     <ToastStack :toasts="toasts" />

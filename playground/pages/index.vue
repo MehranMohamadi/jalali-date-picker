@@ -35,16 +35,16 @@ function categoryShare(spent: number) {
     <section class="daily-metrics" aria-label="‏وضعیت مالی">
       <article v-for="(card, index) in primaryCards" :key="card.label" class="daily-metric glass-panel" :class="{ 'daily-metric-primary': index === 0 }">
         <div class="daily-metric-line">
-          <span><Wallet v-if="index === 0" :size="18" aria-hidden="true" /><ReceiptText v-else :size="18" aria-hidden="true" />{{ card.label }}</span>
+          <span><Wallet v-if="index === 0" :size="18" aria-hidden="true" /><ReceiptText v-else :size="18" aria-hidden="true" />{{ index === 0 ? '‏مانده پس از تعهدات' : card.label }}</span>
           <strong>{{ formatMoney(card.value) }}</strong>
         </div>
         <small>{{ privateText(card.hint) }}</small>
-        <div v-if="index === 0" class="daily-deduction">
-          <span>‏مانده بدون کسر اقساط</span>
-          <b>{{ formatMoney(balanceAfterCreditPayment) }}</b>
-        </div>
-        <details v-if="card.details?.length" class="daily-breakdown">
+        <details v-if="index === 0 || card.details?.length" class="daily-breakdown">
           <summary>‏جزئیات محاسبه <ChevronDown :size="14" aria-hidden="true" /></summary>
+          <div v-if="index === 0" class="daily-deduction">
+            <span>‏مانده بدون کسر اقساط</span>
+            <b>{{ formatMoney(balanceAfterCreditPayment) }}</b>
+          </div>
           <div v-for="detail in card.details" :key="detail.label" class="daily-deduction">
             <span>{{ detail.label }}</span>
             <b>− {{ privateText(detail.value) }}</b>
@@ -105,31 +105,36 @@ function categoryShare(spent: number) {
 </template>
 
 <style scoped>
-.daily-dashboard { align-content: start; display: grid; gap: 12px; min-width: 0; }
+.daily-dashboard { align-content: start; display: grid; gap: 10px; min-width: 0; }
 .daily-heading, .daily-heading > span, .daily-metric-line, .daily-metric-line > span, .daily-action-head, .daily-panel-head, .daily-panel-head a { align-items: center; display: flex; gap: 8px; }
 .daily-heading, .daily-metric-line, .daily-action-head, .daily-panel-head { justify-content: space-between; }
-.daily-heading h1 { font-size: 1.25rem; margin: 0; }
+.daily-metric-line { flex-wrap: wrap; }
+.daily-heading h1 { font-size: 1.1rem; margin: 0; }
 .daily-heading > span { color: var(--muted); font-size: .78rem; }
-.daily-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 11px 6px; }
+.daily-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 9px 6px; }
 .daily-strip > div { display: grid; gap: 4px; min-width: 0; padding-inline: 10px; }
 .daily-strip > div + div { border-inline-start: 1px solid var(--line); }
 .daily-strip small { font-size: .72rem; }
 .daily-strip strong { font-size: .86rem; color: var(--text); font-variant-numeric: tabular-nums; }
-.daily-metrics, .daily-actions, .daily-lists { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+.daily-metrics, .daily-actions, .daily-lists { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
 .daily-actions { align-items: stretch; }
-.daily-metric { padding: 13px 14px; display: grid; gap: 6px; min-width: 0; }
-.daily-metric-primary { border-color: color-mix(in srgb, var(--primary) 45%, var(--line)); background: linear-gradient(120deg, color-mix(in srgb, var(--primary) 13%, transparent), transparent), var(--panel); }
+.daily-metric { padding: 11px 13px; display: grid; gap: 5px; min-width: 0; }
+.daily-metric-primary { background: var(--primary); border-color: transparent; color: var(--on-primary); }
+.daily-metric-primary .daily-metric-line > span, .daily-metric-primary > small, .daily-metric-primary .daily-breakdown summary { color: inherit; }
+.daily-metric-primary :is(strong, b) { color: inherit; }
+.daily-metric-primary .daily-breakdown { border-color: color-mix(in srgb, currentColor 16%, transparent); }
+.daily-metric-primary .daily-deduction button { color: inherit; border-color: color-mix(in srgb, currentColor 20%, transparent); background: transparent; }
 .daily-metric-line > span { color: var(--muted-2); font-size: .8rem; white-space: nowrap; }
-.daily-metric-line > strong { font-size: 1rem; font-variant-numeric: tabular-nums; }
+.daily-metric-line > strong { font-size: .95rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .daily-metric > small { font-size: .72rem; }
 .daily-breakdown { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 7px; }
 .daily-breakdown summary { cursor: pointer; color: var(--muted-2); display: flex; align-items: center; justify-content: space-between; font-size: .73rem; list-style: none; }
 .daily-breakdown summary::-webkit-details-marker { display: none; }
 .daily-breakdown[open] summary svg { transform: rotate(180deg); }
-.daily-deduction { display: flex; align-items: center; flex-wrap: wrap; gap: 5px 8px; padding-top: 8px; font-size: .72rem; }
+.daily-deduction { display: flex; align-items: center; flex-wrap: wrap; gap: 5px 8px; padding-top: 5px; font-size: .68rem; }
 .daily-deduction b { margin-inline-start: auto; }
 .daily-deduction button { color: var(--muted-2); border: 1px solid var(--line); border-radius: 6px; background: var(--panel-soft); padding: 4px 7px; }
-.daily-action { display: grid; gap: 6px; min-width: 0; height: 100%; padding: 12px 14px; color: var(--text); text-decoration: none; }
+.daily-action { display: grid; gap: 5px; min-width: 0; height: 100%; padding: 10px 12px; color: var(--text); text-decoration: none; }
 .daily-action-head { color: var(--muted); font-size: .75rem; }
 .daily-action > strong, .daily-action > b { font-size: .9rem; }
 .daily-action > strong small, .daily-action > small { font-size: .71rem; font-weight: 400; }
@@ -139,18 +144,18 @@ function categoryShare(spent: number) {
 .daily-warning { border-color: var(--danger); }
 .daily-warning .daily-budget-track i { background: var(--danger); }
 .daily-risk { display: flex; flex-wrap: wrap; gap: 6px; justify-content: space-between; border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent); background: color-mix(in srgb, var(--danger) 9%, var(--panel)); color: var(--text); border-radius: 8px; padding: 9px 12px; font-size: .76rem; text-decoration: none; }
-.daily-panel { padding: 14px; min-width: 0; }
-.daily-panel-head { margin-bottom: 12px; flex-wrap: wrap; }
-.daily-panel-head h2 { font-size: .9rem; }
+.daily-panel { padding: 12px; min-width: 0; }
+.daily-panel-head { margin-bottom: 8px; flex-wrap: wrap; }
+.daily-panel-head h2 { font-size: .82rem; }
 .daily-panel-head a { color: var(--primary); text-decoration: none; font-size: .72rem; }
-.daily-expense { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 11px 0; }
+.daily-expense { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 9px 0; }
 .daily-expense + .daily-expense { border-top: 1px solid var(--line); }
-.daily-category-icon { background: var(--panel-soft); border-radius: 9px; display: grid; place-items: center; height: 32px; }
+.daily-category-icon { background: var(--panel-soft); border-radius: 9px; display: grid; place-items: center; height: 28px; }
 .daily-expense > div { min-width: 0; display: grid; gap: 3px; }
 .daily-expense strong { font-size: .81rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .daily-expense small { font-size: .68rem; }
 .daily-expense > b { font-size: .75rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.daily-categories { display: grid; gap: 15px; }
+.daily-categories { display: grid; gap: 12px; }
 .daily-category > div:first-child { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 7px; font-size: .78rem; }
 .daily-category b { font-size: .75rem; white-space: nowrap; }
 .daily-category b small { font-weight: 400; }
@@ -165,7 +170,7 @@ function categoryShare(spent: number) {
   .daily-strip strong { font-size: .7rem; }
   .daily-strip small { font-size: .65rem; }
   .daily-actions { gap: 8px; }
-  .daily-action { padding: 11px; }
+  .daily-action { padding: 10px; }
   .daily-action > strong, .daily-action > b { font-size: .78rem; }
   .daily-action > strong small { display: block; margin-top: 4px; }
 }

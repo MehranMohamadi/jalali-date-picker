@@ -62,7 +62,9 @@ watch(() => props.open, (open, _, onCleanup) => {
   onCleanup(() => {
     document.body.style.overflow = previousOverflow
     document.removeEventListener('keydown', handleKeydown)
-    previousFocus?.focus()
+    void nextTick(() => {
+      if (!props.open && previousFocus?.isConnected) previousFocus.focus()
+    })
   })
 })
 
@@ -85,6 +87,7 @@ const groupedItems = computed(() => {
 
 <template>
   <aside
+    id="app-navigation"
     ref="sidebarRef"
     class="sidebar glass-panel"
     :class="{ open }"
@@ -118,7 +121,7 @@ const groupedItems = computed(() => {
           :to="item.path"
           @click="emit('close')"
         >
-          <component :is="item.icon" class="nav-icon" :size="18" stroke-width="2.2" aria-hidden="true" />
+          <component :is="item.icon" class="nav-icon" :size="18" stroke-width="1.6" aria-hidden="true" />
           <span>{{ item.label }}</span>
         </NuxtLink>
       </section>
@@ -142,7 +145,7 @@ const groupedItems = computed(() => {
             :to="item.path"
             @click="emit('close')"
           >
-            <component :is="item.icon" class="nav-icon" :size="18" stroke-width="2.2" aria-hidden="true" />
+            <component :is="item.icon" class="nav-icon" :size="18" stroke-width="1.6" aria-hidden="true" />
             <span>{{ item.label }}</span>
           </NuxtLink>
         </div>
@@ -419,7 +422,7 @@ const groupedItems = computed(() => {
     align-content: start;
     display: grid;
     flex: 1 1 auto;
-    gap: 14px;
+    gap: 10px;
     grid-template-columns: minmax(0, 1fr);
     min-height: 0;
     overflow-y: auto;
@@ -444,10 +447,10 @@ const groupedItems = computed(() => {
     border: 1px solid var(--line);
     border-radius: 14px;
     gap: 7px;
-    grid-template-columns: 1fr;
+    grid-template-columns: 22px minmax(0, 1fr);
     justify-items: start;
-    min-height: 78px;
-    padding: 10px 12px;
+    min-height: 44px;
+    padding: 7px 10px;
   }
 
   .nav-group > .nav-item.active {
@@ -457,14 +460,13 @@ const groupedItems = computed(() => {
 
   .nav-group > .nav-item .nav-icon {
     background: color-mix(in srgb, var(--primary) 12%, transparent);
-    border-radius: 9px;
-    box-sizing: content-box;
-    padding: 6px;
+    border-radius: 6px;
+    padding: 0;
   }
 
   .nav-group > .nav-item span {
-    font-size: .82rem;
-    font-weight: 700;
+    font-size: .75rem;
+    font-weight: 500;
   }
 
   .nav-secondary {
@@ -501,7 +503,7 @@ const groupedItems = computed(() => {
 }
 
 @media (max-width: 360px) {
-  .nav-group > .nav-item { min-height: 72px; padding: 8px 10px; }
-  .nav-group > .nav-item span { font-size: .78rem; }
+  .nav-group > .nav-item { padding: 7px 8px; }
+  .nav-group > .nav-item span { font-size: .72rem; }
 }
 </style>

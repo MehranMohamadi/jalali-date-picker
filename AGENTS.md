@@ -19,6 +19,7 @@ Compact project guide for future Codex turns. Keep it accurate and update it whe
 ## Important Files
 
 - `playground/app.vue`: app shell, navigation, route-to-section mapping, FAB, modal, and toasts.
+- `playground/components/BottomNavigation.vue`: mobile home/transactions/planning navigation and quick add; More opens `AppSidebar.vue` as a bottom sheet. Desktop keeps the sidebar.
 - `playground/composables/useBudgetyar.ts`: main state/actions/computed values, Chart.js setup, localStorage, reports, installments, bank notifications, and finance/date helpers.
 - `playground/pages/index.vue`: dashboard, compact metric cards, latest expenses, installment summary, and dashboard charts.
 - `playground/pages/transactions.vue`: filters, transaction list, and lightweight pagination.
@@ -34,6 +35,7 @@ Compact project guide for future Codex turns. Keep it accurate and update it whe
 - `playground/components/*.vue`: small UI components; transaction form is `TransactionModal.vue`.
 - `playground/assets/css/budgetyar.css`: main Budgetyar styles.
 - `playground/assets/css/budgetyar-overrides.css`: newer fixes/overrides.
+- `playground/assets/css/budgetyar-compact.css`: shared charcoal/lavender theme and compact layouts, imported after the base styles and overrides.
 - `src/utils/jalali.ts`: Jalali/Gregorian conversion and date math; prefer these helpers over ad hoc date code.
 - `src/utils/dateOnly.ts`, `digits.ts`, and `format.ts`: date-only, digit conversion, and formatting helpers.
 - `src/utils/bankNotification.ts`: bank notification parser; keep parser behavior covered by tests.
