@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const { privateText } = usePrivacy()
 import { summarizeFinancialHistory } from '../../src/utils/financialAdviceHistory'
 
 const budgetyar = useBudgetyar()
@@ -163,7 +164,7 @@ const healthDetails = computed(() => [
       <p>با زدن دکمه، خلاصهٔ عددی همهٔ ماه‌های ثبت‌شده و وضعیت فعلی برای تحلیل ارسال می‌شود؛ جزئیات تراکنش‌ها ارسال نمی‌شود.</p>
       <button class="primary-button" type="button" :disabled="isAnalyzing" @click="analyzeFinancialHealth">{{ isAnalyzing ? 'در حال تحلیل…' : 'تحلیل کن' }}</button>
       <p v-if="analysisError" class="financial-ai-error" role="alert">{{ analysisError }}</p>
-      <div v-if="analysisText" class="financial-ai-result" aria-live="polite">{{ analysisText }}</div>
+      <div v-if="analysisText" class="financial-ai-result" aria-live="polite">{{ privateText(analysisText) }}</div>
       <small v-if="analysisText">این پیشنهادها بر پایهٔ داده‌های ثبت‌شده‌اند و جایگزین مشاورهٔ مالی تخصصی نیستند.</small>
     </div>
   </section>

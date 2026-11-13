@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const { amountsHidden, privateText } = usePrivacy()
 import { RefreshCw } from 'lucide-vue-next'
 const budgetyar = useBudgetyar()
 const {
@@ -133,17 +134,18 @@ onMounted(() => {
       </label>
       <label>
         <span>{{ goalForm.trackingMode === 'ASSET_FUNDING' || goalForm.unit === 'irr' ? 'مبلغ هدف' : 'مقدار هدف' }}</span>
-        <input :value="formatMoneyInput(goalForm.targetAmount)" inputmode="numeric" required @input="updateMoneyInput(goalForm, 'targetAmount', $event)" />
-        <small v-if="goalTargetAmountInWords" class="amount-in-words">{{ goalTargetAmountInWords }}</small>
+        <input :disabled="amountsHidden" :value="amountsHidden ? '••••' : formatMoneyInput(goalForm.targetAmount)" inputmode="numeric" required @input="updateMoneyInput(goalForm, 'targetAmount', $event)" />
+        <small v-if="goalTargetAmountInWords" class="amount-in-words">{{ privateText(goalTargetAmountInWords) }}</small>
       </label>
       <label>
         <span>{{ goalForm.trackingMode === 'ASSET_FUNDING' || goalForm.unit === 'irr' ? 'پس‌انداز فعلی' : 'مقدار فعلی' }}</span>
-        <input :value="formatMoneyInput(goalForm.savedAmount)" inputmode="numeric" @input="updateMoneyInput(goalForm, 'savedAmount', $event)" />
-        <small v-if="goalSavedAmountInWords" class="amount-in-words">{{ goalSavedAmountInWords }}</small>
+        <input :disabled="amountsHidden" :value="amountsHidden ? '••••' : formatMoneyInput(goalForm.savedAmount)" inputmode="numeric" @input="updateMoneyInput(goalForm, 'savedAmount', $event)" />
+        <small v-if="goalSavedAmountInWords" class="amount-in-words">{{ privateText(goalSavedAmountInWords) }}</small>
       </label>
       <label v-if="goalForm.trackingMode !== 'FIXED_MONEY'">
         <span>مقدار دارایی ({{ getGoalUnitLabel(goalForm.unit) }})</span>
-        <input v-model.number="goalForm.targetQuantity" type="number" min="0" step="0.01" />
+        <input v-if="!amountsHidden" v-model.number="goalForm.targetQuantity" type="number" min="0" step="0.01" />
+        <input v-else value="••••" disabled aria-label="‏مقدار پنهان است" />
       </label>
       <label v-if="goalForm.trackingMode !== 'FIXED_MONEY'">
         <span>کد دارایی</span>
@@ -164,7 +166,8 @@ onMounted(() => {
       </label>
       <label>
         <span>{{ goalForm.trackingMode === 'ASSET_FUNDING' || goalForm.unit === 'irr' ? 'واریز برنامه‌ای' : `افزایش برنامه‌ای (${getGoalUnitLabel(goalForm.unit)})` }}</span>
-        <input v-model.number="goalForm.plannedContribution" type="number" min="0" inputmode="numeric" />
+        <input v-if="!amountsHidden" v-model.number="goalForm.plannedContribution" type="number" min="0" inputmode="numeric" />
+        <input v-else value="••••" disabled aria-label="‏مبلغ پنهان است" />
       </label>
       <label>
         <span>تاریخ هدف</span>
@@ -250,8 +253,8 @@ onMounted(() => {
         <div class="goal-transfer-box">
           <label>
             <span>{{ goal.trackingMode === 'ASSET_FUNDING' || goal.unit === 'irr' ? 'مبلغ واریز یا برداشت' : `مقدار افزایش یا کاهش (${getGoalUnitLabel(goal.unit)})` }}</span>
-            <input
-              :value="goalTransferAmounts[goal.id] || ''"
+            <input :disabled="amountsHidden"
+              :value="amountsHidden ? '••••' : goalTransferAmounts[goal.id] || ''"
               inputmode="numeric"
               :placeholder="getGoalUnitLabel(goal.unit)"
               @input="updateGoalTransferAmount(goal.id, $event)"

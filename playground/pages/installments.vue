@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const { amountsHidden, privateText } = usePrivacy()
 import { Check, Pencil, Plus, Trash2, X } from 'lucide-vue-next'
 
 const budgetyar = useBudgetyar()
@@ -49,8 +50,8 @@ const {
       </label>
       <label>
         <span>مبلغ هر قسط</span>
-        <input :value="formatMoneyInput(installmentForm.amount)" type="text" inputmode="numeric" required @input="updateMoneyInput(installmentForm, 'amount', $event)" />
-        <small v-if="installmentAmountInWords" class="amount-in-words">{{ installmentAmountInWords }}</small>
+        <input :disabled="amountsHidden" :value="amountsHidden ? '••••' : formatMoneyInput(installmentForm.amount)" type="text" inputmode="numeric" required @input="updateMoneyInput(installmentForm, 'amount', $event)" />
+        <small v-if="installmentAmountInWords" class="amount-in-words">{{ privateText(installmentAmountInWords) }}</small>
       </label>
       <label>
         <span>دسته</span>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const { amountsHidden, privateText } = usePrivacy()
 import { Download, FileSpreadsheet, Printer } from 'lucide-vue-next'
 
 const budgetyar = useBudgetyar()
@@ -84,7 +85,7 @@ onBeforeUnmount(destroyCharts)
       <div class="analytics-decision-grid">
         <div class="insights analytics-insights">
           <strong>برداشت سریع</strong>
-          <span v-for="insight in insights.slice(0, 3)" :key="insight">{{ insight }}</span>
+          <span v-for="insight in insights.slice(0, 3)" :key="insight">{{ privateText(insight) }}</span>
         </div>
 
         <div class="weekly-overanalysis analytics-alerts">
@@ -116,7 +117,7 @@ onBeforeUnmount(destroyCharts)
       <div class="stats-grid analytics-stats-grid">
         <div v-for="item in primaryStats" :key="item.label">
           <span>{{ item.label }}</span>
-          <strong>{{ item.value }}</strong>
+          <strong>{{ privateText(item.value) }}</strong>
         </div>
       </div>
 
@@ -130,7 +131,7 @@ onBeforeUnmount(destroyCharts)
           </div>
           <div class="chart-canvas chart-scrollable stats-line-chart" :class="{ empty: !hasMonthlyTrendData }">
             <div class="chart-scroll-content">
-              <canvas ref="statsMonthlyTrendCanvas" aria-label="نمودار روند شش‌ماهه" role="img" />
+              <canvas v-show="!amountsHidden" :aria-hidden="amountsHidden" ref="statsMonthlyTrendCanvas" aria-label="نمودار روند شش‌ماهه" role="img" />
             </div>
             <span v-if="!hasMonthlyTrendData">بدون داده</span>
           </div>
@@ -145,7 +146,7 @@ onBeforeUnmount(destroyCharts)
           </div>
           <div class="chart-canvas chart-scrollable stats-line-chart" :class="{ empty: !hasExpenseData }">
             <div class="chart-scroll-content">
-              <canvas ref="statsDailyExpenseCanvas" aria-label="‏نمودار خرج روزانه ماه جاری" role="img" />
+              <canvas v-show="!amountsHidden" :aria-hidden="amountsHidden" ref="statsDailyExpenseCanvas" aria-label="‏نمودار خرج روزانه ماه جاری" role="img" />
             </div>
             <span v-if="!hasExpenseData">‏بدون داده</span>
           </div>
@@ -160,7 +161,7 @@ onBeforeUnmount(destroyCharts)
           </div>
           <div class="chart-canvas chart-scrollable stats-budget-chart">
             <div class="chart-scroll-content">
-              <canvas ref="statsBudgetUsageCanvas" aria-label="نمودار مصرف بودجه دسته‌ها" role="img" />
+              <canvas v-show="!amountsHidden" :aria-hidden="amountsHidden" ref="statsBudgetUsageCanvas" aria-label="نمودار مصرف بودجه دسته‌ها" role="img" />
             </div>
           </div>
         </section>
@@ -173,7 +174,7 @@ onBeforeUnmount(destroyCharts)
             </div>
           </div>
           <div class="chart-canvas stats-polar-chart" :class="{ empty: !hasExpenseData }">
-            <canvas ref="statsExpenseMixCanvas" aria-label="نمودار ترکیب هزینه‌ها" role="img" />
+            <canvas v-show="!amountsHidden" :aria-hidden="amountsHidden" ref="statsExpenseMixCanvas" aria-label="نمودار ترکیب هزینه‌ها" role="img" />
             <span v-if="!hasExpenseData">بدون داده</span>
           </div>
         </section>
@@ -192,7 +193,7 @@ onBeforeUnmount(destroyCharts)
           </div>
           <div class="chart-canvas chart-scrollable stats-cash-chart">
             <div class="chart-scroll-content">
-              <canvas ref="statsCashFlowCanvas" aria-label="نمودار جریان پول" role="img" />
+              <canvas v-show="!amountsHidden" :aria-hidden="amountsHidden" ref="statsCashFlowCanvas" aria-label="نمودار جریان پول" role="img" />
             </div>
           </div>
         </section>
@@ -203,7 +204,7 @@ onBeforeUnmount(destroyCharts)
         <div class="stats-grid analytics-stats-grid compact">
           <div v-for="item in secondaryStats" :key="item.label">
             <span>{{ item.label }}</span>
-            <strong>{{ item.value }}</strong>
+            <strong>{{ privateText(item.value) }}</strong>
           </div>
         </div>
         <div v-if="latestLoans.length" class="loan-summary-list">

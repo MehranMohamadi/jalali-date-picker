@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const { amountsHidden, privateText } = usePrivacy()
 const budgetyar = useBudgetyar()
 const {
   debtForm,
@@ -56,7 +57,7 @@ const {
 
     <div class="credit-settings-inline">
       <label>سقف اعتبار
-        <input :value="formatMoneyInput(creditLimit)" type="text" inputmode="numeric" @input="updateCreditLimit" />
+        <input :disabled="amountsHidden" :value="amountsHidden ? '••••' : formatMoneyInput(creditLimit)" type="text" inputmode="numeric" @input="updateCreditLimit" />
       </label>
       <span><small>بدهی اعتبار همه ماه‌ها</small><strong>{{ formatMoney(creditExpense) }}</strong></span>
       <span><small>اعتبار باقی‌مانده</small><strong>{{ formatMoney(creditRemaining) }}</strong></span>
@@ -109,21 +110,21 @@ const {
       </label>
       <label>
         <span>مبلغ اولیه</span>
-        <input :value="formatMoneyInput(debtForm.principalAmount)" inputmode="numeric" @input="updateMoneyInput(debtForm, 'principalAmount', $event)" />
-        <small v-if="debtPrincipalAmountInWords" class="amount-in-words">{{ debtPrincipalAmountInWords }}</small>
+        <input :disabled="amountsHidden" :value="amountsHidden ? '••••' : formatMoneyInput(debtForm.principalAmount)" inputmode="numeric" @input="updateMoneyInput(debtForm, 'principalAmount', $event)" />
+        <small v-if="debtPrincipalAmountInWords" class="amount-in-words">{{ privateText(debtPrincipalAmountInWords) }}</small>
       </label>
       <label>
         <span>مانده فعلی</span>
-        <input :value="formatMoneyInput(debtForm.remainingAmount)" inputmode="numeric" required @input="updateMoneyInput(debtForm, 'remainingAmount', $event)" />
-        <small v-if="debtRemainingAmountInWords" class="amount-in-words">{{ debtRemainingAmountInWords }}</small>
+        <input :disabled="amountsHidden" :value="amountsHidden ? '••••' : formatMoneyInput(debtForm.remainingAmount)" inputmode="numeric" required @input="updateMoneyInput(debtForm, 'remainingAmount', $event)" />
+        <small v-if="debtRemainingAmountInWords" class="amount-in-words">{{ privateText(debtRemainingAmountInWords) }}</small>
       </label>
       <label><span>سود سالانه</span><input v-model.number="debtForm.interestRateAnnual" type="number" min="0" step="0.1" /></label>
       <label>
         <span>حداقل پرداخت</span>
-        <input :value="formatMoneyInput(debtForm.minimumMonthlyPayment)" inputmode="numeric" @input="updateMoneyInput(debtForm, 'minimumMonthlyPayment', $event)" />
-        <small v-if="debtMinimumPaymentInWords" class="amount-in-words">{{ debtMinimumPaymentInWords }}</small>
+        <input :disabled="amountsHidden" :value="amountsHidden ? '••••' : formatMoneyInput(debtForm.minimumMonthlyPayment)" inputmode="numeric" @input="updateMoneyInput(debtForm, 'minimumMonthlyPayment', $event)" />
+        <small v-if="debtMinimumPaymentInWords" class="amount-in-words">{{ privateText(debtMinimumPaymentInWords) }}</small>
       </label>
-      <label><span>پرداخت اضافه</span><input :value="formatMoneyInput(debtForm.extraMonthlyPayment)" inputmode="numeric" @input="updateMoneyInput(debtForm, 'extraMonthlyPayment', $event)" /></label>
+      <label><span>پرداخت اضافه</span><input :disabled="amountsHidden" :value="amountsHidden ? '••••' : formatMoneyInput(debtForm.extraMonthlyPayment)" inputmode="numeric" @input="updateMoneyInput(debtForm, 'extraMonthlyPayment', $event)" /></label>
       <label><span>روز سررسید</span><input v-model.number="debtForm.dueDay" type="number" min="1" max="31" /></label>
       <label><span>شروع</span><JalaliDatePicker v-model="debtStartDatePickerValue" class="date-picker-field" :clearable="false" popover-class="date-picker-popover" /></label>
       <label><span>هدف پایان</span><JalaliDatePicker v-model="debtTargetPayoffDatePickerValue" class="date-picker-field" placeholder="اختیاری" popover-class="date-picker-popover" /></label>

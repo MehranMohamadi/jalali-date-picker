@@ -23,6 +23,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(BankNotificationsPlugin.class);
         registerPlugin(BudgetyarApiPlugin.class);
         registerPlugin(BudgetyarUpdatesPlugin.class);
+        registerPlugin(BudgetyarPrivacyPlugin.class);
         super.onCreate(savedInstanceState);
         remoteOrigin = bridge.getConfig().getPluginConfiguration("BudgetyarApi").getString("baseUrl", "");
         remoteBridgeReady = false;
@@ -35,7 +36,7 @@ public class MainActivity extends BridgeActivity {
                 WebViewCompat.addDocumentStartJavaScript(bridge.getWebView(),
                     "if(navigator.serviceWorker?.controller){window.stop();navigator.serviceWorker.getRegistrations().then(rs=>Promise.all(rs.map(r=>r.unregister()))).then(()=>location.reload());}",
                     Collections.singleton("https://localhost"));
-                List<PluginHandle> plugins = Arrays.asList(bridge.getPlugin("BankNotifications"), bridge.getPlugin("BudgetyarApi"), bridge.getPlugin("BudgetyarUpdates"));
+                List<PluginHandle> plugins = Arrays.asList(bridge.getPlugin("BankNotifications"), bridge.getPlugin("BudgetyarApi"), bridge.getPlugin("BudgetyarUpdates"), bridge.getPlugin("BudgetyarPrivacy"));
                 String script = JSExport.getGlobalJS(this, false, false) + "\n" +
                     "window.WEBVIEW_SERVER_URL = 'https://localhost';\n" + JSExport.getBridgeJS(this) + "\n" + JSExport.getPluginJS(plugins);
                 WebViewCompat.addDocumentStartJavaScript(bridge.getWebView(), script, Collections.singleton(remoteOrigin));

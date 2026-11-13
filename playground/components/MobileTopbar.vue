@@ -24,8 +24,17 @@ const emit = defineEmits<{
         <small>{{ title }}</small>
       </div>
     </div>
+    <PrivacyToggle class="mobile-privacy-toggle" />
     <button class="mobile-add" type="button" aria-label="‏ثبت هزینه" @click="emit('quickAdd')">
       <Plus :size="20" aria-hidden="true" />
     </button>
   </header>
 </template>
+
+<style scoped>
+.mobile-privacy-toggle { flex: 0 0 38px; padding: 8px; }
+.mobile-privacy-toggle :deep(span) { display: none; }
+@media (max-width: 760px) {
+  .mobile-topbar { grid-template-columns: 40px minmax(0, 1fr) 40px 40px; }
+}
+</style>

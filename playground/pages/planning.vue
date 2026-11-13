@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const { amountsHidden, privateText } = usePrivacy()
 import { Plus } from 'lucide-vue-next'
 
 const budgetyar = useBudgetyar()
@@ -77,7 +78,7 @@ const totalUpcomingExpense = computed(() => upcomingExpenseItems.value.reduce((s
     </section>
 
     <div v-if="cashflowWarnings.length" class="insights planning-warnings">
-      <span v-for="warning in cashflowWarnings" :key="warning">{{ warning }}</span>
+      <span v-for="warning in cashflowWarnings" :key="warning">{{ privateText(warning) }}</span>
     </div>
 
     <div class="planning-action-grid">
@@ -134,8 +135,8 @@ const totalUpcomingExpense = computed(() => upcomingExpenseItems.value.reduce((s
       <form class="installment-form planning-form purchase-form" @submit.prevent>
         <label>
           <span>مبلغ خرید</span>
-          <input :value="formatMoneyInput(purchaseForm.amount)" inputmode="numeric" @input="updateMoneyInput(purchaseForm, 'amount', $event)" />
-          <small v-if="purchaseAmountInWords" class="amount-in-words">{{ purchaseAmountInWords }}</small>
+          <input :disabled="amountsHidden" :value="amountsHidden ? '••••' : formatMoneyInput(purchaseForm.amount)" inputmode="numeric" @input="updateMoneyInput(purchaseForm, 'amount', $event)" />
+          <small v-if="purchaseAmountInWords" class="amount-in-words">{{ privateText(purchaseAmountInWords) }}</small>
         </label>
         <label>
           <span>دسته</span>
@@ -172,7 +173,7 @@ const totalUpcomingExpense = computed(() => upcomingExpenseItems.value.reduce((s
           </div>
           <span>{{ purchaseDecision.level === 'safe' ? 'امن' : purchaseDecision.level === 'caution' ? 'با احتیاط' : 'پرریسک' }}</span>
         </div>
-        <p>{{ purchaseDecision.summary }}</p>
+        <p>{{ privateText(purchaseDecision.summary) }}</p>
         <div class="report-grid">
           <span><small>مانده دسته بعد خرید</small><strong>{{ formatMoney(purchaseDecision.budgetImpact.categoryRemainingAfter) }}</strong></span>
           <span><small>اثر روی هفته</small><strong>{{ toPersianNumber(purchaseDecision.budgetImpact.weeklyBudgetImpactPercent) }}٪</strong></span>
@@ -186,7 +187,7 @@ const totalUpcomingExpense = computed(() => upcomingExpenseItems.value.reduce((s
           </span>
         </div>
         <div v-if="purchaseDecision.suggestions.length" class="insights">
-          <span v-for="suggestion in purchaseDecision.suggestions" :key="suggestion">{{ suggestion }}</span>
+          <span v-for="suggestion in purchaseDecision.suggestions" :key="suggestion">{{ privateText(suggestion) }}</span>
         </div>
         <button class="primary-button full" type="button" :disabled="!purchaseForm.amount" @click="createPurchaseTransaction">
           <Plus :size="17" aria-hidden="true" />

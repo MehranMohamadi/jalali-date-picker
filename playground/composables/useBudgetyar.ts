@@ -1,4 +1,5 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from 'vue'
+import { privateFormatter, usePrivacy } from './usePrivacy'
 
 import {
   Chart,
@@ -1790,6 +1791,7 @@ function updateCreditLimit(event: Event) {
 }
 
 function recordCreditPayment(month: string) {
+  if (!canEditPrivateAmount()) return
   const creditMonth = creditMonths.value.find((item) => item.month === month)
   if (!creditMonth?.remaining) return
   const rawAmount = window.prompt(`مبلغ تسویه اعتبار ${month}`, formatMoneyInput(creditMonth.remaining))
@@ -1820,7 +1822,7 @@ function recordCreditPayment(month: string) {
 
 function ignoreCreditDebt(row: { month: string; remaining: number }) {
   const month = row.month
-  const message = `ماندهٔ ${formatMoney(row.remaining)} اعتبار ${month} از بدهی باز نادیده گرفته شود؟ تراکنش‌ها و آمار هزینه تغییر نمی‌کنند و این اصلاح قابل بازگردانی است.`
+  const message = `‏ماندهٔ ${privateFormatter(formatMoney)(row.remaining)} اعتبار ${month} از بدهی باز نادیده گرفته شود؟ تراکنش‌ها و آمار هزینه تغییر نمی‌کنند و این اصلاح قابل بازگردانی است.`
   confirmDialog.executeWithConfirm(() => {
     creditAdjustments.value = { ...creditAdjustments.value, [row.month]: (creditAdjustments.value[row.month] ?? 0) + row.remaining }
     pushToast('ماندهٔ اعتبار از بدهی باز کنار گذاشته شد')
@@ -3315,6 +3317,7 @@ function toggleDebt(id: string) {
 }
 
 function recordDebtPayment(debt: BudgetyarDebt, amount = 0) {
+  if (!canEditPrivateAmount()) return
   const rawAmount = amount || window.prompt('مبلغ پرداخت بدهی', formatMoneyInput(debt.remainingAmount))
   if (rawAmount === null) return
   const value = typeof rawAmount === 'number' ? rawAmount : parseMoneyInput(rawAmount)
@@ -4856,6 +4859,12 @@ function unbindMobileViewport() {
   mobileViewportListener = null
 }
 
+function canEditPrivateAmount() {
+  if (!usePrivacy().amountsHidden.value) return true
+  pushToast('‏برای تغییر مبلغ، ابتدا نمایش مبلغ‌ها را فعال کن.')
+  return false
+}
+
 export function useBudgetyar() {
   return {
     subscriptions, saveSubscription, deleteSubscription,
@@ -4886,11 +4895,13 @@ export function useBudgetyar() {
     financialHealthScore, financialHealthLevel, financialHealthSuggestions, financialHealthWarnings, financialHealthStrengths,
     filteredTransactions, dailyTrend, hasExpenseData, expenseShareChartData, categoryBarChartData, trendLineChartData, dailyExpensePoints, weeklyFlowPoints, budgetAnalysisItems, monthlyTrendPoints, hasMonthlyTrendData, commitmentTotal, flexibleAfterCommitments, statsExpenseMixChartData, statsBudgetUsageChartData, statsDailyExpenseChartData, statsWeeklyFlowChartData, statsCashFlowChartData, statsEssentialChartData, statsPaymentMethodChartData, statsMonthlyTrendChartData, statsCommitmentChartData,
     summaryLines, insights, dashboardCards, widgets, statsItems,
-    getCategory, normalizeDigits, normalizeJalaliDate, getJalaliInputDay, getTrendDays, getPreviousMonthPrefix, addJalaliMonths, getInstallmentDueDate, getInstallmentStatus, getInstallmentStatusLabel, getCurrentWeekRange, getWeekdayLabel, getJalaliMonthPrefix, getCurrentJalaliDate, formatJalaliInputDate, formatDisplayJalaliDate, jalaliInputToIso, isoToJalaliInput, toPersianNumber, parseMoneyInput, formatMoneyInput, formatMoneyWords, formatMoney, formatCompact, progressPercent, getChangePercent, formatPercentHint, formatChangeSentence, getRiskLabel, getFinancialHealthLevelLabel,
+    getCategory, normalizeDigits, normalizeJalaliDate, getJalaliInputDay, getTrendDays, getPreviousMonthPrefix, addJalaliMonths, getInstallmentDueDate, getInstallmentStatus, getInstallmentStatusLabel, getCurrentWeekRange, getWeekdayLabel, getJalaliMonthPrefix, getCurrentJalaliDate, formatJalaliInputDate, formatDisplayJalaliDate, jalaliInputToIso, isoToJalaliInput, toPersianNumber, parseMoneyInput, formatMoneyInput, progressPercent, getChangePercent, formatPercentHint, formatChangeSentence, getRiskLabel, getFinancialHealthLevelLabel,
+    formatMoney: privateFormatter(formatMoney), formatCompact: privateFormatter(formatCompact), formatMoneyWords: privateFormatter(formatMoneyWords),
     getTransactionCategories, getTransactionSubCategories, toggleSubCategory, addTag, deleteTag,
     tags, getTag,
     selectSection, openModal, editTransaction, saveTransaction, removeTransaction, refreshBankNotifications, openNotificationAccessSettings, updateSelectedBankPackage, acceptBankSuggestion, dismissBankSuggestion, formatSuggestionDate, updateMoneyInput, updateCreditLimit, recordCreditPayment, ignoreCreditMonth, restoreIgnoredCredit, updateBudget, addCategory, renameCategory, deleteCategory, addInstallmentPlan, editInstallmentPlan, cancelInstallmentEdit, payInstallment, undoInstallmentPayment, removeInstallmentPlan,
-    addGoal, editGoal, updateGoal, deleteGoal, archiveGoal, pauseGoal, resumeGoal, addGoalContribution, withdrawFromGoal, getGoalProgress, getGoalRemainingAmount, getGoalSuggestedMonthlySaving, getGoalSuggestedWeeklySaving, getGoalUnitLabel, getGoalTransactionTypeLabel, formatGoalAmount, formatGoalTrackedAmount, getGoalEstimatedValue, getGoalTrackingModeLabel, getGoalHealthLabel, getGoalScenario, getGoalTransactions, getGoalSummary, getGoalSavedValue, getGoalTargetValue,
+    addGoal, editGoal, updateGoal, deleteGoal, archiveGoal, pauseGoal, resumeGoal, addGoalContribution, withdrawFromGoal, getGoalProgress, getGoalRemainingAmount, getGoalSuggestedMonthlySaving, getGoalSuggestedWeeklySaving, getGoalUnitLabel, getGoalTransactionTypeLabel, getGoalEstimatedValue, getGoalTrackingModeLabel, getGoalHealthLabel, getGoalScenario, getGoalTransactions, getGoalSummary, getGoalSavedValue, getGoalTargetValue,
+    formatGoalAmount: privateFormatter(formatGoalAmount), formatGoalTrackedAmount: privateFormatter(formatGoalTrackedAmount),
     addRecurringItem, editRecurringItem, updateRecurringItem, deleteRecurringItem, toggleRecurringItem, getRecurringNextDueDate, markRecurringItemPaid, skipRecurringOccurrence, createTransactionFromRecurringItem, getRecurringStatusLabel, createPurchaseTransaction, setThemeMode, refreshMarketRates, getDaysUntilDue, resetRecurringForm,
     addDebt, editDebt, updateDebt, deleteDebt, toggleDebt, recordDebtPayment, calculateDebtPayoffPlan,
     addCategorizationRule, editCategorizationRule, updateCategorizationRule, deleteCategorizationRule, toggleCategorizationRule, matchTransactionCategoryRule, applyCategorizationRulesToTransaction, applyCategorizationRulesToAllTransactions, suggestCategorizationRules, acceptSuggestedCategorizationRule, bulkUpdateTransactionCategory,

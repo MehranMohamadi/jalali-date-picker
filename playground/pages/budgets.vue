@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const { amountsHidden } = usePrivacy()
 import { Check, Pencil, Plus, Trash2, X } from 'lucide-vue-next'
 
 const budgetyar = useBudgetyar()
@@ -127,8 +128,8 @@ function handleCreateTag() {
       </label>
       <label>
         <span>‏بودجه (تومان)</span>
-        <input
-          :value="formatMoneyInput(categoryForm.budget)"
+        <input :disabled="amountsHidden"
+          :value="amountsHidden ? '••••' : formatMoneyInput(categoryForm.budget)"
           type="text"
           inputmode="numeric"
           @input="updateMoneyInput(categoryForm, 'budget', $event)"
@@ -236,7 +237,7 @@ function handleCreateTag() {
           <summary>‏ویرایش سقف بودجه</summary>
         <label class="budget-edit">
           <span>‏بودجه (تومان) · با خروج از کادر ذخیره می‌شود</span>
-          <input :value="formatMoneyInput(item.budget)" type="text" inputmode="numeric" @change="updateBudget(item.key, $event)" />
+          <input :disabled="amountsHidden" :value="amountsHidden ? '••••' : formatMoneyInput(item.budget)" type="text" inputmode="numeric" @change="updateBudget(item.key, $event)" />
           <small v-if="item.budget" class="amount-in-words">{{ formatMoneyWords(item.budget) }}</small>
         </label>
         </details>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const { amountsHidden, privateText } = usePrivacy()
 const budgetyar = useBudgetyar()
 const {
   incomeSettings,
@@ -62,8 +63,8 @@ function updateMoneySetting(key: string, event: Event) {
           <option :value="12">۱۲</option>
         </BudgetyarSelect>
       </label>
-      <label><span>درآمد ثابت</span><input :value="formatMoneyInput(incomeSettings.fixedMonthlyIncome || 0)" inputmode="numeric" @input="updateMoneySetting('fixedMonthlyIncome', $event)" /></label>
-      <label><span>بودجه دستی</span><input :value="formatMoneyInput(incomeSettings.manualBudgetBase || 0)" inputmode="numeric" @input="updateMoneySetting('manualBudgetBase', $event)" /></label>
+      <label><span>درآمد ثابت</span><input :disabled="amountsHidden" :value="amountsHidden ? '••••' : formatMoneyInput(incomeSettings.fixedMonthlyIncome || 0)" inputmode="numeric" @input="updateMoneySetting('fixedMonthlyIncome', $event)" /></label>
+      <label><span>بودجه دستی</span><input :disabled="amountsHidden" :value="amountsHidden ? '••••' : formatMoneyInput(incomeSettings.manualBudgetBase || 0)" inputmode="numeric" @input="updateMoneySetting('manualBudgetBase', $event)" /></label>
       <label><span>ضریب احتیاط</span><input :value="incomeSettings.safetyBufferPercent" type="number" min="0" max="80" @input="updateNumberSetting('safetyBufferPercent', $event)" /></label>
       <label><span>صندوق ماه ضعیف</span><input :value="incomeSettings.badMonthReservePercent" type="number" min="0" max="80" @input="updateNumberSetting('badMonthReservePercent', $event)" /></label>
       <label><span>درصد ضروری</span><input :value="incomeSettings.essentialPercent" type="number" min="0" max="100" @input="updateNumberSetting('essentialPercent', $event)" /></label>
@@ -80,7 +81,7 @@ function updateMoneySetting(key: string, event: Event) {
     </div>
 
     <div v-if="irregularIncomeWarnings.length" class="insights planning-warnings">
-      <span v-for="warning in irregularIncomeWarnings" :key="warning">{{ warning }}</span>
+      <span v-for="warning in irregularIncomeWarnings" :key="warning">{{ privateText(warning) }}</span>
     </div>
 
     <button class="primary-button full planning-inline" type="button" @click="applyRecommendedBudgetPlan">اعمال پیشنهاد روی بودجه‌ها</button>

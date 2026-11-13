@@ -28,7 +28,9 @@ const router = useRouter()
 const budgetyar = useBudgetyar()
 startBudgetyar()
 const appUpdates = useAppUpdates()
-onMounted(() => { void appUpdates.start() })
+const { amountsHidden, start: startPrivacy } = usePrivacy()
+onMounted(() => { void startPrivacy(); void appUpdates.start() })
+watch(amountsHidden, () => { destroyCharts(); nextTick(scheduleChartSync) })
 
 const {
   activeSection,
@@ -87,7 +89,7 @@ function quickAdd() {
 </script>
 
 <template>
-  <main dir="rtl" class="app-shell" :class="{ 'mobile-perf': isMobileViewport }">
+  <main dir="rtl" class="app-shell" :class="{ 'mobile-perf': isMobileViewport, 'amounts-hidden': amountsHidden }">
     <MobileTopbar
       :title="activeTitle"
       :open="isMobileMenuOpen"
@@ -104,6 +106,7 @@ function quickAdd() {
     />
 
     <section class="content">
+      <div class="desktop-privacy-tools"><PrivacyToggle /></div>
       <NuxtPage />
     </section>
 
@@ -117,3 +120,10 @@ function quickAdd() {
     <AppUpdateNotice />
   </main>
 </template>
+
+<style>
+.desktop-privacy-tools { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+.amounts-hidden .amount-in-words { display: none; }
+.amounts-hidden .chart-canvas { display: none; }
+@media (max-width: 760px) { .desktop-privacy-tools { display: none; } }
+</style>

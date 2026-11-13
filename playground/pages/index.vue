@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ArrowLeft, CalendarDays, ChevronDown, Wallet, ReceiptText } from 'lucide-vue-next'
+const { privateText } = usePrivacy()
 
 const {
   widgets, today, dashboardCards, latestExpenses, totalBudget, totalExpense, balanceAfterCreditPayment,
@@ -27,7 +28,7 @@ function categoryShare(spent: number) {
 
     <section class="daily-strip glass-panel" aria-label="‏خلاصهٔ امروز">
       <div v-for="widget in dailyWidgets" :key="widget.label">
-        <small>{{ widget.label }}</small><strong>{{ widget.value }}</strong>
+        <small>{{ widget.label }}</small><strong>{{ privateText(widget.value) }}</strong>
       </div>
     </section>
 
@@ -37,7 +38,7 @@ function categoryShare(spent: number) {
           <span><Wallet v-if="index === 0" :size="18" aria-hidden="true" /><ReceiptText v-else :size="18" aria-hidden="true" />{{ card.label }}</span>
           <strong>{{ formatMoney(card.value) }}</strong>
         </div>
-        <small>{{ card.hint }}</small>
+        <small>{{ privateText(card.hint) }}</small>
         <div v-if="index === 0" class="daily-deduction">
           <span>‏مانده بدون کسر اقساط</span>
           <b>{{ formatMoney(balanceAfterCreditPayment) }}</b>
@@ -46,7 +47,7 @@ function categoryShare(spent: number) {
           <summary>‏جزئیات محاسبه <ChevronDown :size="14" aria-hidden="true" /></summary>
           <div v-for="detail in card.details" :key="detail.label" class="daily-deduction">
             <span>{{ detail.label }}</span>
-            <b>− {{ detail.value }}</b>
+            <b>− {{ privateText(detail.value) }}</b>
             <button v-if="detail.actionId" type="button" :aria-label="`‏نادیده گرفتن ${detail.label}`" @click="ignoreCreditMonth(detail.actionId)">‏نادیده بگیر</button>
           </div>
         </details>

@@ -6,6 +6,8 @@ import { APP_VERSION } from '../version'
 const latestApkUrl = '/downloads/budgetyar-latest.apk'
 const nativeUpdates = registerPlugin<{ openApkDownload(): Promise<void> }>('BudgetyarUpdates')
 const budgetyar = useBudgetyar()
+const { amountsHidden, lockEnabled, lockAvailable, nativeSupported, busy: privacyBusy, message: privacyMessage, toggleLock, refreshLock } = usePrivacy()
+onMounted(() => { void refreshLock() })
 const auth = useAuth()
 const { billing, refreshBilling } = useBilling()
 onMounted(async () => { await auth.initAuth(); await refreshBilling() })
@@ -66,6 +68,24 @@ async function downloadLatestApk(event: MouseEvent) {
   <div class="settings-page">
     <div class="settings-layout">
       <McpConnections />
+      <section class="settings-panel glass-panel">
+        <div class="settings-panel-head">
+          <span class="settings-panel-icon"><Smartphone :size="20" aria-hidden="true" /></span>
+          <div><h2>‏حریم خصوصی</h2><p>‏نمایش مبلغ‌ها و قفل این دستگاه را تنظیم کن.</p></div>
+        </div>
+        <div class="settings-actions">
+          <PrivacyToggle />
+          <button v-if="nativeSupported" class="soft-button settings-action" type="button" :disabled="privacyBusy || (!lockAvailable && !lockEnabled)" :aria-pressed="lockEnabled" @click="toggleLock">
+            {{ privacyBusy ? '‏در انتظار تأیید…' : lockEnabled ? '‏غیرفعال‌کردن قفل برنامه' : '‏فعال‌کردن قفل برنامه' }}
+          </button>
+        </div>
+        <p v-if="amountsHidden" class="settings-hint">‏مبلغ‌ها و نمودارها پنهان‌اند؛ برای ویرایش مبلغ، ابتدا نمایش آن‌ها را فعال کن.</p>
+        <p v-if="nativeSupported" class="settings-hint">‏قفل در شروع و پس از بازگشت به برنامه با اثر انگشت یا رمز گوشی باز می‌شود. هنگام فعال‌بودن قفل، گرفتن تصویر از صفحه نیز محدود می‌شود.</p>
+        <p v-else class="settings-hint">‏قفل اثر انگشت در نسخهٔ جدید اپ اندروید در دسترس است.</p>
+        <p v-if="nativeSupported && !lockAvailable" class="settings-hint">‏اثر انگشت یا رمز صفحهٔ قفل گوشی را فعال کن، سپس <button type="button" class="soft-button" @click="refreshLock">‏دوباره بررسی کن</button>.</p>
+        <p class="settings-hint">‏پنهان‌کردن مبلغ‌ها فقط نمایش را تغییر می‌دهد؛ فایل پشتیبان و خروجی گزارش شامل مبلغ‌های اصلی هستند.</p>
+        <p v-if="privacyMessage" class="settings-message" role="status">{{ privacyMessage }}</p>
+      </section>
       <section class="settings-panel glass-panel">
         <div class="settings-panel-head">
           <span class="settings-panel-icon"><Cloud :size="20" aria-hidden="true" /></span>

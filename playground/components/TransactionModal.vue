@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const { amountsHidden, privateText } = usePrivacy()
 import { ArrowDownCircle, ArrowUpCircle, Check, ChevronDown, Plus, Sparkles, X } from 'lucide-vue-next'
 
 const budgetyar = useBudgetyar()
@@ -85,8 +86,8 @@ function applySuggestedCategory() {
 
         <div class="transaction-modal__body">
         <label class="amount-field transaction-amount">
-          <input
-            :value="formatMoneyInput(form.amount)"
+          <input :disabled="amountsHidden"
+            :value="amountsHidden ? '••••' : formatMoneyInput(form.amount)"
             type="text"
             inputmode="numeric"
             placeholder="‏مبلغ"
@@ -94,7 +95,7 @@ function applySuggestedCategory() {
             required
             @input="updateMoneyInput(form, 'amount', $event)"
           />
-          <small v-if="formAmountInWords" class="amount-in-words">{{ formAmountInWords }}</small>
+          <small v-if="formAmountInWords" class="amount-in-words">{{ privateText(formAmountInWords) }}</small>
         </label>
 
         <div class="transaction-fields">

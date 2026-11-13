@@ -28,6 +28,7 @@ Compact project guide for future Codex turns. Keep it accurate and update it whe
 - `playground/pages/analytics.vue`: reports, stats, charts, weekly budget analysis, and cash flow modes.
 - `playground/pages/notifications.vue`: Android/Capacitor bank notification suggestions.
 - `playground/pages/settings.vue`: account-based cloud transfer, export, backup/import, PWA install, and theme settings.
+- `playground/composables/usePrivacy.ts` and `android/app/src/main/java/ir/budgetyar/app/BudgetyarPrivacyPlugin.java`: device amount masking and native biometric/device-credential app lock; see `docs/privacy.md`. Keep masking in presentation helpers so exports and calculations retain actual amounts. Native lock changes require a new APK.
 - `playground/pages/pro.vue`, `playground/composables/useBilling.ts`, and `playground/components/ProGate.vue`: subscription status, plan catalog, and future feature access UI.
 - `playground/pages/login.vue` and `playground/composables/useAuth.ts`: account UI and client session state. Never store passwords or session tokens in browser storage.
 - `playground/components/*.vue`: small UI components; transaction form is `TransactionModal.vue`.

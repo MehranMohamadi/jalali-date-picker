@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const { amountsHidden, privateText } = usePrivacy()
 const budgetyar = useBudgetyar()
 const {
   recurringForm,
@@ -155,8 +156,8 @@ function getSubscriptionDueBadge(item: any) {
       </label>
       <label>
         <span>مبلغ اشتراک</span>
-        <input :value="formatMoneyInput(recurringForm.amount)" inputmode="numeric" required @input="updateMoneyInput(recurringForm, 'amount', $event)" />
-        <small v-if="recurringAmountInWords" class="amount-in-words">{{ recurringAmountInWords }}</small>
+        <input :disabled="amountsHidden" :value="amountsHidden ? '••••' : formatMoneyInput(recurringForm.amount)" inputmode="numeric" required @input="updateMoneyInput(recurringForm, 'amount', $event)" />
+        <small v-if="recurringAmountInWords" class="amount-in-words">{{ privateText(recurringAmountInWords) }}</small>
         <small v-if="monthlyEquivalentAmount && recurringForm.frequency !== 'monthly'" class="monthly-equivalent-badge">
           معادل {{ formatMoney(monthlyEquivalentAmount) }} در هر ماه
         </small>
@@ -225,8 +226,8 @@ function getSubscriptionDueBadge(item: any) {
       </label>
       <label>
         <span>مبلغ</span>
-        <input :value="formatMoneyInput(recurringForm.amount)" inputmode="numeric" required @input="updateMoneyInput(recurringForm, 'amount', $event)" />
-        <small v-if="recurringAmountInWords" class="amount-in-words">{{ recurringAmountInWords }}</small>
+        <input :disabled="amountsHidden" :value="amountsHidden ? '••••' : formatMoneyInput(recurringForm.amount)" inputmode="numeric" required @input="updateMoneyInput(recurringForm, 'amount', $event)" />
+        <small v-if="recurringAmountInWords" class="amount-in-words">{{ privateText(recurringAmountInWords) }}</small>
       </label>
       <label>
         <span>دسته</span>

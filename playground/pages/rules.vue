@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const { amountsHidden, privateText } = usePrivacy()
 const budgetyar = useBudgetyar()
 const {
   categorizationRuleForm,
@@ -71,13 +72,13 @@ function matchTypeLabel(value: string) {
       <label><span>فروشنده</span><input v-model="categorizationRuleForm.merchantName" /></label>
       <label>
         <span>حداقل مبلغ</span>
-        <input :value="formatMoneyInput(categorizationRuleForm.minAmount)" inputmode="numeric" @input="updateMoneyInput(categorizationRuleForm, 'minAmount', $event)" />
-        <small v-if="ruleMinAmountInWords" class="amount-in-words">{{ ruleMinAmountInWords }}</small>
+        <input :disabled="amountsHidden" :value="amountsHidden ? '••••' : formatMoneyInput(categorizationRuleForm.minAmount)" inputmode="numeric" @input="updateMoneyInput(categorizationRuleForm, 'minAmount', $event)" />
+        <small v-if="ruleMinAmountInWords" class="amount-in-words">{{ privateText(ruleMinAmountInWords) }}</small>
       </label>
       <label>
         <span>حداکثر مبلغ</span>
-        <input :value="formatMoneyInput(categorizationRuleForm.maxAmount)" inputmode="numeric" @input="updateMoneyInput(categorizationRuleForm, 'maxAmount', $event)" />
-        <small v-if="ruleMaxAmountInWords" class="amount-in-words">{{ ruleMaxAmountInWords }}</small>
+        <input :disabled="amountsHidden" :value="amountsHidden ? '••••' : formatMoneyInput(categorizationRuleForm.maxAmount)" inputmode="numeric" @input="updateMoneyInput(categorizationRuleForm, 'maxAmount', $event)" />
+        <small v-if="ruleMaxAmountInWords" class="amount-in-words">{{ privateText(ruleMaxAmountInWords) }}</small>
       </label>
       <label>
         <span>دسته مقصد</span>
