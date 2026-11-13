@@ -110,7 +110,7 @@ public class BudgetyarPrivacyPlugin extends Plugin {
             Math.min(dp(340), availableWidth), ViewGroup.LayoutParams.WRAP_CONTENT));
 
         ImageView icon = new ImageView(getActivity());
-        icon.setImageResource(android.R.drawable.ic_lock_lock);
+        icon.setImageResource(android.R.drawable.ic_lock_idle_lock);
         icon.setImageTintList(ColorStateList.valueOf(0xFFE0DCFF));
         icon.setBackground(roundedBackground(0xFF333044, 18));
         icon.setPadding(dp(15), dp(15), dp(15), dp(15));
