@@ -37,12 +37,32 @@ watch(amountsHidden, () => { destroyCharts(); nextTick(scheduleChartSync) })
 const {
   activeSection,
   isMobileMenuOpen,
+  isModalOpen,
   isMobileViewport,
   toasts,
   openModal,
   destroyCharts,
   scheduleChartSync,
 } = budgetyar
+
+const isMobilePanelOpen = computed(() => isMobileViewport.value && (isMobileMenuOpen.value || isModalOpen.value))
+
+watch(() => isMobileMenuOpen.value || isModalOpen.value, (open, _, onCleanup) => {
+  if (!open || !import.meta.client) return
+  const previousOverflow = document.body.style.overflow
+  document.body.style.overflow = 'hidden'
+  onCleanup(() => { document.body.style.overflow = previousOverflow })
+})
+
+function closeMobilePanels() {
+  isMobileMenuOpen.value = false
+  isModalOpen.value = false
+}
+
+function toggleMobileMenu() {
+  isModalOpen.value = false
+  isMobileMenuOpen.value = !isMobileMenuOpen.value
+}
 
 const navItems = [
   { label: '‏داشبورد', path: '/', group: '‏روزمره', icon: LayoutDashboard },
@@ -89,6 +109,11 @@ watch(
 )
 
 function quickAdd() {
+  if (isMobileViewport.value && isModalOpen.value) {
+    isModalOpen.value = false
+    return
+  }
+  isMobileMenuOpen.value = false
   if (route.path !== '/transactions') router.push('/transactions')
   openModal('expense')
 }
@@ -98,20 +123,20 @@ function quickAdd() {
   <main dir="rtl" class="app-shell" :class="{ 'mobile-perf': isMobileViewport, 'amounts-hidden': amountsHidden }">
     <MobileTopbar
       :title="activeTitle"
-      :inert="isMobileMenuOpen"
+      :inert="isMobilePanelOpen"
     />
     <Transition name="mobile-menu">
-      <div v-if="isMobileMenuOpen" class="mobile-menu-backdrop" @click="isMobileMenuOpen = false" />
+      <div v-if="isMobilePanelOpen" class="mobile-menu-backdrop" @click="closeMobilePanels" />
     </Transition>
 
     <AppSidebar
       :items="navItems"
       :active-path="activePath"
-      :open="isMobileMenuOpen"
+      :open="false"
       @close="isMobileMenuOpen = false"
     />
 
-    <section class="content" :inert="isMobileMenuOpen">
+    <section class="content" :inert="isMobilePanelOpen">
       <div class="desktop-privacy-tools"><PrivacyToggle /></div>
       <NuxtPage />
     </section>
@@ -121,10 +146,11 @@ function quickAdd() {
       <span>‏ثبت هزینه</span>
     </button>
     <BottomNavigation
+      :items="navItems"
       :active-path="activePath"
       :open="isMobileMenuOpen"
-      :inert="isMobileMenuOpen"
-      @open-menu="isMobileMenuOpen = true"
+      @toggle-menu="toggleMobileMenu"
+      @close="closeMobilePanels"
       @quick-add="quickAdd"
     />
     <TransactionModal />

@@ -5,6 +5,7 @@ import { ChevronDown, Plus, Sparkles, X } from 'lucide-vue-next'
 const budgetyar = useBudgetyar()
 const {
   isModalOpen,
+  isMobileViewport,
   editingId,
   formType,
   form,
@@ -26,15 +27,15 @@ const {
 const newTagLabel = ref('')
 const dialog = ref<HTMLFormElement | null>(null)
 
-watch(isModalOpen, async (open, _, onCleanup) => {
+watch([isModalOpen, isMobileViewport], async ([open, mobile], previous, onCleanup) => {
   if (!open || !import.meta.client) return
   const previousFocus = document.activeElement as HTMLElement | null
-  const previousOverflow = document.body.style.overflow
-  document.body.style.overflow = 'hidden'
-  newTagLabel.value = ''
+  if (!previous?.[0]) newTagLabel.value = ''
   onCleanup(() => {
-    document.body.style.overflow = previousOverflow
-    previousFocus?.focus({ preventScroll: true })
+    if (mobile) return
+    void nextTick(() => {
+      if (!isModalOpen.value && !document.querySelector('[aria-modal="true"], dialog[open]')) previousFocus?.focus({ preventScroll: true })
+    })
   })
   await nextTick()
   if (isModalOpen.value) dialog.value?.focus({ preventScroll: true })
@@ -96,9 +97,10 @@ function applySuggestedCategory() {
 </script>
 
 <template>
-  <Transition name="modal">
-    <div v-if="isModalOpen" class="modal-backdrop transaction-backdrop" @click.self="isModalOpen = false">
-      <form ref="dialog" class="modal transaction-modal glass-panel" role="dialog" aria-modal="true" aria-labelledby="transaction-modal-title" tabindex="-1" @submit.prevent="saveTransaction" @keydown.tab="trapFocus" @keydown.esc="isModalOpen = false">
+  <Teleport to="#bottom-nav-transaction-slot" :disabled="!isMobileViewport">
+  <Transition :name="isMobileViewport ? 'transaction-inline' : 'modal'" :duration="isMobileViewport ? 260 : undefined">
+    <div v-if="isModalOpen" :class="isMobileViewport ? 'transaction-inline-shell' : 'modal-backdrop transaction-backdrop'" @click.self="isModalOpen = false">
+      <form ref="dialog" class="modal transaction-modal glass-panel" :role="isMobileViewport ? undefined : 'dialog'" :aria-modal="isMobileViewport ? undefined : 'true'" aria-labelledby="transaction-modal-title" tabindex="-1" @submit.prevent="saveTransaction" @keydown.tab="!isMobileViewport && trapFocus($event)" @keydown.esc="isModalOpen = false">
         <div class="transaction-modal__handle" aria-hidden="true" />
         <div class="transaction-modal__header">
           <div>
@@ -280,11 +282,11 @@ function applySuggestedCategory() {
           <button class="primary-button transaction-submit" type="submit">
             <span>{{ editingId !== null ? '‏ذخیره تغییرات' : '‏ثبت تراکنش' }}</span>
           </button>
-          <button class="soft-button transaction-cancel" type="button" @click="isModalOpen = false">‏انصراف</button>
         </div>
       </form>
     </div>
   </Transition>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -340,15 +342,18 @@ form.transaction-modal {
 .transaction-modal .transaction-field textarea { min-height: 28px; resize: vertical; }
 .transaction-modal__footer { background: var(--bg); border: 0; display: grid; gap: 10px; padding: 12px 20px 16px; }
 .transaction-modal .transaction-submit { background: var(--primary) !important; border: 0; border-radius: 12px; box-shadow: none; color: var(--on-primary); font-size: .875rem; font-weight: 600; min-height: 46px; }
-.transaction-modal .transaction-cancel { background: var(--panel-soft); border: 1px solid var(--line-strong); border-radius: 12px; color: var(--text); min-height: 44px; width: 100%; }
 .transaction-modal .rule-suggestion { background: var(--panel); border-color: var(--line-strong); color: var(--text); }
 .transaction-modal .rule-suggestion-confirmed { color: var(--success); }
 @media (max-width: 760px) {
-  .transaction-backdrop { align-items: end; padding: max(8px, env(safe-area-inset-top, 0px)) 0 0; }
-  form.transaction-modal { border-bottom: 0; border-radius: 24px 24px 0 0; max-height: calc(100dvh - max(8px, env(safe-area-inset-top, 0px))); width: 100%; }
-  .transaction-modal__handle { background: var(--line-strong); border-radius: 4px; display: block; flex: 0 0 4px; margin: 10px auto 0; width: 36px; }
+  .transaction-inline-shell { min-width: 0; }
+  form.transaction-modal { background: var(--panel) !important; border: 0; border-radius: 0; max-height: calc(100dvh - 112px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); width: 100%; }
   .transaction-modal__header { padding: 14px 16px; }
   .transaction-modal__body { padding-inline: 16px; }
-  .transaction-modal__footer { padding: 12px 16px max(14px, env(safe-area-inset-bottom, 0px)); }
+  .transaction-modal__footer { background: var(--panel); padding: 12px 16px; }
+  .transaction-inline-enter-active, .transaction-inline-leave-active { transition: opacity .26s ease; transition-duration: .26s !important; }
+  .transaction-inline-enter-from, .transaction-inline-leave-to { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .transaction-inline-enter-active, .transaction-inline-leave-active { transition: none; transition-duration: 0s !important; }
 }
 </style>

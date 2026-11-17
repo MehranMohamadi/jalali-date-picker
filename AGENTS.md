@@ -19,7 +19,7 @@ Compact project guide for future Codex turns. Keep it accurate and update it whe
 ## Important Files
 
 - `playground/app.vue`: app shell, navigation, route-to-section mapping, FAB, modal, and toasts.
-- `playground/components/BottomNavigation.vue`: mobile home/transactions/planning navigation and quick add; More opens `AppSidebar.vue` as a bottom sheet. Desktop keeps the sidebar.
+- `playground/components/BottomNavigation.vue`: mobile home/transactions/planning navigation and quick add; More expands the same bar upward with large primary links and smaller tool/account links. Mobile transaction forms teleport into the same expandable region. It owns mobile panel focus; `app.vue` owns shared menu/transaction scroll locking. `AppSidebar.vue` remains the desktop sidebar.
 - `playground/composables/useBudgetyar.ts`: main state/actions/computed values, Chart.js setup, localStorage, reports, installments, bank notifications, and finance/date helpers.
 - `playground/pages/index.vue`: dashboard, compact metric cards, latest expenses, installment summary, and dashboard charts.
 - `playground/pages/transactions.vue`: filters, transaction list, and lightweight pagination.
