@@ -34,6 +34,7 @@ const {
 } = budgetyar
 
 const activeTab = ref<'subscriptions' | 'recurring'>('subscriptions')
+const pageEditor = ref<{ open: () => void } | null>(null)
 
 const nearItems = computed(() => [...overdueRecurringItems.value, ...dueRecurringItems.value, ...upcomingRecurringItems.value])
 const generalNearItems = computed(() => nearItems.value.filter((item) => !item.isSubscription))
@@ -70,6 +71,7 @@ function handleFormSubmit() {
 function startEditItem(item: any) {
   editRecurringItem(item)
   activeTab.value = item.isSubscription ? 'subscriptions' : 'recurring'
+  pageEditor.value?.open()
 }
 
 function handleCancelEdit() {
@@ -100,7 +102,7 @@ function getSubscriptionDueBadge(item: any) {
 </script>
 
 <template>
-  <section class="glass-panel settings-card">
+  <section class="workspace-page recurring-page">
     <div class="section-title">
       <div>
         <h2>{{ activeTab === 'subscriptions' ? 'اشتراک‌های ماهانه و دوره‌ای' : 'پرداخت‌های دوره‌ای عمومی' }}</h2>
@@ -115,7 +117,7 @@ function getSubscriptionDueBadge(item: any) {
         :class="{ active: activeTab === 'subscriptions' }"
         @click="switchTab('subscriptions')"
       >
-        <span>‏اشتراک‌ها</span>
+        <span>‏اشتراک‌های پرداختی</span>
         <em v-if="activeSubscriptionSummaries.length" class="tab-badge">{{ activeSubscriptionSummaries.length }}</em>
       </button>
       <button
@@ -144,6 +146,7 @@ function getSubscriptionDueBadge(item: any) {
       <span><small>نزدیک سررسید</small><strong>{{ generalNearItems.length }}</strong></span>
     </div>
 
+    <AppPageEditor ref="pageEditor" :label="activeTab === 'subscriptions' ? '‏افزودن اشتراک پرداختی' : '‏افزودن پرداخت دوره‌ای'" :editing="!!editingRecurringItemId" editing-label="‏ویرایش پرداخت دوره‌ای">
     <!-- Subscriptions Form -->
     <form v-if="activeTab === 'subscriptions'" class="installment-form planning-form" @submit.prevent="handleFormSubmit">
       <div v-if="editingRecurringItemId" class="installment-edit-banner">
@@ -279,6 +282,8 @@ function getSubscriptionDueBadge(item: any) {
       </label>
       <button class="primary-button" type="submit">{{ editingRecurringItemId ? 'ذخیره' : 'افزودن' }}</button>
     </form>
+
+    </AppPageEditor>
 
     <!-- Near Due Subscriptions Action Section -->
     <section v-if="activeTab === 'subscriptions' && nearDueSubscriptions.length" class="weekly-category-budget glass-panel planning-inline">

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 const { amountsHidden, privateText } = usePrivacy()
-import { ArrowDownCircle, ArrowUpCircle, Check, ChevronDown, Plus, Sparkles, X } from 'lucide-vue-next'
+import { ChevronDown, Plus, Sparkles, X } from 'lucide-vue-next'
 
 const budgetyar = useBudgetyar()
 const {
   isModalOpen,
+  editingId,
   formType,
   form,
   formAmountInWords,
@@ -23,6 +24,36 @@ const {
 } = budgetyar
 
 const newTagLabel = ref('')
+const dialog = ref<HTMLFormElement | null>(null)
+
+watch(isModalOpen, async (open, _, onCleanup) => {
+  if (!open || !import.meta.client) return
+  const previousFocus = document.activeElement as HTMLElement | null
+  const previousOverflow = document.body.style.overflow
+  document.body.style.overflow = 'hidden'
+  newTagLabel.value = ''
+  onCleanup(() => {
+    document.body.style.overflow = previousOverflow
+    previousFocus?.focus({ preventScroll: true })
+  })
+  await nextTick()
+  if (isModalOpen.value) dialog.value?.focus({ preventScroll: true })
+})
+
+function trapFocus(event: KeyboardEvent) {
+  const controls = Array.from(dialog.value?.querySelectorAll<HTMLElement>(
+    'button:not(:disabled), input:not(:disabled), textarea, select, summary, [tabindex="0"]',
+  ) ?? []).filter((element) => element.getClientRects().length > 0)
+  const first = controls[0]
+  const last = controls.at(-1)
+  if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog.value)) {
+    event.preventDefault()
+    last?.focus()
+  } else if (!event.shiftKey && (document.activeElement === last || document.activeElement === dialog.value)) {
+    event.preventDefault()
+    first?.focus()
+  }
+}
 
 function handleAddQuickTag() {
   const trimmed = newTagLabel.value.trim()
@@ -66,18 +97,12 @@ function applySuggestedCategory() {
 
 <template>
   <Transition name="modal">
-    <div v-if="isModalOpen" class="modal-backdrop" @click.self="isModalOpen = false">
-      <form class="modal transaction-modal glass-panel" @submit.prevent="saveTransaction" @keydown.esc="isModalOpen = false">
-        <div class="transaction-modal__header compact">
-          <div class="transaction-type-switch" role="group" aria-label="‏نوع تراکنش">
-            <button type="button" :class="{ active: formType === 'expense' }" @click="formType = 'expense'">
-              <ArrowDownCircle :size="17" aria-hidden="true" />
-              <span>‏هزینه</span>
-            </button>
-            <button type="button" :class="{ active: formType === 'income' }" @click="formType = 'income'">
-              <ArrowUpCircle :size="17" aria-hidden="true" />
-              <span>‏درآمد</span>
-            </button>
+    <div v-if="isModalOpen" class="modal-backdrop transaction-backdrop" @click.self="isModalOpen = false">
+      <form ref="dialog" class="modal transaction-modal glass-panel" role="dialog" aria-modal="true" aria-labelledby="transaction-modal-title" tabindex="-1" @submit.prevent="saveTransaction" @keydown.tab="trapFocus" @keydown.esc="isModalOpen = false">
+        <div class="transaction-modal__handle" aria-hidden="true" />
+        <div class="transaction-modal__header">
+          <div>
+            <h2 id="transaction-modal-title">{{ editingId !== null ? '‏ویرایش تراکنش' : formType === 'expense' ? '‏ثبت هزینه جدید' : '‏ثبت درآمد جدید' }}</h2>
           </div>
           <button class="close" type="button" aria-label="‏بستن" @click="isModalOpen = false">
             <X :size="18" aria-hidden="true" />
@@ -85,21 +110,35 @@ function applySuggestedCategory() {
         </div>
 
         <div class="transaction-modal__body">
+          <div class="transaction-type-switch" role="group" aria-label="‏نوع تراکنش">
+            <button type="button" :class="{ active: formType === 'expense' }" :aria-pressed="formType === 'expense'" @click="formType = 'expense'">
+              <span>‏هزینه</span>
+            </button>
+            <button type="button" :class="{ active: formType === 'income' }" :aria-pressed="formType === 'income'" @click="formType = 'income'">
+              <span>‏درآمد</span>
+            </button>
+          </div>
         <label class="amount-field transaction-amount">
+          <span class="transaction-amount__label">‏مبلغ (تومان)</span>
+          <div class="transaction-amount__value">
           <input :disabled="amountsHidden"
             :value="amountsHidden ? '••••' : formatMoneyInput(form.amount)"
             type="text"
             inputmode="numeric"
-            placeholder="‏مبلغ"
+            placeholder="۰"
             aria-label="‏مبلغ"
             required
             @input="updateMoneyInput(form, 'amount', $event)"
           />
-          <small v-if="formAmountInWords" class="amount-in-words">{{ privateText(formAmountInWords) }}</small>
+          </div>
         </label>
+        <small v-if="formAmountInWords" class="amount-in-words">{{ privateText(formAmountInWords) }}</small>
 
         <div class="transaction-fields">
-          <input v-model="form.title" type="text" placeholder="‏عنوان" aria-label="‏عنوان" required />
+          <label class="transaction-field">
+            <span>‏عنوان</span>
+            <input v-model="form.title" type="text" :placeholder="formType === 'expense' ? '‏مثلاً خرید روزانه' : '‏مثلاً حقوق ماهانه'" required />
+          </label>
 
           <div v-if="suggestedRule" class="rule-suggestion inline-rule-suggestion" aria-live="polite">
             <span>
@@ -111,8 +150,8 @@ function applySuggestedCategory() {
           </div>
 
           <div v-if="formType === 'expense'" class="category-selection-container">
-            <div class="primary-category-field">
-              <label class="category-field-label">‏دسته اصلی (محاسبه در بودجه)</label>
+            <div class="primary-category-field transaction-field">
+              <span class="category-field-label">‏دسته اصلی، محاسبه در بودجه</span>
               <BudgetyarSelect v-model="form.category" aria-label="‏دسته اصلی">
                 <option v-for="category in categories" :key="category.key" :value="category.key">{{ category.icon }} {{ category.label }}</option>
               </BudgetyarSelect>
@@ -120,7 +159,10 @@ function applySuggestedCategory() {
 
             <details class="subcategories-container">
               <summary class="subcategories-header">
-                <span class="subcategories-title">‏تگ‌ها <small>‏اختیاری</small></span>
+                <span class="subcategories-title">
+                  <small>‏برچسب‌ها · اختیاری</small>
+                  <span>‏افزودن برچسب</span>
+                </span>
                 <span v-if="form.subCategories.length" class="subcategories-badge">
                   {{ toPersianNumber(form.subCategories.length) }} ‏انتخاب‌شده
                 </span>
@@ -184,6 +226,8 @@ function applySuggestedCategory() {
             </details>
           </div>
 
+          <div class="transaction-field">
+          <span>‏تاریخ</span>
           <JalaliDatePicker
             v-model="formDatePickerValue"
             class="date-picker-field"
@@ -191,42 +235,120 @@ function applySuggestedCategory() {
             :clearable="false"
             popover-class="date-picker-popover"
           />
+          </div>
 
           <div v-if="formType === 'expense'" class="form-inline-grid">
+            <div class="transaction-field">
+            <span>‏روش پرداخت</span>
             <BudgetyarSelect v-model="form.paymentMethod" aria-label="‏روش پرداخت">
               <option value="cash">‏نقدی</option>
               <option value="credit">‏اعتباری</option>
             </BudgetyarSelect>
+            </div>
+            <div class="transaction-field">
+            <span>‏نوع هزینه</span>
             <BudgetyarSelect v-model="form.isEssential" aria-label="‏نوع خرید">
               <option :value="true">‏ضروری</option>
               <option :value="false">‏غیرضروری</option>
             </BudgetyarSelect>
+            </div>
           </div>
 
-          <label v-if="formType === 'expense'" class="check-row compact-check">
-            <input v-model="form.isLoan" type="checkbox" />
-            <span>‏پولی که قرض دادم</span>
-          </label>
-
-          <input
-            v-if="formType === 'expense' && form.isLoan"
+          <div v-if="formType === 'expense'" class="transaction-field transaction-loan">
+            <span>‏قرض به دیگران</span>
+            <label class="check-row compact-check">
+              <input v-model="form.isLoan" type="checkbox" aria-label="‏قرض به دیگران" />
+            </label>
+            <input
+            v-if="form.isLoan"
             v-model="form.loanPerson"
             type="text"
             placeholder="‏نام شخص"
             aria-label="‏نام شخص"
+            required
           />
+          </div>
 
-          <textarea v-model="form.description" rows="1" placeholder="‏توضیحات اختیاری" aria-label="‏توضیحات" />
+          <label class="transaction-field">
+            <span>‏توضیحات · اختیاری</span>
+            <textarea v-model="form.description" rows="2" placeholder="‏توضیحی برای این تراکنش..." />
+          </label>
         </div>
         </div>
 
         <div class="transaction-modal__footer">
           <button class="primary-button transaction-submit" type="submit">
-            <Check :size="18" aria-hidden="true" />
-            <span>{{ formType === 'expense' ? '‏ثبت هزینه' : '‏ثبت درآمد' }}</span>
+            <span>{{ editingId !== null ? '‏ذخیره تغییرات' : '‏ثبت تراکنش' }}</span>
           </button>
+          <button class="soft-button transaction-cancel" type="button" @click="isModalOpen = false">‏انصراف</button>
         </div>
       </form>
     </div>
   </Transition>
 </template>
+
+<style scoped>
+.transaction-backdrop {
+  background: #09090bb8;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+form.transaction-modal {
+  background: var(--bg) !important;
+  border: 1px solid var(--line-strong);
+  border-radius: 24px;
+  width: min(460px, 100%);
+  outline: none;
+}
+.transaction-modal__handle { display: none; }
+.transaction-modal__header {
+  background: transparent;
+  border: 0;
+  flex: 0 0 auto;
+  padding: 20px 20px 16px;
+}
+.transaction-modal__header h2 { color: var(--text); font-size: 1.05rem; font-weight: 650; margin: 0; }
+.transaction-modal .close { background: var(--panel-soft); border: 1px solid var(--line); border-radius: 50%; color: var(--muted-2); flex-shrink: 0; }
+.transaction-modal__body { padding: 0 20px 16px; }
+.transaction-type-switch { background: transparent; border: 0; gap: 8px; padding: 0; }
+.transaction-type-switch button { background: var(--panel-soft); border: 1px solid var(--line-strong); box-shadow: none; border-radius: 16px; font-size: .8125rem; margin: 0; min-height: 44px; padding: 8px; transform: none; }
+.transaction-type-switch button.active { background: var(--primary); border-color: var(--primary); color: var(--on-primary); box-shadow: none; }
+.transaction-modal .transaction-amount { background: var(--panel); border: 1px solid var(--line-strong); border-radius: 18px; box-shadow: none; gap: 4px; margin: 12px 0; padding: 14px 16px; text-align: right; }
+.transaction-amount .transaction-amount__label { color: var(--muted); font-size: .6875rem; font-weight: 400; }
+.transaction-amount__value { min-width: 0; }
+.transaction-modal .transaction-amount input[type='text'][inputmode='numeric'] { color: var(--text); direction: ltr; font-size: 1rem; font-weight: 500; min-height: 28px; min-width: 0; text-align: right; width: 100%; }
+.transaction-modal .amount-in-words { color: var(--muted); display: block; font-size: .6875rem; margin: 0 0 16px; overflow-wrap: anywhere; text-align: right; }
+.transaction-fields { gap: 12px; padding: 0; }
+.transaction-modal .form-inline-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.transaction-modal .transaction-field { background: var(--panel); border: 1px solid var(--line-strong); border-radius: 18px; display: grid; gap: 6px; margin: 0; min-width: 0; padding: 14px 16px; }
+.transaction-field > span, .transaction-modal .category-field-label { color: var(--muted); font-size: .6875rem; font-weight: 400; }
+.transaction-modal :is(input:not([type='checkbox']), textarea), .transaction-modal :deep(.budgetyar-select-trigger) { background: var(--bg-2); border-color: var(--line); border-radius: 11px; color: var(--text); min-height: 44px; }
+.transaction-modal .transaction-amount input { background: transparent; border: 0; border-radius: 0; }
+.transaction-modal .transaction-field :is(input:not([type='checkbox']), textarea), .transaction-modal .transaction-field :deep(.budgetyar-select-trigger) { background: transparent; border: 0; border-radius: 6px; box-shadow: none; min-height: 28px; padding: 0; }
+.transaction-modal .transaction-field :deep(.budgetyar-select-chevron) { color: var(--muted); width: 14px; }
+.transaction-modal :is(input, textarea):focus-visible, .transaction-modal :deep(button:focus-visible) { outline: 2px solid var(--primary); outline-offset: 2px; }
+.transaction-modal :deep(.budgetyar-select-menu) { background: var(--panel-strong); border-color: var(--line-strong); }
+.transaction-modal :deep(.budgetyar-select-option.selected) { background: color-mix(in srgb, var(--primary) 15%, transparent); color: var(--primary); }
+.transaction-modal .date-picker-field { background: transparent; max-width: none; width: 100%; }
+.transaction-modal .transaction-field :deep(.jalali-date-picker__input) { background: transparent !important; border: 0 !important; border-radius: 6px !important; box-shadow: none !important; min-height: 28px; padding-block: 0 !important; padding-inline-start: 0; }
+.transaction-modal .subcategories-container { background: var(--panel); border-color: var(--line-strong); border-radius: 18px; }
+.transaction-modal .subcategories-header { min-height: 78px; padding: 14px 16px; }
+.transaction-modal .subcategories-title { display: grid; gap: 10px; font-weight: 400; }
+.transaction-modal .subcategories-title small { font-size: .6875rem; }
+.transaction-modal .subcategories-title > span { color: var(--text); font-size: .8125rem; }
+.transaction-modal .compact-check { background: transparent; border: 0; border-radius: 0; font-size: .75rem; min-height: 28px; padding: 0; }
+.transaction-modal .transaction-field textarea { min-height: 28px; resize: vertical; }
+.transaction-modal__footer { background: var(--bg); border: 0; display: grid; gap: 10px; padding: 12px 20px 16px; }
+.transaction-modal .transaction-submit { background: var(--primary) !important; border: 0; border-radius: 12px; box-shadow: none; color: var(--on-primary); font-size: .875rem; font-weight: 600; min-height: 46px; }
+.transaction-modal .transaction-cancel { background: var(--panel-soft); border: 1px solid var(--line-strong); border-radius: 12px; color: var(--text); min-height: 44px; width: 100%; }
+.transaction-modal .rule-suggestion { background: var(--panel); border-color: var(--line-strong); color: var(--text); }
+.transaction-modal .rule-suggestion-confirmed { color: var(--success); }
+@media (max-width: 760px) {
+  .transaction-backdrop { align-items: end; padding: max(8px, env(safe-area-inset-top, 0px)) 0 0; }
+  form.transaction-modal { border-bottom: 0; border-radius: 24px 24px 0 0; max-height: calc(100dvh - max(8px, env(safe-area-inset-top, 0px))); width: 100%; }
+  .transaction-modal__handle { background: var(--line-strong); border-radius: 4px; display: block; flex: 0 0 4px; margin: 10px auto 0; width: 36px; }
+  .transaction-modal__header { padding: 14px 16px; }
+  .transaction-modal__body { padding-inline: 16px; }
+  .transaction-modal__footer { padding: 12px 16px max(14px, env(safe-area-inset-bottom, 0px)); }
+}
+</style>

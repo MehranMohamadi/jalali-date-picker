@@ -20,7 +20,7 @@ function categoryShare(spent: number) {
 </script>
 
 <template>
-  <div class="daily-dashboard">
+  <div class="daily-dashboard" aria-label="‏نمای امروز">
     <header class="daily-heading">
       <h1>‏نمای امروز</h1>
       <span><CalendarDays :size="15" aria-hidden="true" />{{ today }}</span>

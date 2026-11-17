@@ -36,6 +36,7 @@ Compact project guide for future Codex turns. Keep it accurate and update it whe
 - `playground/assets/css/budgetyar.css`: main Budgetyar styles.
 - `playground/assets/css/budgetyar-overrides.css`: newer fixes/overrides.
 - `playground/assets/css/budgetyar-compact.css`: shared charcoal/lavender theme and compact layouts, imported after the base styles and overrides.
+- `playground/assets/css/budgetyar-pages.css`: matching surfaces, metrics, forms, and account/settings styles for the remaining pages, imported last. `playground/components/AppPageEditor.vue` provides collapsible page forms; edit actions call its exposed `open()` method so editing reopens a manually closed form.
 - `src/utils/jalali.ts`: Jalali/Gregorian conversion and date math; prefer these helpers over ad hoc date code.
 - `src/utils/dateOnly.ts`, `digits.ts`, and `format.ts`: date-only, digit conversion, and formatting helpers.
 - `src/utils/bankNotification.ts`: bank notification parser; keep parser behavior covered by tests.

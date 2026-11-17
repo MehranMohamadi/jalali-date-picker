@@ -67,7 +67,6 @@ async function downloadLatestApk(event: MouseEvent) {
 <template>
   <div class="settings-page">
     <div class="settings-layout">
-      <McpConnections />
       <section class="settings-panel glass-panel">
         <div class="settings-panel-head">
           <span class="settings-panel-icon"><Smartphone :size="20" aria-hidden="true" /></span>
@@ -194,6 +193,10 @@ async function downloadLatestApk(event: MouseEvent) {
           <button class="soft-button settings-action" type="button" @click="loadDevelopmentData">‏بارگذاری دادهٔ نمونه</button>
         </details>
       </section>
+      <details class="workspace-disclosure settings-connections">
+        <summary class="soft-button">‏اتصال به ابزارها و Codex</summary>
+        <McpConnections />
+      </details>
     </div>
   </div>
 </template>

@@ -58,7 +58,14 @@ watch(() => props.open, (open, _, onCleanup) => {
   }
 
   document.addEventListener('keydown', handleKeydown)
-  void nextTick(() => closeButtonRef.value?.focus())
+  void nextTick(() => {
+    // Wait for the opening frame to make the panel visible before focusing it.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (props.open) closeButtonRef.value?.focus({ preventScroll: true })
+      })
+    })
+  })
   onCleanup(() => {
     document.body.style.overflow = previousOverflow
     document.removeEventListener('keydown', handleKeydown)

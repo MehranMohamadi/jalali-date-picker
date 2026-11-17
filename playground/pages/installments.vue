@@ -24,11 +24,18 @@ const {
   getPaymentMethodLabel,
   toPersianNumber,
   progressPercent,
+  monthlyInstallmentDue,
+  formatCompact,
 } = budgetyar
+const pageEditor = ref<{ open: () => void } | null>(null)
+function startEditPlan(item: Parameters<typeof editInstallmentPlan>[0]) {
+  editInstallmentPlan(item)
+  pageEditor.value?.open()
+}
 </script>
 
 <template>
-  <section class="glass-panel installments-card" data-section="قسط‌ها">
+  <section class="workspace-page installments-page" data-section="قسط‌ها">
     <div class="section-title">
       <div>
         <h2>قسط‌ها</h2>
@@ -36,6 +43,12 @@ const {
       </div>
     </div>
 
+    <div class="report-grid">
+      <span><small>‏اقساط این ماه</small><strong>{{ formatCompact(monthlyInstallmentDue) }}</strong></span>
+      <span><small>‏قسط فعال</small><strong>{{ toPersianNumber(installmentSummaries.filter((item) => item.status !== 'completed').length) }}</strong></span>
+    </div>
+
+    <AppPageEditor ref="pageEditor" label="‏افزودن قسط" :editing="!!editingInstallmentId" editing-label="‏ویرایش قسط">
     <form class="installment-form" @submit.prevent="addInstallmentPlan">
       <div v-if="editingInstallmentId" class="installment-edit-banner">
         <strong>ویرایش قسط</strong>
@@ -94,8 +107,11 @@ const {
         <span>{{ editingInstallmentId ? 'ذخیره ویرایش' : 'افزودن قسط' }}</span>
       </button>
     </form>
+    </AppPageEditor>
 
-    <section v-if="installmentMonthlySchedule.length" class="installment-schedule">
+    <details v-if="installmentMonthlySchedule.length" class="workspace-disclosure">
+      <summary class="soft-button">‏جدول اقساط ماهانه</summary>
+    <section class="installment-schedule">
       <div class="section-title compact">
         <div>
           <h3>جدول اقساط ماهانه</h3>
@@ -135,6 +151,7 @@ const {
         </table>
       </div>
     </section>
+    </details>
 
     <div v-if="installmentSummaries.length" class="installments-grid">
       <article v-for="item in installmentSummaries" :key="item.id" class="installment-item" :class="item.status">
@@ -162,7 +179,7 @@ const {
           <button v-if="item.lastPaidIndex >= 0" class="soft-button" type="button" @click="undoInstallmentPayment(item.id, item.lastPaidIndex)">
             <span>برگرداندن پرداخت آخر</span>
           </button>
-          <button class="soft-button" type="button" @click="editInstallmentPlan(item)">
+          <button class="soft-button" type="button" @click="startEditPlan(item)">
             <Pencil :size="16" aria-hidden="true" />
             <span>ویرایش</span>
           </button>

@@ -19,7 +19,7 @@ const {
 </script>
 
 <template>
-  <section class="glass-panel notifications-card" data-section="اعلان‌ها">
+  <section class="workspace-page notifications-page" data-section="اعلان‌ها">
     <div class="section-title">
       <div>
         <h2>اعلان‌ها</h2>

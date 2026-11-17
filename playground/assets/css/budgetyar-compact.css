@@ -60,6 +60,38 @@ html { scroll-padding-block: 72px 96px; }
 
 :is(a, button, input, select, textarea, summary):focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
 
+/* Calendar surfaces follow the app theme, including light and forest modes. */
+body .app-shell .jalali-calendar {
+  background: var(--panel) !important;
+  border: 1px solid var(--line-strong) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 16px 40px #0004 !important;
+  color: var(--text) !important;
+  padding: 14px;
+  font-family: Vazirmatn Variable, Vazirmatn, Tahoma, sans-serif;
+}
+body .app-shell .jalali-calendar .jalali-calendar__title { color: var(--text) !important; font-size: .875rem; font-weight: 600; }
+body .app-shell .jalali-calendar .jalali-calendar__header { margin-bottom: 12px; }
+body .app-shell .jalali-calendar .jalali-calendar__nav { background: var(--panel-soft) !important; border: 1px solid var(--line); border-radius: 11px; color: var(--text) !important; transform: none; }
+body .app-shell .jalali-calendar .jalali-calendar__weekday { color: var(--muted) !important; font-size: .6875rem; font-weight: 400; }
+body .app-shell .jalali-calendar .jalali-calendar__cell { height: 38px; }
+body .app-shell .jalali-calendar .jalali-calendar__day { background: transparent !important; border-radius: 10px; box-shadow: none; color: var(--text) !important; font-size: .8125rem; font-weight: 400; height: 34px; max-width: 100%; width: 34px; }
+body .app-shell .jalali-calendar .jalali-calendar__day:hover:not(:disabled):not(.is-selected):not(.is-range),
+body .app-shell .jalali-calendar .jalali-calendar__nav:hover { background: var(--panel-soft) !important; color: var(--text) !important; }
+body .app-shell .jalali-calendar .jalali-calendar__day.is-range { background: color-mix(in srgb, var(--primary) 18%, var(--panel)) !important; border-radius: 0; color: var(--text) !important; width: 100%; }
+body .app-shell .jalali-calendar .jalali-calendar__day.is-today:not(.is-selected) { box-shadow: inset 0 0 0 1px var(--primary) !important; color: var(--primary) !important; }
+body .app-shell .jalali-calendar .jalali-calendar__day.is-selected { background: var(--primary) !important; box-shadow: none; color: var(--on-primary) !important; font-weight: 600; }
+body .app-shell .jalali-calendar .jalali-calendar__day:disabled { background: transparent !important; box-shadow: none !important; color: var(--muted) !important; opacity: .35; }
+body .app-shell .jalali-calendar :is(.jalali-calendar__day, .jalali-calendar__nav):focus-visible { box-shadow: none; outline: 2px solid var(--primary); outline-offset: 1px; }
+body .app-shell .jalali-calendar .jalali-calendar__footer { border-color: var(--line) !important; margin-top: 10px; padding-top: 10px; }
+body .app-shell .jalali-calendar :is(.jalali-date-picker__today, .jalali-range-picker__today) { background: var(--panel-soft); border-radius: 9px; color: var(--primary) !important; min-height: 34px; padding: 6px 12px; }
+body .app-shell .jalali-calendar .jalali-range-picker__confirm { background: var(--primary) !important; border-radius: 9px; color: var(--on-primary); }
+body .app-shell .jalali-calendar .jalali-range-picker__cancel { color: var(--muted-2) !important; }
+body .app-shell :is(.jalali-date-picker__input, .jalali-range-picker__input) { background: var(--panel) !important; border-color: var(--line-strong) !important; box-shadow: none; color: var(--text) !important; }
+body .app-shell :is(.jalali-date-picker__input, .jalali-range-picker__input):focus { background: var(--panel) !important; border-color: var(--primary) !important; box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 20%, transparent) !important; }
+body .app-shell :is(.jalali-date-picker__toggle, .jalali-range-picker__toggle, .jalali-date-picker__clear, .jalali-range-picker__clear) { color: var(--primary) !important; }
+body .app-shell :is(.jalali-date-picker__toggle, .jalali-range-picker__toggle, .jalali-date-picker__clear, .jalali-range-picker__clear):hover { background: var(--panel-soft) !important; }
+
 @media (max-width: 760px) {
   .app-shell { padding: calc(64px + env(safe-area-inset-top, 0px)) 14px calc(94px + env(safe-area-inset-bottom, 0px)); }
   .app-shell .mobile-topbar { background: var(--bg); border: 0; border-radius: 0; gap: 6px; inset: env(safe-area-inset-top, 0px) 0 auto; min-height: 58px; padding: 8px 14px; }
@@ -68,8 +100,11 @@ html { scroll-padding-block: 72px 96px; }
   .mobile-topbar .mobile-title strong { font-size: .8125rem; font-weight: 600; }
   .mobile-topbar .mobile-title small { font-size: .625rem; }
   .mobile-topbar :is(.mobile-privacy-toggle, .mobile-notifications) { align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 50%; color: var(--muted-2); display: flex; height: 36px; justify-content: center; min-height: 36px; padding: 0; width: 36px; }
-  .app-shell .sidebar { border-radius: 24px 24px 0 0; height: auto; inset: auto 0 0; max-height: 80dvh; opacity: 0; padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px)); pointer-events: none; transform: none; visibility: hidden; width: 100%; }
-  .app-shell .sidebar.open { opacity: 1; pointer-events: auto; visibility: visible; }
+  .app-shell .sidebar { border-radius: 24px 24px 0 0; height: auto; inset: auto 0 0; max-height: 80dvh; opacity: 0; padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px)); pointer-events: none; transform: translateY(100%); transition: transform .24s cubic-bezier(.22, 1, .36, 1), opacity .24s ease, visibility 0s linear .24s; transition-duration: .24s, .24s, 0s !important; visibility: hidden; width: 100%; }
+  .app-shell .sidebar.open { opacity: 1; pointer-events: auto; transform: translateY(0); transition-delay: 0s; visibility: visible; }
+  .app-shell .mobile-menu-backdrop { transition: opacity .24s ease; transition-duration: .24s !important; }
+  .app-shell .mobile-menu-enter-from, .app-shell .mobile-menu-leave-to { opacity: 0; }
+  .app-shell .mobile-menu-leave-active { pointer-events: none; }
   .app-shell .sidebar .brand { padding-block: 0 10px; }
   .app-shell :is(.report-grid, .stats-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .app-shell .toast-stack { bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
@@ -77,5 +112,5 @@ html { scroll-padding-block: 72px 96px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .app-shell .sidebar { transition: none; }
+  .app-shell .sidebar, .app-shell .mobile-menu-backdrop { transition: none; transition-duration: 0s !important; }
 }

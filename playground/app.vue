@@ -3,6 +3,7 @@ import '@fontsource-variable/vazirmatn'
 import './assets/css/budgetyar.css'
 import './assets/css/budgetyar-overrides.css'
 import './assets/css/budgetyar-compact.css'
+import './assets/css/budgetyar-pages.css'
 import {
   Bell,
   CalendarClock,
@@ -99,7 +100,9 @@ function quickAdd() {
       :title="activeTitle"
       :inert="isMobileMenuOpen"
     />
-    <div v-if="isMobileMenuOpen" class="mobile-menu-backdrop" @click="isMobileMenuOpen = false" />
+    <Transition name="mobile-menu">
+      <div v-if="isMobileMenuOpen" class="mobile-menu-backdrop" @click="isMobileMenuOpen = false" />
+    </Transition>
 
     <AppSidebar
       :items="navItems"

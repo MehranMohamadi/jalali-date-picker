@@ -37,10 +37,15 @@ const {
   ignoreCreditMonth,
   restoreIgnoredCredit,
 } = budgetyar
+const pageEditor = ref<{ open: () => void } | null>(null)
+function startEditDebt(debt: Parameters<typeof editDebt>[0]) {
+  editDebt(debt)
+  pageEditor.value?.open()
+}
 </script>
 
 <template>
-  <section class="glass-panel settings-card debts-page">
+  <section class="workspace-page debts-page">
     <div class="section-title">
       <div>
         <h2>بدهی‌ها</h2>
@@ -55,6 +60,8 @@ const {
       <span><small>آزادی تقریبی</small><strong>{{ debtFreedomDate }}</strong></span>
     </div>
 
+    <details class="workspace-disclosure">
+      <summary class="soft-button">‏اعتبار و خریدهای ماهانه</summary>
     <div class="credit-settings-inline">
       <label>سقف اعتبار
         <input :disabled="amountsHidden" :value="amountsHidden ? '••••' : formatMoneyInput(creditLimit)" type="text" inputmode="numeric" @input="updateCreditLimit" />
@@ -95,6 +102,9 @@ const {
       <p v-else class="empty-inline">هنوز خرید اعتباری ثبت نشده است.</p>
     </section>
 
+    </details>
+
+    <AppPageEditor ref="pageEditor" label="‏افزودن بدهی" :editing="!!editingDebtId" editing-label="‏ویرایش بدهی">
     <form class="installment-form planning-form" @submit.prevent="addDebt">
       <div v-if="editingDebtId" class="installment-edit-banner"><strong>ویرایش بدهی</strong></div>
       <label><span>عنوان بدهی</span><input v-model="debtForm.title" required /></label>
@@ -137,6 +147,7 @@ const {
       <label class="installment-description"><span>توضیح</span><textarea v-model="debtForm.note" rows="2" /></label>
       <button class="primary-button" type="submit">{{ editingDebtId ? 'ذخیره' : 'افزودن بدهی' }}</button>
     </form>
+    </AppPageEditor>
 
     <section class="weekly-category-budget glass-panel planning-inline">
       <div class="weekly-category-head">
@@ -171,7 +182,7 @@ const {
         <p v-if="debt.note">{{ debt.note }}</p>
         <div class="installment-actions">
           <button class="primary-button" type="button" @click="recordDebtPayment(debt)">پرداخت</button>
-          <button class="soft-button" type="button" @click="editDebt(debt)">ویرایش</button>
+          <button class="soft-button" type="button" @click="startEditDebt(debt)">ویرایش</button>
           <button class="soft-button" type="button" @click="toggleDebt(debt.id)">غیرفعال</button>
           <button class="soft-button" type="button" @click="deleteDebt(debt.id)">حذف</button>
         </div>

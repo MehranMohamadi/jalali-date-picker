@@ -30,7 +30,7 @@ function updateMoneySetting(key: string, event: Event) {
 </script>
 
 <template>
-  <section class="glass-panel settings-card">
+  <section class="workspace-page income-planning-page">
     <div class="section-title">
       <div>
         <h2>برنامه درآمد نامنظم</h2>
@@ -45,6 +45,7 @@ function updateMoneySetting(key: string, event: Event) {
       <span><small>نوسان درآمد</small><strong>{{ incomeVolatilityPercent }}٪</strong></span>
     </div>
 
+    <AppPageEditor label="‏تنظیم روش بودجه‌بندی">
     <form class="installment-form planning-form" @submit.prevent>
       <label>
         <span>روش بودجه‌بندی</span>
@@ -71,6 +72,7 @@ function updateMoneySetting(key: string, event: Event) {
       <label><span>درصد پس‌انداز</span><input :value="incomeSettings.savingPercent" type="number" min="0" max="100" @input="updateNumberSetting('savingPercent', $event)" /></label>
       <label><span>درصد منعطف</span><input :value="incomeSettings.flexiblePercent" type="number" min="0" max="100" @input="updateNumberSetting('flexiblePercent', $event)" /></label>
     </form>
+    </AppPageEditor>
 
     <div class="report-grid planning-inline">
       <span><small>بودجه امن پیشنهادی</small><strong>{{ formatMoney(recommendedBudgetBase) }}</strong></span>

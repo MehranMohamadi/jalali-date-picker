@@ -1,0 +1,98 @@
+/* The same surfaces and controls used by the redesigned finance pages. */
+body .app-shell .workspace-page { background: transparent; border: 0; border-radius: 0; box-shadow: none; display: grid; gap: 12px; min-width: 0; padding: 0; }
+.workspace-page > .section-title { align-items: start; gap: 10px; margin: 0; }
+.workspace-page > .section-title h2 { font-size: .95rem; font-weight: 600; }
+.workspace-page > .section-title p { color: var(--muted); font-size: .75rem; line-height: 1.8; margin-top: 5px; }
+body .app-shell .workspace-page .report-grid { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0; }
+body .app-shell .workspace-page .report-grid > span { background: var(--panel); border: 1px solid var(--line-strong); border-radius: 17px; display: grid; gap: 10px; min-width: 0; padding: 12px; }
+.workspace-page .report-grid small { color: var(--muted); font-size: .6875rem; }
+.workspace-page .report-grid strong { color: var(--text); font-size: .95rem; font-weight: 600; overflow-wrap: anywhere; }
+.workspace-editor, .workspace-disclosure { min-width: 0; scroll-margin-top: 80px; }
+body .app-shell :is(.workspace-editor, .workspace-disclosure) > summary { cursor: pointer; display: flex; font-size: .75rem; justify-content: center; list-style: none; min-height: 42px; width: 100%; }
+:is(.workspace-editor, .workspace-disclosure) > summary::-webkit-details-marker { display: none; }
+.workspace-editor[open] > summary, .workspace-disclosure[open] > summary { margin-bottom: 10px; }
+.workspace-editor-content { min-width: 0; }
+body .app-shell .workspace-page :is(.installment-form, .installment-item, .weekly-category-budget, .credit-settings-inline, .credit-monthly-section, .installment-schedule, .notification-status, .notification-suggestion, .insights, .empty-state) { background: var(--panel); border: 1px solid var(--line-strong); border-radius: 18px; box-shadow: none; min-width: 0; padding: 14px; }
+body .app-shell .workspace-page :is(.installment-form, .planning-inline, .installments-grid) { margin: 0; }
+.workspace-page .installment-form { gap: 12px; }
+body .app-shell .workspace-page .installment-form > label:not(.check-row) { align-content: start; background: var(--panel); border: 1px solid var(--line-strong); border-radius: 15px; gap: 8px; margin: 0; min-width: 0; padding: 12px; }
+.workspace-page .installment-form label > span { color: var(--muted); font-size: .6875rem; }
+body .app-shell .workspace-page .installment-form :is(input:not([type='checkbox']), textarea, .budgetyar-select-trigger) { background: transparent; border: 0; border-radius: 5px; box-shadow: none; color: var(--text); min-height: 32px; padding: 2px 0; }
+.workspace-page .budgetyar-select-menu { background: var(--panel-strong); border-color: var(--line-strong); }
+.workspace-page .budgetyar-select-option.selected { background: color-mix(in srgb, var(--primary) 15%, transparent); color: var(--primary); }
+.workspace-page .check-row { color: var(--muted-2); min-height: 42px; }
+body .app-shell .workspace-page :is(.installment-form > .primary-button, .full) { display: flex; grid-column: 1 / -1; justify-content: center; min-height: 44px; width: 100%; }
+.workspace-page .installment-item-head strong { color: var(--text); font-size: .875rem; font-weight: 600; overflow-wrap: anywhere; }
+body .app-shell .workspace-page .installment-item-head > span { background: var(--panel-soft); border: 1px solid var(--line); border-radius: 12px; color: var(--primary); font-size: .6875rem; }
+.workspace-page .installment-meta { color: var(--muted); font-size: .6875rem; gap: 8px; }
+.workspace-page .installment-item > p { color: var(--muted-2); font-size: .75rem; overflow-wrap: anywhere; }
+.workspace-page .installment-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+body .app-shell .workspace-page .progress { background: var(--panel-soft); height: 5px; }
+body .app-shell .workspace-page .progress i { background: var(--primary); box-shadow: none; }
+body .app-shell .workspace-page .progress.danger i { background: var(--danger); }
+body .app-shell .workspace-page :is(.segmented, .subscriptions-tabs) { background: transparent; border: 0; display: flex; gap: 6px; margin: 0; padding: 0; }
+body .app-shell .workspace-page :is(.segmented, .subscriptions-tabs) > button { background: var(--panel-soft); border: 1px solid var(--line-strong); border-radius: 15px; color: var(--text); flex: 1; font-size: .75rem; min-height: 40px; padding: 8px; }
+body .app-shell .workspace-page :is(.segmented, .subscriptions-tabs) > button.active { background: var(--primary); border-color: var(--primary); box-shadow: none; color: var(--on-primary); }
+.workspace-page .tab-badge { background: transparent; color: inherit; font-size: .6875rem; font-style: normal; }
+body .app-shell .workspace-page .subscriptions-tabs button.active .tab-badge { background: transparent; color: inherit; }
+body .app-shell .workspace-page .empty-state > div { color: var(--primary); }
+body .app-shell .workspace-page :is(.monthly-equivalent-badge, .sub-equivalent, .sub-cycle-badge) { color: var(--primary); }
+.workspace-page :is(.weekly-category-head, .section-title.compact) { align-items: start; flex-wrap: wrap; gap: 8px; }
+.workspace-page :is(.weekly-category-head small, .section-title.compact p, .empty-inline) { color: var(--muted); font-size: .6875rem; line-height: 1.8; }
+.workspace-page .weekly-category-list > span, .workspace-page .cashflow-timeline > span { background: var(--bg-2); border: 1px solid var(--line); border-radius: 14px; min-width: 0; }
+.workspace-page .cashflow-timeline strong { color: var(--primary); }
+.workspace-page .insights > span { color: var(--muted-2); font-size: .75rem; }
+.workspace-page .table-wrap { max-width: 100%; overflow-x: auto; }
+.workspace-page :is(td, th) { font-size: .75rem; overflow-wrap: anywhere; }
+body .app-shell .workspace-page .secondary-button { background: var(--primary); border: 0; border-radius: 12px; color: var(--on-primary); min-height: 40px; }
+.workspace-page .notification-suggestion { gap: 12px; }
+.workspace-page .notification-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+body .app-shell :is(.settings-page .settings-panel, .pro-page .glass-panel, .daily-dashboard .glass-panel) { background: var(--panel); border: 1px solid var(--line-strong); border-radius: 18px; box-shadow: none; }
+body .app-shell .daily-dashboard .daily-metric-primary { background: var(--primary) !important; }
+body .app-shell .settings-page .settings-panel { gap: 12px; padding: 14px; }
+.settings-page .settings-panel-head h2 { font-size: .9rem; font-weight: 600; }
+.settings-page .settings-panel-head p, .settings-page :is(.settings-hint, .settings-message) { font-size: .75rem; }
+.settings-page .settings-panel-icon { background: var(--panel-soft); color: var(--primary); }
+.settings-page .settings-connections { grid-column: 1 / -1; }
+body .app-shell .settings-page .theme-option.active { background: var(--primary); color: var(--on-primary); }
+body .app-shell .settings-page .storage-option.active { background: var(--panel-soft); border-color: var(--primary); }
+.settings-page .settings-action { border-radius: 14px; }
+body .app-shell .pro-page { gap: 12px; }
+body .app-shell .pro-page .glass-panel { padding: 14px; }
+.pro-page .pro-hero h1 { font-size: 1.15rem; }
+.pro-page :is(.pro-card h2, .pro-status h2) { font-size: .9rem; }
+.pro-page :is(.pro-card p, .pro-status p, .pro-hero p) { font-size: .75rem; }
+.pro-page .pro-action { border-radius: 14px; min-height: 42px; }
+body .app-shell .auth-page { --auth-border: var(--line-strong); --auth-surface: var(--panel); --auth-field: var(--panel); --auth-muted: var(--muted); padding: 0; }
+body .app-shell .auth-page :is(.auth-story, .auth-panel) { background: var(--panel); border-color: var(--line-strong); border-radius: 18px; box-shadow: none; min-height: 0; padding: 20px; }
+body .app-shell .auth-page .auth-story { gap: 20px; justify-content: start; }
+body .app-shell .auth-page .auth-story::after { display: none; }
+body .app-shell .auth-page :is(.auth-brand, .auth-story h1, .auth-story-note strong) { color: var(--text); }
+body .app-shell .auth-page :is(.auth-brand small, .auth-story-copy p, .auth-story-note small) { color: var(--muted); }
+body .app-shell .auth-page :is(.auth-brand-mark, .auth-story-note, .auth-story-note > span, .auth-edit-card, .auth-identity) { background: var(--panel-soft); border-color: var(--line-strong); color: var(--primary); }
+body .app-shell .auth-page .auth-story h1 { font-size: 1.4rem; }
+body .app-shell .auth-page :is(.auth-kicker, .auth-eyebrow, .auth-edit-head, .auth-settings-link) { color: var(--primary); }
+body .app-shell .auth-page .auth-panel-heading h2 { font-size: 1.2rem; font-weight: 600; }
+body .app-shell .auth-page .auth-tabs { background: transparent; border: 0; gap: 8px; padding: 0; }
+body .app-shell .auth-page .auth-tabs button { background: var(--panel-soft); border: 1px solid var(--line-strong); border-radius: 15px; }
+body .app-shell .auth-page .auth-tabs button[aria-selected='true'], body .app-shell .auth-page .auth-submit { background: var(--primary); box-shadow: none; color: var(--on-primary); }
+body .app-shell .auth-page .auth-field { background: var(--panel); border: 1px solid var(--line-strong); border-radius: 15px; color: var(--muted); font-size: .75rem; padding: 12px; }
+body .app-shell .auth-page .auth-field input { background: transparent; border: 0; border-radius: 5px; color: var(--text); min-height: 32px; padding: 2px 0; }
+body .app-shell .auth-page .auth-field input:focus { box-shadow: 0 0 0 2px var(--primary); }
+body .app-shell .auth-page .auth-outline-button { background: var(--panel-soft); border-color: var(--line-strong); color: var(--text); }
+body .app-shell .auth-page .auth-identity img { border-color: var(--primary); }
+body .app-shell .auth-page .auth-spinner { border-color: var(--line-strong); border-top-color: var(--primary); }
+body .app-shell .auth-page .auth-remember input { accent-color: var(--primary); }
+@media (max-width: 760px) {
+  .workspace-page > .section-title { flex-direction: column; }
+  .workspace-page > .section-title > button { justify-content: center; width: 100%; }
+  body .app-shell .workspace-page .installment-form { grid-template-columns: minmax(0, 1fr); }
+  body .app-shell .workspace-page .installment-form > * { grid-column: 1 / -1; min-width: 0; }
+  .workspace-page .installment-actions > button { flex: 1 1 auto; }
+  .workspace-page .cashflow-timeline, .workspace-page .credit-settings-inline { grid-template-columns: minmax(0, 1fr); }
+  .pro-page .pro-action { width: 100%; }
+  body .app-shell .auth-page .auth-story { gap: 12px; padding: 14px; }
+  body .app-shell .auth-page .auth-story h1 { font-size: 1.05rem; margin: 8px 0; }
+  body .app-shell .auth-page .auth-story-copy p { font-size: .75rem; line-height: 1.8; }
+  body .app-shell .auth-page .auth-story-notes { display: none; }
+}

@@ -18,6 +18,11 @@ const {
   applyCategorizationRulesToAllTransactions,
   getCategory,
 } = budgetyar
+const pageEditor = ref<{ open: () => void } | null>(null)
+function startEditRule(rule: Parameters<typeof editCategorizationRule>[0]) {
+  editCategorizationRule(rule)
+  pageEditor.value?.open()
+}
 
 const defaultRuleCount = computed(() => categorizationRules.value.filter((rule) => rule.id.startsWith('preset-')).length)
 
@@ -37,7 +42,7 @@ function matchTypeLabel(value: string) {
 </script>
 
 <template>
-  <section class="glass-panel settings-card">
+  <section class="workspace-page rules-page">
     <div class="section-title">
       <div>
         <h2>قوانین دسته‌بندی</h2>
@@ -53,6 +58,7 @@ function matchTypeLabel(value: string) {
       <span><small>اولویت بعدی</small><strong>{{ categorizationRuleForm.priority }}</strong></span>
     </div>
 
+    <AppPageEditor ref="pageEditor" label="‏افزودن قانون" :editing="!!editingCategorizationRuleId" editing-label="‏ویرایش قانون">
     <form class="installment-form planning-form" @submit.prevent="addCategorizationRule">
       <div v-if="editingCategorizationRuleId" class="installment-edit-banner"><strong>ویرایش قانون</strong></div>
       <label><span>عنوان قانون</span><input v-model="categorizationRuleForm.title" required /></label>
@@ -107,6 +113,7 @@ function matchTypeLabel(value: string) {
       <label class="check-row"><input v-model="categorizationRuleForm.applyToExisting" type="checkbox" /><span>بعد از ذخیره روی قبلی‌ها اعمال شود</span></label>
       <button class="primary-button" type="submit">{{ editingCategorizationRuleId ? 'ذخیره' : 'افزودن قانون' }}</button>
     </form>
+    </AppPageEditor>
 
     <div v-if="categorizationRules.length" class="installments-grid planning-card-grid">
       <article v-for="rule in categorizationRules" :key="rule.id" class="installment-item">
@@ -120,7 +127,7 @@ function matchTypeLabel(value: string) {
         </div>
         <div class="installment-actions">
           <button class="soft-button" type="button" @click="toggleCategorizationRule(rule.id)">{{ rule.isActive ? 'خاموش' : 'فعال' }}</button>
-          <button class="soft-button" type="button" @click="editCategorizationRule(rule)">ویرایش</button>
+          <button class="soft-button" type="button" @click="startEditRule(rule)">ویرایش</button>
           <button class="soft-button" type="button" @click="deleteCategorizationRule(rule.id)">حذف</button>
         </div>
       </article>
