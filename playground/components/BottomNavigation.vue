@@ -26,11 +26,24 @@ const importantPaths = new Set(['/budgets', '/installments', '/goals', '/analyti
 const importantItems = computed(() => props.items.filter((item) => importantPaths.has(item.path)))
 const otherItems = computed(() => props.items.filter((item) => !mainPaths.includes(item.path) && !importantPaths.has(item.path)))
 const navigation = ref<HTMLElement | null>(null)
+const navigationBar = ref<HTMLElement | null>(null)
 const closeButton = ref<HTMLButtonElement | null>(null)
 const { isModalOpen, isMobileViewport } = useBudgetyar()
 const transactionOpen = computed(() => isModalOpen.value && isMobileViewport.value)
 const expanded = computed(() => props.open || transactionOpen.value)
 const panel = ref<'menu' | 'transaction'>('menu')
+
+// Keep the overlay's lower inset aligned with the bar, including font resizing.
+// ResizeObserver runs on size changes, not on animation frames.
+let barObserver: ResizeObserver | undefined
+onMounted(() => {
+  if (!navigationBar.value) return
+  barObserver = new ResizeObserver(([entry]) => {
+    if (entry) navigation.value?.style.setProperty('--bottom-nav-bar-height', `${entry.contentRect.height}px`)
+  })
+  barObserver.observe(navigationBar.value)
+})
+onBeforeUnmount(() => barObserver?.disconnect())
 
 watch([() => props.open, transactionOpen], ([menuOpen, formOpen]) => {
   if (formOpen) panel.value = 'transaction'
@@ -104,7 +117,7 @@ function handleKeydown(event: KeyboardEvent) {
         </div>
       </div>
     </div>
-    <div class="bottom-nav-bar">
+    <div ref="navigationBar" class="bottom-nav-bar">
     <NuxtLink to="/" class="bottom-nav-item" :class="{ active: activePath === '/' }" :aria-current="activePath === '/' ? 'page' : undefined" @click="emit('close')">
       <House :size="19" :stroke-width="1.6" aria-hidden="true" />
       <span>‏خانه</span>
@@ -134,11 +147,9 @@ function handleKeydown(event: KeyboardEvent) {
 @media (max-width: 760px) {
   .bottom-navigation {
     align-items: center;
-    background: color-mix(in srgb, var(--panel-strong) 96%, transparent);
-    border: 1px solid var(--line-strong);
+    border: 1px solid transparent;
     border-radius: 30px;
     bottom: calc(10px + env(safe-area-inset-bottom, 0px));
-    box-shadow: 0 8px 28px #0003;
     display: flex;
     flex-direction: column;
     inset-inline: 12px;
@@ -149,10 +160,39 @@ function handleKeydown(event: KeyboardEvent) {
     z-index: 35;
   }
 
-  .bottom-nav-bar { align-items: center; display: grid; gap: 3px; grid-template-columns: repeat(5, minmax(0, 1fr)); width: 100%; }
-  .bottom-navigation.is-expanded { background: var(--panel); z-index: 40; }
-  .bottom-nav-expansion { align-self: stretch; display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows .26s cubic-bezier(.22, 1, .36, 1), opacity .18s ease; transition-duration: .26s, .18s !important; }
-  .bottom-nav-expansion.open { grid-template-rows: 1fr; opacity: 1; }
+  .bottom-navigation::before {
+    background: color-mix(in srgb, var(--panel-strong) 96%, transparent);
+    border: 1px solid var(--line-strong);
+    border-radius: inherit;
+    box-shadow: 0 8px 28px #0003;
+    content: '';
+    inset: -1px;
+    pointer-events: none;
+    position: absolute;
+    z-index: -1;
+  }
+  .bottom-navigation.is-expanded::before { visibility: hidden; }
+  .bottom-nav-bar { align-items: center; display: grid; gap: 3px; grid-template-columns: repeat(5, minmax(0, 1fr)); position: relative; width: 100%; z-index: 1; }
+  .bottom-navigation.is-expanded { z-index: 40; }
+  /* The full panel floats above the bar without changing its layout. Its lower
+     padding draws the same continuous surface behind the stationary buttons. */
+  .bottom-nav-expansion {
+    background: var(--panel);
+    border: 1px solid var(--line-strong);
+    border-radius: 30px;
+    bottom: -1px;
+    box-shadow: 0 8px 28px #0003;
+    inset-inline: -1px;
+    opacity: 0;
+    padding: 5px 7px calc(var(--bottom-nav-bar-height, 48px) + 5px);
+    pointer-events: none;
+    position: absolute;
+    transform: translateY(16px);
+    transition: transform .26s cubic-bezier(.22, 1, .36, 1), opacity .18s ease, visibility 0s linear .26s;
+    transition-duration: .26s, .18s, 0s !important;
+    visibility: hidden;
+  }
+  .bottom-nav-expansion.open { opacity: 1; pointer-events: auto; transform: translateY(0); transition-delay: 0s; visibility: visible; }
   .bottom-nav-expansion-clip { border-radius: 22px 22px 0 0; min-height: 0; overflow: hidden; }
   .bottom-nav-expanded-content { border-bottom: 1px solid var(--line); max-height: calc(100dvh - 112px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); overflow-y: auto; overscroll-behavior: contain; padding: 10px 6px 14px; scrollbar-width: thin; }
   .bottom-nav-expanded-content.has-transaction { overflow: hidden; padding: 0; }

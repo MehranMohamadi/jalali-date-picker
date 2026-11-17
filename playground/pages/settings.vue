@@ -35,6 +35,8 @@ const {
   setThemeMode,
   exportReport,
   importBackup,
+  backupImportBusy,
+  exportPreviousBackup,
   loadDevelopmentData,
   installApp,
   setStorageMode,
@@ -121,11 +123,15 @@ async function downloadLatestApk(event: MouseEvent) {
           <button class="primary-button settings-action" type="button" @click="exportReport('JSON')">
             <Download :size="18" aria-hidden="true" />‏ذخیرهٔ فایل پشتیبان
           </button>
-          <button class="soft-button settings-action" type="button" @click="chooseBackupFile">
+          <button class="soft-button settings-action" type="button" :disabled="backupImportBusy" @click="chooseBackupFile">
             <Upload :size="18" aria-hidden="true" />‏بازیابی از فایل
+          </button>
+          <button class="soft-button settings-action" type="button" :disabled="backupImportBusy" @click="exportPreviousBackup">
+            <Download :size="18" aria-hidden="true" />‏فایل قبل از آخرین بازیابی
           </button>
           <input ref="backupInput" class="settings-file-input" type="file" accept="application/json,.json" aria-label="‏انتخاب فایل پشتیبان" @change="importBackup" />
         </div>
+        <p class="settings-hint">‏نسخهٔ قبل از آخرین بازیابی برای همین حساب روی دستگاه می‌ماند؛ پاک‌کردن دادهٔ مرورگر آن را هم حذف می‌کند. فایل پشتیبان را جداگانه در جای امن نگه دار.</p>
       </section>
 
       <section class="settings-panel settings-panel-wide glass-panel">

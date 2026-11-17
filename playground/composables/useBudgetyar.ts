@@ -16,6 +16,7 @@ import { addJalaliDays, getJalaliMonthLength, parseJalaliInput, toGregorian, toJ
 import { getBankSuggestionAmount } from '../../src/utils/bankNotification'
 import { applyCreditAdjustments, getCreditMonths } from '../../src/utils/creditLedger'
 import { localAccountKey, planLocalAccountSwitch } from '../../src/utils/accountLocal'
+import { BackupImportError, MAX_BACKUP_BYTES, backupRecoveryKey, parseBackupFile } from '../../src/utils/backupImport'
 import { getForecastInstallmentEvents, getNextUnpaidInstallmentIndex, getPaidInstallmentIndexes, setInstallmentPaid } from '../../src/utils/installmentLedger'
 import {
   buildCashflowTimeline,
@@ -4259,30 +4260,109 @@ function restoreIncomeSettings(value: unknown) {
   } as BudgetyarIncomeSettings
 }
 
+const backupImportBusy = ref(false)
+
+function validateBackupRecords(backup: Record<string, unknown>) {
+  const restorers: Record<string, (value: unknown) => unknown[]> = {
+    transactions: restoreTransactions, categories: restoreCategories, tags: restoreTags,
+    budgets: restoreBudgets, installments: restoreInstallments, goals: restoreGoals,
+    subscriptions: restoreSubscriptions, goalTransactions: restoreGoalTransactions,
+    recurringItems: restoreRecurringItems, debts: restoreDebts, categorizationRules: restoreCategorizationRules,
+  }
+  for (const [key, restore] of Object.entries(restorers)) {
+    if (Array.isArray(backup[key]) && restore(backup[key]).length !== backup[key].length) {
+      throw new BackupImportError('‏فایل پشتیبان رکورد نامعتبر دارد؛ اطلاعات فعلی حفظ شد.')
+    }
+  }
+  const savedCategories = backup.categories as Category[]
+  if (!savedCategories.some((item) => item.key === 'other') || !savedCategories.every((item) =>
+    typeof item.key === 'string' && typeof item.label === 'string' && typeof item.icon === 'string' && typeof item.color === 'string')) {
+    throw new BackupImportError('‏دسته‌های فایل پشتیبان ناقص‌اند؛ اطلاعات فعلی حفظ شد.')
+  }
+  const validAmount = (value: unknown): value is number =>
+    typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1e13
+  if (!(backup.transactions as Transaction[]).every((item) => validAmount(item.amount) && parseJalaliInput(item.date))
+    || !(backup.budgets as BudgetGoal[]).every((item) => validAmount(item.budget))
+    || (backup.creditLimit !== undefined && !validAmount(backup.creditLimit))) {
+    throw new BackupImportError('‏مبلغ یا تاریخ فایل پشتیبان معتبر نیست؛ اطلاعات فعلی حفظ شد.')
+  }
+  if (Array.isArray(backup.installments) && !backup.installments.every((item: InstallmentPlan) =>
+    validAmount(item.amount) && parseJalaliInput(item.startDate)
+      && Number.isInteger(item.dueDay) && item.dueDay >= 1 && item.dueDay <= 31
+      && Number.isInteger(item.totalCount) && item.totalCount > 0
+      && Number.isInteger(item.paidCount) && item.paidCount >= 0 && item.paidCount <= item.totalCount
+      && (item.paidIndexes === undefined || (Array.isArray(item.paidIndexes)
+        && new Set(item.paidIndexes).size === item.paidIndexes.length
+        && item.paidIndexes.every((index) => Number.isInteger(index) && index >= 0 && index < item.totalCount))))) {
+    throw new BackupImportError('‏اطلاعات اقساط فایل پشتیبان معتبر نیست؛ اطلاعات فعلی حفظ شد.')
+  }
+  if (isRecord(backup.creditAdjustments)
+    && Object.keys(restoreCreditAdjustments(backup.creditAdjustments)).length !== Object.keys(backup.creditAdjustments).length) {
+    throw new BackupImportError('‏اطلاعات اصلاح اعتبار فایل پشتیبان معتبر نیست؛ اطلاعات فعلی حفظ شد.')
+  }
+}
+
+async function exportPreviousBackup() {
+  try {
+    const raw = localStorage.getItem(backupRecoveryKey(cloudAccountId))
+    if (!raw) {
+      pushToast('‏نسخه‌ای از قبلِ بازیابی برای این حساب وجود ندارد.')
+      return
+    }
+    await saveBlobToDevice(new Blob([raw], { type: 'application/json;charset=utf-8' }),
+      `budgetyar-before-import-${getExportDateStamp()}.json`, '‏نسخهٔ قبل از بازیابی آمادهٔ ذخیره شد.')
+  } catch {
+    pushToast('‏دریافت نسخهٔ قبل از بازیابی ناموفق بود.')
+  }
+}
+
 async function importBackup(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
-  if (!file) return
+  if (!file || backupImportBusy.value) return
+  backupImportBusy.value = true
 
   try {
-    const backup = JSON.parse(await file.text()) as unknown
-    if (!isRecord(backup) || backup.app !== 'budgetyar') {
-      pushToast('این فایل بکاپ جیب‌طلا نیست')
-      return
+    if (file.size > MAX_BACKUP_BYTES) {
+      throw new BackupImportError('‏حجم فایل پشتیبان باید حداکثر ۱۰ مگابایت باشد.')
     }
+    const accountId = cloudAccountId
+    const originalSnapshot = buildCloudSnapshotJson()
+    const backup = parseBackupFile(await file.text())
+    validateBackupRecords(backup)
+    const transactionCount = toPersianNumber((backup.transactions as unknown[]).length)
+    const budgetCount = toPersianNumber((backup.budgets as unknown[]).length)
+    const installmentCount = toPersianNumber(Array.isArray(backup.installments) ? backup.installments.length : 0)
     const confirmed = await confirmDialog.askConfirm({
       title: '‏بازیابی اطلاعات',
-      message: 'اطلاعات فعلی این دستگاه با محتوای فایل پشتیبان جایگزین شوند؟',
+      message: `‏فایل شامل ${transactionCount} تراکنش، ${budgetCount} بودجه و ${installmentCount} قسط است. همهٔ اطلاعات فعلی با فایل جایگزین می‌شوند؛ بخش‌های غایب فایل به حالت اولیه برمی‌گردند. نسخهٔ قبل از بازیابی روی همین دستگاه نگه داشته می‌شود. ادامه می‌دهید؟`,
       confirmText: '‏بازیابی و جایگزینی',
       cancelText: '‏انصراف',
       tone: 'warning',
     })
     if (!confirmed) return
-    applyBackupRecord(backup)
-    pushToast('بکاپ با موفقیت بازیابی شد ✅')
-  } catch {
-    pushToast('خواندن بکاپ ناموفق بود')
+    if (cloudAccountId !== accountId || buildCloudSnapshotJson() !== originalSnapshot) {
+      throw new BackupImportError('‏حساب یا اطلاعات تغییر کرده است؛ فایل را دوباره انتخاب کنید.')
+    }
+    try {
+      localStorage.setItem(backupRecoveryKey(accountId), buildBackupJson())
+    } catch {
+      throw new BackupImportError('‏ذخیرهٔ نسخهٔ قبلی ممکن نیست؛ بازیابی انجام نشد. فضای دستگاه و دسترسی ذخیره‌سازی را بررسی کنید.')
+    }
+    try {
+      applyBackupRecord(backup)
+      // Wait for the existing persistence watchers before reporting success.
+      await nextTick()
+    } catch {
+      applyBackupRecord(JSON.parse(originalSnapshot) as Record<string, unknown>)
+      try { await nextTick() } catch { /* The recovery file remains available. */ }
+      throw new BackupImportError('‏اعمال یا ذخیرهٔ اطلاعات ناموفق بود؛ نسخهٔ قبلی از بخش پشتیبان‌گیری قابل دریافت است.')
+    }
+    pushToast('‏اطلاعات فایل پشتیبان وارد شد ✅')
+  } catch (error) {
+    pushToast(error instanceof BackupImportError ? error.message : '‏خواندن پشتیبان ناموفق بود.')
   } finally {
+    backupImportBusy.value = false
     input.value = ''
   }
 }
@@ -4921,7 +5001,7 @@ export function useBudgetyar() {
     addDebt, editDebt, updateDebt, deleteDebt, toggleDebt, recordDebtPayment, calculateDebtPayoffPlan,
     addCategorizationRule, editCategorizationRule, updateCategorizationRule, deleteCategorizationRule, toggleCategorizationRule, matchTransactionCategoryRule, applyCategorizationRulesToTransaction, applyCategorizationRulesToAllTransactions, suggestCategorizationRules, acceptSuggestedCategorizationRule, bulkUpdateTransactionCategory,
     updateIncomeSettings, applyRecommendedBudgetPlan,
-    getTransactionCategoryLabel, getPaymentMethodLabel, getNecessityLabel, buildCsvReport, buildExcelReport, buildBackupJson, importBackup, createExportFile, saveBlobToDevice, exportReport, installApp, pushToast,
+    getTransactionCategoryLabel, getPaymentMethodLabel, getNecessityLabel, buildCsvReport, buildExcelReport, buildBackupJson, importBackup, backupImportBusy, exportPreviousBackup, createExportFile, saveBlobToDevice, exportReport, installApp, pushToast,
     setStorageMode, checkCloudSession, testCloudConnection, uploadCloudSnapshot, migrateLocalDataToCloud, downloadCloudSnapshot,
     askConfirm: confirmDialog.askConfirm, executeWithConfirm: confirmDialog.executeWithConfirm, confirmDialog,
     createCharts, syncCharts, scheduleChartSync, destroyCharts,
