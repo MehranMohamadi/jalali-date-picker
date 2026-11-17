@@ -96,3 +96,5 @@ body .app-shell .auth-page .auth-remember input { accent-color: var(--primary); 
   body .app-shell .auth-page .auth-story-copy p { font-size: .75rem; line-height: 1.8; }
   body .app-shell .auth-page .auth-story-notes { display: none; }
 }
+.device-storage-warning { margin-bottom: 12px; padding: 12px; border: 1px solid #b7791f; border-radius: 12px; background: var(--panel-bg, #292116); }
+.device-storage-warning p { margin: 0 0 8px; font-size: .8rem; line-height: 1.8; }

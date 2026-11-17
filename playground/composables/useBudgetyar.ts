@@ -1818,7 +1818,7 @@ function recordCreditPayment(month: string) {
     sourceId: month,
     sourceDate: todayKey.value,
   }, ...transactions.value]
-  pushToast('پرداخت بدهی اعتبار ثبت شد ✅')
+  pushToast('پرداخت بدهی اعتبار ثبت شد ✅', true)
 }
 
 function ignoreCreditDebt(row: { month: string; remaining: number }) {
@@ -1826,7 +1826,7 @@ function ignoreCreditDebt(row: { month: string; remaining: number }) {
   const message = `‏ماندهٔ ${privateFormatter(formatMoney)(row.remaining)} اعتبار ${month} از بدهی باز نادیده گرفته شود؟ تراکنش‌ها و آمار هزینه تغییر نمی‌کنند و این اصلاح قابل بازگردانی است.`
   confirmDialog.executeWithConfirm(() => {
     creditAdjustments.value = { ...creditAdjustments.value, [row.month]: (creditAdjustments.value[row.month] ?? 0) + row.remaining }
-    pushToast('ماندهٔ اعتبار از بدهی باز کنار گذاشته شد')
+    pushToast('ماندهٔ اعتبار از بدهی باز کنار گذاشته شد', true)
   }, {
     title: '‏نادیده گرفتن بدهی اعتبار',
     message,
@@ -1847,7 +1847,7 @@ function restoreIgnoredCredit(month: string) {
   const next = { ...creditAdjustments.value }
   delete next[month]
   creditAdjustments.value = next
-  pushToast('اصلاح دستی اعتبار بازگردانده شد')
+  pushToast('اصلاح دستی اعتبار بازگردانده شد', true)
 }
 
 function applyTheme(mode = themeMode.value) {
@@ -2004,10 +2004,10 @@ function saveTransaction() {
       }
     }
     transactions.value = transactions.value.map((item) => (item.id === editingId.value ? payload : item))
-    pushToast('ویرایش شد ✨')
+    pushToast('ویرایش شد ✨', true)
   } else {
     transactions.value = [payload, ...transactions.value]
-    pushToast('ثبت شد ✅')
+    pushToast('ثبت شد ✅', true)
   }
 
   isModalOpen.value = false
@@ -2020,7 +2020,7 @@ function removeTransaction(id: number) {
   confirmDialog.executeWithConfirm(() => {
     reopenInstallmentPayment(transaction)
     transactions.value = transactions.value.filter((item) => item.id !== id)
-    pushToast('حذف شد 🗑️')
+    pushToast('حذف شد 🗑️', true)
   }, {
     title: '‏حذف تراکنش',
     message: `‏آیا از حذف تراکنش «${transaction.title}» مطمئن هستید؟ این عملیات قابل بازگشت نیست.`,
@@ -2106,7 +2106,7 @@ async function acceptBankSuggestion(suggestion: BankNotificationSuggestion) {
   transactions.value = [payload, ...transactions.value]
   bankSuggestions.value = bankSuggestions.value.filter((item) => item.id !== suggestion.id)
   await markBankSuggestion(suggestion.id, 'accepted')
-  pushToast('هزینه از اعلان ثبت شد ✅')
+  pushToast('هزینه از اعلان ثبت شد ✅', true)
 }
 
 async function dismissBankSuggestion(id: string) {
@@ -2136,7 +2136,7 @@ function updateBudget(category: CategoryKey, event: Event) {
   const amount = Math.max(0, parseMoneyInput(input.value))
   budgets.value = budgets.value.map((goal) => (goal.category === category ? { ...goal, budget: amount } : goal))
   input.value = formatMoneyInput(amount)
-  pushToast('بودجه به‌روزرسانی شد ✨')
+  pushToast('بودجه به‌روزرسانی شد ✨', true)
 }
 
 function resetBudgetAmounts() {
@@ -2144,7 +2144,7 @@ function resetBudgetAmounts() {
 
   return confirmDialog.executeWithConfirm(() => {
     budgets.value = budgets.value.map((goal) => ({ ...goal, budget: 0 }))
-    pushToast('‏مبلغ همهٔ بودجه‌ها صفر شد.')
+    pushToast('‏مبلغ همهٔ بودجه‌ها صفر شد.', true)
   }, {
     title: '‏صفرکردن مبلغ بودجه‌ها',
     message: '‏مبلغ همهٔ بودجه‌های تعریف‌شده صفر شود؟ دسته‌ها، تگ‌ها و تراکنش‌ها حفظ می‌شوند.',
@@ -2167,7 +2167,7 @@ function addCategory() {
   categories.value = [...categories.value, { key, label, icon, color }]
   budgets.value = [...budgets.value, { category: key, budget: Math.max(0, Number(categoryForm.budget) || 0) }]
   Object.assign(categoryForm, { label: '', icon: '✨', budget: 1000000 })
-  pushToast('دسته‌بندی اضافه شد ✅')
+  pushToast('دسته‌بندی اضافه شد ✅', true)
 }
 
 function addTag(label: string, icon = '🏷️'): string | null {
@@ -2187,7 +2187,7 @@ function addTag(label: string, icon = '🏷️'): string | null {
   const color = colorPalette[tags.value.length % colorPalette.length]
 
   tags.value = [...tags.value, { key, label: trimmed, icon: icon.trim() || '🏷️', color }]
-  pushToast(`برچسب «${trimmed}» اضافه شد ✅`)
+  pushToast(`برچسب «${trimmed}» اضافه شد ✅`, true)
   return key
 }
 
@@ -2200,7 +2200,7 @@ function deleteTag(key: string) {
       ? { ...item, tags: item.tags.filter((tagKey) => tagKey !== key) }
       : item)
     form.subCategories = form.subCategories.filter((tagKey) => tagKey !== key)
-    pushToast('تگ حذف شد 🗑️')
+    pushToast('تگ حذف شد 🗑️', true)
   }, {
     title: '‏حذف تگ',
     message: `‏تگ «${tag.label}» از همهٔ هزینه‌ها حذف شود؟`,
@@ -2226,7 +2226,7 @@ function renameCategory(key: CategoryKey, value: string) {
 
   categories.value = categories.value.map((item) => item.key === key ? { ...item, label } : item)
   if (selectedCategory.value === category.label) selectedCategory.value = label
-  pushToast('نام دسته و تراکنش‌های مرتبط به‌روزرسانی شد ✅')
+  pushToast('نام دسته و تراکنش‌های مرتبط به‌روزرسانی شد ✅', true)
   return true
 }
 
@@ -2255,7 +2255,7 @@ function deleteCategory(key: CategoryKey) {
     form.subCategories = form.subCategories.filter((c) => c !== key)
     if (selectedCategory.value === deleted.label) selectedCategory.value = 'همه'
 
-    pushToast('دسته‌بندی حذف شد 🗑️')
+    pushToast('دسته‌بندی حذف شد 🗑️', true)
   }, {
     title: '‏حذف دسته‌بندی',
     message: `‏دسته‌بندی «${deleted.label}» حذف شود؟ تراکنش‌های مرتبط به این دسته، به دسته «سایر» منتقل خواهند شد.`,
@@ -2316,13 +2316,13 @@ function addInstallmentPlan() {
       item.id === existingPlan.id ? { ...plan, id: existingPlan.id, paidCount: paidIndexes.length, paidIndexes } : item,
     )
     resetInstallmentForm()
-    pushToast('قسط ویرایش شد ✅')
+    pushToast('قسط ویرایش شد ✅', true)
     return
   }
 
   installments.value = [plan, ...installments.value]
   resetInstallmentForm()
-  pushToast('قسط اضافه شد ✅')
+  pushToast('قسط اضافه شد ✅', true)
 }
 
 function editInstallmentPlan(plan: InstallmentPlan) {
@@ -2370,7 +2370,7 @@ function payInstallment(plan: InstallmentPlan) {
   installments.value = installments.value.map((item) =>
     item.id === plan.id ? { ...item, ...setInstallmentPaid(item, index, true) } : item,
   )
-  pushToast('قسط پرداخت و هزینه ثبت شد ✅')
+  pushToast('قسط پرداخت و هزینه ثبت شد ✅', true)
 }
 
 function undoInstallmentPayment(planId: number, index: number) {
@@ -2403,7 +2403,7 @@ function undoInstallmentPayment(planId: number, index: number) {
         item.id === planId ? { ...item, ...setInstallmentPaid(item, index, false) } : item,
       )
     }
-    pushToast('پرداخت قسط برگردانده شد')
+    pushToast('پرداخت قسط برگردانده شد', true)
   }, {
     title: '‏بازگردانی پرداخت قسط',
     message,
@@ -2419,7 +2419,7 @@ function removeInstallmentPlan(id: number) {
   confirmDialog.executeWithConfirm(() => {
     installments.value = installments.value.filter((item) => item.id !== id)
     if (editingInstallmentId.value === id) resetInstallmentForm()
-    pushToast('قسط حذف شد 🗑️')
+    pushToast('قسط حذف شد 🗑️', true)
   }, {
     title: '‏حذف طرح اقساطی',
     message: `‏طرح اقساطی${title} حذف شود؟ تراکنش‌های پرداخت قبلی این قسط باقی خواهند ماند.`,
@@ -2586,7 +2586,7 @@ function addGoal() {
   }
   refreshGoalState(goal.id)
   resetGoalForm()
-  pushToast(existing ? 'هدف ویرایش شد ✅' : 'هدف مالی اضافه شد ✅')
+  pushToast(existing ? 'هدف ویرایش شد ✅' : 'هدف مالی اضافه شد ✅', true)
 }
 
 function editGoal(goal: BudgetyarGoal) {
@@ -2632,14 +2632,14 @@ function saveSubscription(title: string, endDate: string, id?: string): boolean 
   subscriptions.value = id
     ? subscriptions.value.map((entry) => entry.id === id ? item : entry)
     : [...subscriptions.value, item]
-  pushToast('‏اشتراک ذخیره شد')
+  pushToast('‏اشتراک ذخیره شد', true)
   return true
 }
 
 function deleteSubscription(id: string) {
   confirmDialog.executeWithConfirm(() => {
     subscriptions.value = subscriptions.value.filter((item) => item.id !== id)
-    pushToast('‏اشتراک حذف شد')
+    pushToast('‏اشتراک حذف شد', true)
   }, {
     title: '‏حذف اشتراک',
     message: '‏این اشتراک از فهرست حذف شود؟',
@@ -2654,7 +2654,7 @@ function deleteGoal(id: string) {
     goals.value = goals.value.filter((item) => item.id !== id)
     goalTransactions.value = goalTransactions.value.filter((transaction) => transaction.goalId !== id)
     if (editingGoalId.value === id) resetGoalForm()
-    pushToast('هدف حذف شد 🗑️')
+    pushToast('هدف حذف شد 🗑️', true)
   }, {
     title: '‏حذف هدف پس‌انداز',
     message: `‏هدف مالی${title} حذف شود؟ تراکنش‌های پس‌انداز این هدف نیز پاک خواهند شد.`,
@@ -2668,21 +2668,21 @@ function deleteGoal(id: string) {
 function archiveGoal(id: string) {
   const goal = goals.value.find((item) => item.id === id)
   updateGoal(id, { isArchived: !goal?.isArchived })
-  pushToast(goal?.isArchived ? 'هدف فعال شد' : 'هدف بایگانی شد')
+  pushToast(goal?.isArchived ? 'هدف فعال شد' : 'هدف بایگانی شد', true)
 }
 
 function pauseGoal(id: string) {
   const goal = goals.value.find((item) => item.id === id)
   if (!goal || goal.isArchived || goal.status === 'completed') return
   updateGoal(id, { status: 'paused' })
-  pushToast('هدف متوقف شد')
+  pushToast('هدف متوقف شد', true)
 }
 
 function resumeGoal(id: string) {
   const goal = goals.value.find((item) => item.id === id)
   if (!goal || goal.isArchived || goal.status !== 'paused') return
   updateGoal(id, { status: 'active' })
-  pushToast('هدف ادامه پیدا کرد')
+  pushToast('هدف ادامه پیدا کرد', true)
 }
 
 function addGoalContribution(goal: BudgetyarGoal, amount = 0) {
@@ -2692,7 +2692,7 @@ function addGoalContribution(goal: BudgetyarGoal, amount = 0) {
 
   goalTransactions.value = [buildGoalTransaction(goal, goal.trackingMode === 'ASSET_HOLDING' ? 'ASSET_PURCHASE' : 'DEPOSIT', value), ...goalTransactions.value]
   refreshGoalState(goal.id)
-  pushToast('پس‌انداز هدف بیشتر شد ✅')
+  pushToast('پس‌انداز هدف بیشتر شد ✅', true)
 }
 
 function withdrawFromGoal(goal: BudgetyarGoal, amount = 0) {
@@ -2708,7 +2708,7 @@ function withdrawFromGoal(goal: BudgetyarGoal, amount = 0) {
 
   goalTransactions.value = [buildGoalTransaction(goal, goal.trackingMode === 'ASSET_HOLDING' ? 'ASSET_SALE' : 'WITHDRAWAL', value), ...goalTransactions.value]
   refreshGoalState(goal.id)
-  pushToast('برداشت از هدف ثبت شد')
+  pushToast('برداشت از هدف ثبت شد', true)
 }
 
 function getGoalProgress(goal: BudgetyarGoal) {
@@ -2874,7 +2874,7 @@ function addRecurringItem() {
   const isSub = Boolean(recurringForm.isSubscription)
   recurringItems.value = existing ? recurringItems.value.map((entry) => (entry.id === existing.id ? item : entry)) : [item, ...recurringItems.value]
   resetRecurringForm(isSub)
-  pushToast(existing ? (isSub ? 'اشتراک ویرایش شد ✅' : 'پرداخت تکراری ویرایش شد ✅') : (isSub ? 'اشتراک اضافه شد ✅' : 'پرداخت تکراری اضافه شد ✅'))
+  pushToast(existing ? (isSub ? 'اشتراک ویرایش شد ✅' : 'پرداخت تکراری ویرایش شد ✅') : (isSub ? 'اشتراک اضافه شد ✅' : 'پرداخت تکراری اضافه شد ✅'), true)
 }
 
 function editRecurringItem(item: BudgetyarRecurringItem) {
@@ -2908,7 +2908,7 @@ function deleteRecurringItem(id: string) {
   confirmDialog.executeWithConfirm(() => {
     recurringItems.value = recurringItems.value.filter((entry) => entry.id !== id)
     if (editingRecurringItemId.value === id) resetRecurringForm(isSub)
-    pushToast(isSub ? 'اشتراک حذف شد 🗑️' : 'پرداخت دوره‌ای حذف شد 🗑️')
+    pushToast(isSub ? 'اشتراک حذف شد 🗑️' : 'پرداخت دوره‌ای حذف شد 🗑️', true)
   }, {
     title: isSub ? '‏حذف اشتراک' : '‏حذف پرداخت دوره‌ای',
     message: `‏آیا از حذف${title} مطمئن هستید؟`,
@@ -2948,14 +2948,14 @@ function markRecurringItemPaid(item: BudgetyarRecurringItem, dueDate = getRecurr
 
   transactions.value = [createTransactionFromRecurringItem(item, dueDate), ...transactions.value]
   updateRecurringItem(item.id, { lastAppliedDate: dueDate })
-  pushToast(item.isSubscription ? 'تمدید اشتراک با موفقیت ثبت شد ✅' : 'نوبت تکراری به تراکنش تبدیل شد ✅')
+  pushToast(item.isSubscription ? 'تمدید اشتراک با موفقیت ثبت شد ✅' : 'نوبت تکراری به تراکنش تبدیل شد ✅', true)
 }
 
 function skipRecurringOccurrence(item: BudgetyarRecurringItem, dueDate = getRecurringNextDueDate(item)) {
   if (!dueDate) return
 
   updateRecurringItem(item.id, { skippedDates: [...new Set([...(item.skippedDates ?? []), dueDate])] })
-  pushToast('این نوبت رد شد')
+  pushToast('این نوبت رد شد', true)
 }
 
 function createTransactionFromRecurringItem(item: BudgetyarRecurringItem, dueDate = getRecurringNextDueDate(item)): Transaction {
@@ -3228,7 +3228,7 @@ function createPurchaseTransaction() {
     sourceType: 'manual',
   }, ...transactions.value]
   Object.assign(purchaseForm, { amount: 0, categoryId: 'other', date: todayKey.value, isEssential: false, paymentMethod: 'cash', note: '' })
-  pushToast('خرید به تراکنش تبدیل شد ✅')
+  pushToast('خرید به تراکنش تبدیل شد ✅', true)
 }
 
 function resetDebtForm() {
@@ -3281,7 +3281,7 @@ function addDebt() {
 
   debts.value = existing ? debts.value.map((item) => (item.id === existing.id ? debt : item)) : [debt, ...debts.value]
   resetDebtForm()
-  pushToast(existing ? 'بدهی ویرایش شد ✅' : 'بدهی اضافه شد ✅')
+  pushToast(existing ? 'بدهی ویرایش شد ✅' : 'بدهی اضافه شد ✅', true)
 }
 
 function editDebt(debt: BudgetyarDebt) {
@@ -3316,7 +3316,7 @@ function deleteDebt(id: string) {
   confirmDialog.executeWithConfirm(() => {
     debts.value = debts.value.filter((item) => item.id !== id)
     if (editingDebtId.value === id) resetDebtForm()
-    pushToast('بدهی حذف شد 🗑️')
+    pushToast('بدهی حذف شد 🗑️', true)
   }, {
     title: '‏حذف بدهی',
     message: `‏آیا از حذف پرونده بدهی${title} مطمئن هستید؟`,
@@ -3358,7 +3358,7 @@ function recordDebtPayment(debt: BudgetyarDebt, amount = 0) {
     sourceId: debt.id,
     sourceDate: todayKey.value,
   }, ...transactions.value]
-  pushToast('پرداخت بدهی ثبت شد ✅')
+  pushToast('پرداخت بدهی ثبت شد ✅', true)
 }
 
 function calculateDebtPayoffPlan(strategy: DebtPayoffStrategy): DebtPayoffPlan {
@@ -3409,7 +3409,7 @@ function addCategorizationRule() {
   categorizationRules.value = existing ? categorizationRules.value.map((item) => (item.id === existing.id ? rule : item)) : [rule, ...categorizationRules.value]
   if (rule.applyToExisting) applyCategorizationRulesToAllTransactions()
   resetCategorizationRuleForm()
-  pushToast(existing ? 'قانون ویرایش شد ✅' : 'قانون دسته‌بندی اضافه شد ✅')
+  pushToast(existing ? 'قانون ویرایش شد ✅' : 'قانون دسته‌بندی اضافه شد ✅', true)
 }
 
 function editCategorizationRule(rule: BudgetyarCategorizationRule) {
@@ -3449,7 +3449,7 @@ function deleteCategorizationRule(id: string) {
   }
   categorizationRules.value = categorizationRules.value.filter((rule) => rule.id !== id)
   if (editingCategorizationRuleId.value === id) resetCategorizationRuleForm()
-  pushToast('قانون حذف شد')
+  pushToast('قانون حذف شد', true)
 }
 
 function toggleCategorizationRule(id: string) {
@@ -3481,7 +3481,7 @@ function applyCategorizationRulesToAllTransactions() {
     if (updated !== transaction) changedCount += 1
     return updated
   })
-  pushToast(`${toPersianNumber(changedCount)} تراکنش به‌روزرسانی شد`)
+  pushToast(`${toPersianNumber(changedCount)} تراکنش به‌روزرسانی شد`, true)
 }
 
 function suggestCategorizationRules() {
@@ -3515,7 +3515,7 @@ function acceptSuggestedCategorizationRule(suggestion: { title: string; category
     createdAt: todayKey.value,
     updatedAt: todayKey.value,
   }, ...categorizationRules.value]
-  pushToast('پیشنهاد قانون پذیرفته شد ✅')
+  pushToast('پیشنهاد قانون پذیرفته شد ✅', true)
 }
 
 function bulkUpdateTransactionCategory(ids: number[], categoryId: string) {
@@ -3537,7 +3537,7 @@ function applyRecommendedBudgetPlan() {
       category: category.key,
       budget: essentialKeys.includes(category.key) ? essentialShare : flexibleShare,
     }))
-    pushToast('بودجه پیشنهادی اعمال شد ✅')
+    pushToast('بودجه پیشنهادی اعمال شد ✅', true)
   }
 
   confirmDialog.executeWithConfirm(proceed, {
@@ -4261,6 +4261,39 @@ function restoreIncomeSettings(value: unknown) {
 }
 
 const backupImportBusy = ref(false)
+const deviceStorageError = ref(false)
+const failedDeviceWrites = new Set<string>()
+
+function saveDeviceValue(key: string, serialize: () => string) {
+  try {
+    localStorage.setItem(key, serialize())
+    failedDeviceWrites.delete(key)
+  } catch {
+    failedDeviceWrites.add(key)
+  }
+  deviceStorageError.value = failedDeviceWrites.size > 0
+}
+
+function retryDeviceStorage() {
+  const records: Array<[string, () => string]> = [
+    [STORAGE_KEY, () => JSON.stringify(transactions.value)],
+    [CATEGORIES_STORAGE_KEY, () => JSON.stringify(categories.value)],
+    [TAGS_STORAGE_KEY, () => JSON.stringify(tags.value)],
+    [BUDGETS_STORAGE_KEY, () => JSON.stringify(budgets.value)],
+    [CREDIT_STORAGE_KEY, () => String(creditLimit.value)],
+    [CREDIT_ADJUSTMENTS_STORAGE_KEY, () => JSON.stringify(creditAdjustments.value)],
+    [INSTALLMENTS_STORAGE_KEY, () => JSON.stringify(installments.value)],
+    [SUBSCRIPTIONS_STORAGE_KEY, () => JSON.stringify(subscriptions.value)],
+    [GOALS_STORAGE_KEY, () => JSON.stringify(goals.value)],
+    [GOAL_TRANSACTIONS_STORAGE_KEY, () => JSON.stringify(goalTransactions.value)],
+    [RECURRING_ITEMS_STORAGE_KEY, () => JSON.stringify(recurringItems.value)],
+    [DEBTS_STORAGE_KEY, () => JSON.stringify(debts.value)],
+    [CATEGORIZATION_RULES_STORAGE_KEY, () => JSON.stringify(categorizationRules.value)],
+    [INCOME_SETTINGS_STORAGE_KEY, () => JSON.stringify(incomeSettings.value)],
+    [THEME_STORAGE_KEY, () => themeMode.value],
+  ]
+  for (const [key, serialize] of records) saveDeviceValue(key, serialize)
+}
 
 function validateBackupRecords(backup: Record<string, unknown>) {
   const restorers: Record<string, (value: unknown) => unknown[]> = {
@@ -4353,6 +4386,7 @@ async function importBackup(event: Event) {
       applyBackupRecord(backup)
       // Wait for the existing persistence watchers before reporting success.
       await nextTick()
+      if (deviceStorageError.value) throw new Error('Device persistence failed')
     } catch {
       applyBackupRecord(JSON.parse(originalSnapshot) as Record<string, unknown>)
       try { await nextTick() } catch { /* The recovery file remains available. */ }
@@ -4459,7 +4493,17 @@ async function installApp() {
   pushToast(choice.outcome === 'accepted' ? 'برنامه نصب شد ✅' : 'نصب لغو شد')
 }
 
-function pushToast(text: string) {
+function pushToast(text: string, requiresDeviceSave = false) {
+  if (requiresDeviceSave) {
+    void nextTick(() => {
+      if (!deviceStorageError.value) appendToast(text)
+    })
+    return
+  }
+  appendToast(text)
+}
+
+function appendToast(text: string) {
   const id = Date.now()
   toasts.value.push({ id, text })
   window.setTimeout(() => {
@@ -4968,6 +5012,7 @@ export function useBudgetyar() {
     cloudAuthStatus, cloudAuthMessage, cloudSnapshotVersion, cloudSyncStatus, cloudSyncMessage, storageMode, cloudDirty, canLoadDevelopmentData, loadDevelopmentData,
     query, selectedMonth, selectedYear, selectedCategory, selectedType, dateRange, pickerDateRange,
     isModalOpen, formType, form, formAmountInWords, formDatePickerValue, editingId, toasts,
+    deviceStorageError, retryDeviceStorage,
     categoryForm, installmentForm, editingInstallmentId, installmentAmountInWords, installmentStartDatePickerValue,
     goalForm, editingGoalId, goalTargetAmountInWords, goalSavedAmountInWords, goalTargetDatePickerValue,
     recurringForm, editingRecurringItemId, recurringAmountInWords, recurringStartDatePickerValue, recurringEndDatePickerValue,
@@ -5384,7 +5429,7 @@ export function startBudgetyar() {
   watch(
     transactions,
     (value) => {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(value))
+      saveDeviceValue(STORAGE_KEY, () => JSON.stringify(value))
     },
     { deep: true },
   )
@@ -5392,29 +5437,29 @@ export function startBudgetyar() {
   watch(
     categories,
     (value) => {
-      localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(value))
+      saveDeviceValue(CATEGORIES_STORAGE_KEY, () => JSON.stringify(value))
     },
     { deep: true },
   )
 
   watch(tags, (value) => {
-    localStorage.setItem(TAGS_STORAGE_KEY, JSON.stringify(value))
+    saveDeviceValue(TAGS_STORAGE_KEY, () => JSON.stringify(value))
   }, { deep: true })
   
   watch(
     budgets,
     (value) => {
-      localStorage.setItem(BUDGETS_STORAGE_KEY, JSON.stringify(value))
+      saveDeviceValue(BUDGETS_STORAGE_KEY, () => JSON.stringify(value))
     },
     { deep: true },
   )
   
   watch(creditLimit, (value) => {
-    localStorage.setItem(CREDIT_STORAGE_KEY, String(value))
+    saveDeviceValue(CREDIT_STORAGE_KEY, () => String(value))
   })
 
   watch(creditAdjustments, (value) => {
-    localStorage.setItem(CREDIT_ADJUSTMENTS_STORAGE_KEY, JSON.stringify(value))
+    saveDeviceValue(CREDIT_ADJUSTMENTS_STORAGE_KEY, () => JSON.stringify(value))
   })
 
   watch(rawCreditMonths, (months) => {
@@ -5424,7 +5469,7 @@ export function startBudgetyar() {
   }, { immediate: true })
 
   watch(themeMode, (value) => {
-    localStorage.setItem(THEME_STORAGE_KEY, value)
+    saveDeviceValue(THEME_STORAGE_KEY, () => value)
     applyTheme(value)
     destroyCharts()
     nextTick(scheduleChartSync)
@@ -5433,19 +5478,19 @@ export function startBudgetyar() {
   watch(
     installments,
     (value) => {
-      localStorage.setItem(INSTALLMENTS_STORAGE_KEY, JSON.stringify(value))
+      saveDeviceValue(INSTALLMENTS_STORAGE_KEY, () => JSON.stringify(value))
     },
     { deep: true },
   )
 
   watch(subscriptions, (value) => {
-    localStorage.setItem(SUBSCRIPTIONS_STORAGE_KEY, JSON.stringify(value))
+    saveDeviceValue(SUBSCRIPTIONS_STORAGE_KEY, () => JSON.stringify(value))
   }, { deep: true })
 
   watch(
     goals,
     (value) => {
-      localStorage.setItem(GOALS_STORAGE_KEY, JSON.stringify(value))
+      saveDeviceValue(GOALS_STORAGE_KEY, () => JSON.stringify(value))
     },
     { deep: true },
   )
@@ -5453,7 +5498,7 @@ export function startBudgetyar() {
   watch(
     goalTransactions,
     (value) => {
-      localStorage.setItem(GOAL_TRANSACTIONS_STORAGE_KEY, JSON.stringify(value))
+      saveDeviceValue(GOAL_TRANSACTIONS_STORAGE_KEY, () => JSON.stringify(value))
     },
     { deep: true },
   )
@@ -5471,7 +5516,7 @@ export function startBudgetyar() {
   watch(
     recurringItems,
     (value) => {
-      localStorage.setItem(RECURRING_ITEMS_STORAGE_KEY, JSON.stringify(value))
+      saveDeviceValue(RECURRING_ITEMS_STORAGE_KEY, () => JSON.stringify(value))
     },
     { deep: true },
   )
@@ -5479,7 +5524,7 @@ export function startBudgetyar() {
   watch(
     debts,
     (value) => {
-      localStorage.setItem(DEBTS_STORAGE_KEY, JSON.stringify(value))
+      saveDeviceValue(DEBTS_STORAGE_KEY, () => JSON.stringify(value))
     },
     { deep: true },
   )
@@ -5487,7 +5532,7 @@ export function startBudgetyar() {
   watch(
     categorizationRules,
     (value) => {
-      localStorage.setItem(CATEGORIZATION_RULES_STORAGE_KEY, JSON.stringify(value))
+      saveDeviceValue(CATEGORIZATION_RULES_STORAGE_KEY, () => JSON.stringify(value))
     },
     { deep: true },
   )
@@ -5495,7 +5540,7 @@ export function startBudgetyar() {
   watch(
     incomeSettings,
     (value) => {
-      localStorage.setItem(INCOME_SETTINGS_STORAGE_KEY, JSON.stringify(value))
+      saveDeviceValue(INCOME_SETTINGS_STORAGE_KEY, () => JSON.stringify(value))
     },
     { deep: true },
   )

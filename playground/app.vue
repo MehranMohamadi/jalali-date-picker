@@ -40,6 +40,9 @@ const {
   isModalOpen,
   isMobileViewport,
   toasts,
+  deviceStorageError,
+  retryDeviceStorage,
+  exportReport,
   openModal,
   destroyCharts,
   scheduleChartSync,
@@ -138,6 +141,13 @@ function quickAdd() {
 
     <section class="content" :inert="isMobilePanelOpen">
       <div class="desktop-privacy-tools"><PrivacyToggle /></div>
+      <div v-if="deviceStorageError" class="device-storage-warning" role="alert">
+        <p>‏بخشی از تغییرات روی دستگاه ذخیره نشده است. پیش از بستن برنامه، فایل پشتیبان بگیر یا ذخیره را دوباره امتحان کن.</p>
+        <div class="settings-actions">
+          <button class="soft-button" type="button" @click="retryDeviceStorage">‏تلاش دوباره برای ذخیره</button>
+          <button class="primary-button" type="button" @click="exportReport('JSON')">‏ذخیرهٔ فایل پشتیبان</button>
+        </div>
+      </div>
       <NuxtPage />
     </section>
 
