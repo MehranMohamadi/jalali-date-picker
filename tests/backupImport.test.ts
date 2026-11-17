@@ -41,6 +41,7 @@ describe('backup import safety', () => {
     vi.stubGlobal('window', { confirm: vi.fn(() => true), setTimeout: vi.fn() })
     vi.stubGlobal('localStorage', {
       getItem: vi.fn((key: string) => saved.get(key) ?? null),
+      removeItem: vi.fn((key: string) => saved.delete(key)),
       setItem: vi.fn((key: string, value: string) => saved.set(key, value)),
     })
   })

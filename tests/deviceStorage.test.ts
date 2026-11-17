@@ -20,6 +20,8 @@ describe('device persistence failures', () => {
     failedKeys = new Set()
     vi.stubGlobal('window', { setTimeout: vi.fn(), requestAnimationFrame: vi.fn(() => 1), cancelAnimationFrame: vi.fn() })
     vi.stubGlobal('localStorage', {
+      getItem: vi.fn((key: string) => records.get(key) ?? null),
+      removeItem: vi.fn((key: string) => records.delete(key)),
       setItem: vi.fn((key: string, value: string) => {
         if (failedKeys.has(key)) throw new Error('QuotaExceededError')
         records.set(key, value)
@@ -70,7 +72,11 @@ describe('device persistence failures', () => {
     vi.stubGlobal('localStorage', undefined)
     expect(() => app.retryDeviceStorage()).not.toThrow()
     expect(app.deviceStorageError.value).toBe(true)
-    vi.stubGlobal('localStorage', { setItem: (key: string, value: string) => records.set(key, value) })
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => records.get(key) ?? null,
+      removeItem: (key: string) => records.delete(key),
+      setItem: (key: string, value: string) => records.set(key, value),
+    })
     app.retryDeviceStorage()
     expect(app.deviceStorageError.value).toBe(false)
   })

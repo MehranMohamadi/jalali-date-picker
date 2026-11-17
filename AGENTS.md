@@ -39,6 +39,7 @@ Compact project guide for future Codex turns. Keep it accurate and update it whe
 - `playground/assets/css/budgetyar-pages.css`: matching surfaces, metrics, forms, and account/settings styles for the remaining pages, imported last. `playground/components/AppPageEditor.vue` provides collapsible page forms; edit actions call its exposed `open()` method so editing reopens a manually closed form.
 - `src/utils/jalali.ts`: Jalali/Gregorian conversion and date math; prefer these helpers over ad hoc date code.
 - `src/utils/dateOnly.ts`, `digits.ts`, and `format.ts`: date-only, digit conversion, and formatting helpers.
+- `src/utils/deviceStorage.ts` and `backupImport.ts`: device key mapping, undo journal, schema checks, and backup preflight. See `docs/device-storage.md`; never overwrite unreadable records with defaults or bypass the grouped finance write path.
 - `src/utils/bankNotification.ts`: bank notification parser; keep parser behavior covered by tests.
 - `src/utils/creditLedger.ts`, `installmentLedger.ts`, `budgetyarPlanning.ts`, `budgetyarGoals.ts`, `budgetyarAdvancedFinance.ts`, and `financialAdvice.ts`: finance domain logic used by the playground where imported.
 - `src/components/`: package calendar and picker components; `src/composables/useJalaliCalendar.ts` owns calendar interaction state.
@@ -51,6 +52,7 @@ Compact project guide for future Codex turns. Keep it accurate and update it whe
 ## Commands
 
 - Run tests: `npm test`
+- Storage browser checks: after `npm run build:app`, run `npm run test:storage:browser` (install Playwright Chromium first, or pass `-- --browser=msedge` on Windows).
 - Start playground dev server: `npm run dev`
 - Build package: `npm run build`
 - Generate static playground: `npm run build:app`
@@ -99,7 +101,7 @@ Compact project guide for future Codex turns. Keep it accurate and update it whe
 
 ## Data And Storage
 
-- localStorage keys are defined in `useBudgetyar.ts`:
+- Finance localStorage keys are mapped in `src/utils/deviceStorage.ts`; theme/cloud settings remain in `useBudgetyar.ts`:
   `budgetyar-transactions-v1`, `budgetyar-categories-v1`, `budgetyar-tags-v1`, `budgetyar-budgets-v1`, `budgetyar-credit-limit-v1`, `budgetyar-installments-v1`, `budgetyar-theme-v1`.
 - Schema changes must remain compatible with import/export and old saved data.
 - Amounts are in toman. Use `parseMoneyInput`, `formatMoneyInput`, `formatMoney`, and `formatCompact` for money input/display.

@@ -17,6 +17,7 @@ import { getBankSuggestionAmount } from '../../src/utils/bankNotification'
 import { applyCreditAdjustments, getCreditMonths } from '../../src/utils/creditLedger'
 import { localAccountKey, planLocalAccountSwitch } from '../../src/utils/accountLocal'
 import { BackupImportError, MAX_BACKUP_BYTES, backupRecoveryKey, parseBackupFile } from '../../src/utils/backupImport'
+import { DEVICE_JOURNAL_KEY, DEVICE_SCHEMA_KEY, deviceFields, readDeviceRecord, recoverDeviceWrite, writeDeviceBatch } from '../../src/utils/deviceStorage'
 import { getForecastInstallmentEvents, getNextUnpaidInstallmentIndex, getPaidInstallmentIndexes, setInstallmentPaid } from '../../src/utils/installmentLedger'
 import {
   buildCashflowTimeline,
@@ -350,22 +351,7 @@ const budgets = ref<BudgetGoal[]>([
 const activeSection = ref('داشبورد')
 const isMobileMenuOpen = ref(false)
 const isMobileViewport = ref(false)
-const STORAGE_KEY = 'budgetyar-transactions-v1'
-const CATEGORIES_STORAGE_KEY = 'budgetyar-categories-v1'
-const TAGS_STORAGE_KEY = 'budgetyar-tags-v1'
-const BUDGETS_STORAGE_KEY = 'budgetyar-budgets-v1'
-const CREDIT_STORAGE_KEY = 'budgetyar-credit-limit-v1'
-const CREDIT_ADJUSTMENTS_STORAGE_KEY = 'budgetyar-credit-adjustments-v1'
-const INSTALLMENTS_STORAGE_KEY = 'budgetyar-installments-v1'
 const THEME_STORAGE_KEY = 'budgetyar-theme-v1'
-const GOALS_STORAGE_KEY = 'budgetyar-goals-v1'
-const SUBSCRIPTIONS_STORAGE_KEY = 'budgetyar-subscriptions-v1'
-const GOAL_TRANSACTIONS_STORAGE_KEY = 'budgetyar-goal-transactions-v1'
-const RECURRING_ITEMS_STORAGE_KEY = 'budgetyar-recurring-items-v1'
-const DEBTS_STORAGE_KEY = 'budgetyar-debts-v1'
-const CATEGORIZATION_RULES_STORAGE_KEY = 'budgetyar-categorization-rules-v1'
-const DELETED_DEFAULT_CATEGORIZATION_RULES_STORAGE_KEY = 'budgetyar-deleted-default-categorization-rules-v1'
-const INCOME_SETTINGS_STORAGE_KEY = 'budgetyar-income-settings-v1'
 const CLOUD_SETTINGS_STORAGE_KEY = 'budgetyar-cloud-settings-v1'
 const navItems = ['داشبورد', 'درآمدها', 'هزینه‌ها', 'بودجه‌ها', 'قسط‌ها', 'گزارش‌ها', 'آمار', 'اعلان‌ها', 'تنظیمات']
 const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند']
@@ -1911,6 +1897,7 @@ function selectSection(item: string) {
 }
 
 function openModal(type: TransactionType) {
+  if (deviceReadBlocked.value) return
   formType.value = type
   editingId.value = null
   Object.assign(form, {
@@ -3437,15 +3424,7 @@ function updateCategorizationRule(id: string, patch: Partial<BudgetyarCategoriza
 
 function deleteCategorizationRule(id: string) {
   if (id.startsWith('preset-')) {
-    const deletedIds = new Set<string>()
-    try {
-      const savedDeletedIds = JSON.parse(localStorage.getItem(DELETED_DEFAULT_CATEGORIZATION_RULES_STORAGE_KEY) ?? '[]')
-      if (Array.isArray(savedDeletedIds)) savedDeletedIds.filter((item): item is string => typeof item === 'string').forEach((item) => deletedIds.add(item))
-    } catch {
-      // Ignore malformed deletion history and replace it with a valid list.
-    }
-    deletedIds.add(id)
-    localStorage.setItem(DELETED_DEFAULT_CATEGORIZATION_RULES_STORAGE_KEY, JSON.stringify([...deletedIds]))
+    deletedDefaultRuleIds.value = [...new Set([...deletedDefaultRuleIds.value, id])]
   }
   categorizationRules.value = categorizationRules.value.filter((rule) => rule.id !== id)
   if (editingCategorizationRuleId.value === id) resetCategorizationRuleForm()
@@ -3716,6 +3695,7 @@ function buildExcelReport() {
 
 function buildBackupJson() {
   return JSON.stringify({
+    ...snapshotExtraFields,
     app: 'budgetyar',
     version: 1,
     exportedAt: new Date().toISOString(),
@@ -3733,6 +3713,7 @@ function buildBackupJson() {
     incomeSettings: incomeSettings.value,
     creditLimit: creditLimit.value,
     creditAdjustments: creditAdjustments.value,
+    deletedDefaultRuleIds: deletedDefaultRuleIds.value,
     summary: {
       totalIncome: totalIncome.value,
       totalExpense: totalExpense.value,
@@ -3772,25 +3753,20 @@ function emptyAccountSnapshot(): Record<string, unknown> {
   }
 }
 
-function switchLocalAccount(nextAccountId: string) {
+async function switchLocalAccount(nextAccountId: string) {
   if (nextAccountId === cloudAccountId) return
   const currentSnapshot = buildCloudSnapshotJson()
   const emptySnapshot = JSON.stringify(emptyAccountSnapshot())
   const plan = planLocalAccountSwitch(cloudAccountId, nextAccountId, currentSnapshot, localStorage.getItem(localAccountKey(nextAccountId)), emptySnapshot)
-  for (const [key, value] of plan.saves) localStorage.setItem(key, value)
-  if (plan.restore) {
-    try {
-      applyBackupRecord(JSON.parse(plan.restore) as Record<string, unknown>)
-      return
-    } catch {
-      localStorage.removeItem(localAccountKey(nextAccountId))
-    }
-  }
-  if (plan.restore !== null) applyBackupRecord(emptyAccountSnapshot())
+  const target = plan.restore ? parseBackupFile(plan.restore) : JSON.parse(currentSnapshot)
+  validateBackupRecords(target)
+  await commitBackupRecord(target, [...plan.saves, [CLOUD_SETTINGS_STORAGE_KEY, JSON.stringify({
+    version: 0, storageMode: storageMode.value, dirty: false, accountId: nextAccountId,
+  })]])
 }
 
 function persistCloudConfiguration() {
-  localStorage.setItem(CLOUD_SETTINGS_STORAGE_KEY, JSON.stringify({
+  saveDeviceValue(CLOUD_SETTINGS_STORAGE_KEY, () => JSON.stringify({
     version: cloudSnapshotVersion.value,
     storageMode: storageMode.value,
     dirty: cloudDirty.value,
@@ -3800,14 +3776,16 @@ function persistCloudConfiguration() {
 
 function restoreCloudConfiguration() {
   try {
-    const saved = JSON.parse(localStorage.getItem(CLOUD_SETTINGS_STORAGE_KEY) ?? '{}') as Record<string, unknown>
+    const saved: unknown = JSON.parse(localStorage.getItem(CLOUD_SETTINGS_STORAGE_KEY) ?? '{}')
+    if (!isRecord(saved)) throw new Error('Invalid cloud settings')
     cloudSnapshotVersion.value = typeof saved.version === 'number' ? Math.max(0, saved.version) : 0
     storageMode.value = saved.storageMode === 'cloud' ? 'cloud' : 'local'
     cloudDirty.value = saved.dirty === true
     cloudAccountId = typeof saved.accountId === 'string' ? saved.accountId : ''
     if ('apiUrl' in saved || 'apiToken' in saved) persistCloudConfiguration()
   } catch {
-    localStorage.removeItem(CLOUD_SETTINGS_STORAGE_KEY)
+    deviceReadBlocked.value = true
+    deviceStorageError.value = true
     storageMode.value = 'local'
     cloudDirty.value = false
   }
@@ -3835,16 +3813,19 @@ function setStorageMode(mode: StorageMode) {
 }
 
 async function checkCloudSession() {
+  if (deviceReadBlocked.value) return false
+  let switchingAccount = false
   cloudAuthStatus.value = 'checking'
   try {
     const auth = useAuth()
     await auth.refreshAuth()
     const accountId = auth.currentUser.value?.id || ''
     if (accountId !== cloudAccountId) {
+      switchingAccount = true
       cloudReadyForAutoSync = false
       if (cloudAutoSyncTimer) clearTimeout(cloudAutoSyncTimer)
       cloudAutoSyncTimer = null
-      switchLocalAccount(accountId)
+      await switchLocalAccount(accountId)
       cloudSnapshotVersion.value = 0
       cloudDirty.value = false
       cloudLastSnapshotJson = ''
@@ -3855,6 +3836,11 @@ async function checkCloudSession() {
     cloudAuthMessage.value = accountId ? '' : 'برای استفاده از فضای ابری وارد حساب شوید'
     return Boolean(accountId)
   } catch (error) {
+    if (switchingAccount) {
+      deviceReadBlocked.value = true
+      deviceStorageError.value = true
+      cloudReadyForAutoSync = false
+    }
     cloudAuthStatus.value = 'unavailable'
     cloudAuthMessage.value = error instanceof Error ? error.message : 'اتصال ابری در دسترس نیست'
     return false
@@ -3895,6 +3881,8 @@ async function testCloudConnection() {
 }
 
 async function syncCloudSnapshot(silent = false, activateCloud = false) {
+  if (deviceReadBlocked.value || deviceLoading || deviceStorageError.value) return false
+  const expectedAccount = cloudAccountId
   cloudSyncStatus.value = 'working'
   cloudSyncMessage.value = 'در حال ارسال داده‌ها…'
   try {
@@ -3908,9 +3896,10 @@ async function syncCloudSnapshot(silent = false, activateCloud = false) {
     })
     const result = await response.json() as { version?: number, error?: string }
     if (!response.ok) throw new Error(result.error || 'ارسال داده‌ها ناموفق بود')
+    if (cloudAccountId !== expectedAccount) return false
     if (activateCloud) storageMode.value = 'cloud'
     cloudReadyForAutoSync = storageMode.value === 'cloud' && cloudAuthStatus.value === 'authenticated'
-    cloudDirty.value = false
+    cloudDirty.value = buildCloudSnapshotJson() !== snapshotJson
     cloudLastSnapshotJson = snapshotJson
     persistCloudVersion(Number(result.version) || 0)
     cloudSyncStatus.value = 'success'
@@ -3947,6 +3936,9 @@ async function migrateLocalDataToCloud() {
 
 function applyBackupRecord(backup: Record<string, unknown>) {
   if (backup.app !== 'budgetyar') throw new Error('این فایل بکاپ جیب‌طلا نیست')
+  validateBackupRecords(parseBackupFile(JSON.stringify(backup)))
+  const known = new Set(['app', 'version', 'exportedAt', 'summary', ...Object.keys(deviceFields)])
+  snapshotExtraFields = Object.fromEntries(Object.entries(backup).filter(([key]) => !known.has(key)))
   const summary = isRecord(backup.summary) ? backup.summary : {}
   transactions.value = restoreTransactions(backup.transactions)
   categories.value = restoreCategories(backup.categories)
@@ -3957,10 +3949,12 @@ function applyBackupRecord(backup: Record<string, unknown>) {
   goals.value = restoreGoals(backup.goals)
   subscriptions.value = restoreSubscriptions(backup.subscriptions)
   goalTransactions.value = restoreGoalTransactions(backup.goalTransactions)
+  if (!goalTransactions.value.length) goalTransactions.value = seedGoalTransactionsFromLegacyGoals(goals.value)
   goals.value.forEach((goal) => refreshGoalState(goal.id))
   recurringItems.value = restoreRecurringItems(backup.recurringItems)
   debts.value = restoreDebts(backup.debts)
   categorizationRules.value = restoreCategorizationRules(backup.categorizationRules)
+  deletedDefaultRuleIds.value = Array.isArray(backup.deletedDefaultRuleIds) ? [...backup.deletedDefaultRuleIds] : []
   incomeSettings.value = restoreIncomeSettings(backup.incomeSettings)
   creditLimit.value = Math.max(0, Number(backup.creditLimit ?? summary.creditLimit ?? 0) || 0)
   creditAdjustments.value = restoreCreditAdjustments(backup.creditAdjustments)
@@ -3973,6 +3967,9 @@ function applyBackupRecord(backup: Record<string, unknown>) {
 }
 
 async function fetchCloudSnapshot(confirmReplace: boolean, silent: boolean) {
+  if (deviceReadBlocked.value) return false
+  const expectedAccount = cloudAccountId
+  const original = buildCloudSnapshotJson()
   if (confirmReplace) {
     const ok = await confirmDialog.askConfirm({
       title: '‏دریافت داده‌های ابری',
@@ -3990,7 +3987,9 @@ async function fetchCloudSnapshot(confirmReplace: boolean, silent: boolean) {
     const result = await response.json() as { version?: number, data?: unknown, error?: string }
     if (!response.ok) throw new Error(result.error || 'دریافت داده‌ها ناموفق بود')
     if (!isRecord(result.data)) throw new Error('پاسخ بک‌اند معتبر نیست')
-    applyBackupRecord(result.data)
+    if (cloudAccountId !== expectedAccount || buildCloudSnapshotJson() !== original) throw new Error('‏حساب یا اطلاعات تغییر کرده است؛ دریافت را دوباره انجام دهید.')
+    localStorage.setItem(backupRecoveryKey(expectedAccount), buildBackupJson())
+    await commitBackupRecord(result.data)
     storageMode.value = 'cloud'
     cloudReadyForAutoSync = true
     cloudDirty.value = false
@@ -4014,6 +4013,7 @@ async function downloadCloudSnapshot() {
 }
 
 function scheduleCloudAutoSync() {
+  if (deviceReadBlocked.value || deviceLoading || deviceStorageError.value) return
   if (storageMode.value !== 'cloud' || !cloudReadyForAutoSync) return
   const snapshotJson = buildCloudSnapshotJson()
   if (!cloudLastSnapshotJson || snapshotJson === cloudLastSnapshotJson) return
@@ -4031,6 +4031,19 @@ function handleAccountChanged() {
   if (cloudAutoSyncTimer) clearTimeout(cloudAutoSyncTimer)
   cloudAutoSyncTimer = null
   void checkCloudSession()
+}
+
+function handleDeviceStorageChanged(event: StorageEvent) {
+  if (event.storageArea !== localStorage) return
+  if (event.key === null || event.key === DEVICE_JOURNAL_KEY || event.key === CLOUD_SETTINGS_STORAGE_KEY
+    || Object.values(deviceFields).includes(event.key as typeof deviceFields[keyof typeof deviceFields])) {
+    deviceReadBlocked.value = true
+    deviceStorageError.value = true
+    isModalOpen.value = false
+    isMobileMenuOpen.value = false
+    cloudReadyForAutoSync = false
+    if (cloudAutoSyncTimer) clearTimeout(cloudAutoSyncTimer)
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -4262,40 +4275,137 @@ function restoreIncomeSettings(value: unknown) {
 
 const backupImportBusy = ref(false)
 const deviceStorageError = ref(false)
+const deviceReadBlocked = ref(false)
+const deletedDefaultRuleIds = ref<string[]>([])
+let snapshotExtraFields: Record<string, unknown> = {}
+let deviceLoading = false
 const failedDeviceWrites = new Set<string>()
 
 function saveDeviceValue(key: string, serialize: () => string) {
+  if (deviceReadBlocked.value || deviceLoading) return
   try {
     localStorage.setItem(key, serialize())
     failedDeviceWrites.delete(key)
   } catch {
     failedDeviceWrites.add(key)
+    cloudReadyForAutoSync = false
+    if (cloudAutoSyncTimer) clearTimeout(cloudAutoSyncTimer)
   }
-  deviceStorageError.value = failedDeviceWrites.size > 0
+  deviceStorageError.value = deviceReadBlocked.value || failedDeviceWrites.size > 0
 }
 
 function retryDeviceStorage() {
-  const records: Array<[string, () => string]> = [
-    [STORAGE_KEY, () => JSON.stringify(transactions.value)],
-    [CATEGORIES_STORAGE_KEY, () => JSON.stringify(categories.value)],
-    [TAGS_STORAGE_KEY, () => JSON.stringify(tags.value)],
-    [BUDGETS_STORAGE_KEY, () => JSON.stringify(budgets.value)],
-    [CREDIT_STORAGE_KEY, () => String(creditLimit.value)],
-    [CREDIT_ADJUSTMENTS_STORAGE_KEY, () => JSON.stringify(creditAdjustments.value)],
-    [INSTALLMENTS_STORAGE_KEY, () => JSON.stringify(installments.value)],
-    [SUBSCRIPTIONS_STORAGE_KEY, () => JSON.stringify(subscriptions.value)],
-    [GOALS_STORAGE_KEY, () => JSON.stringify(goals.value)],
-    [GOAL_TRANSACTIONS_STORAGE_KEY, () => JSON.stringify(goalTransactions.value)],
-    [RECURRING_ITEMS_STORAGE_KEY, () => JSON.stringify(recurringItems.value)],
-    [DEBTS_STORAGE_KEY, () => JSON.stringify(debts.value)],
-    [CATEGORIZATION_RULES_STORAGE_KEY, () => JSON.stringify(categorizationRules.value)],
-    [INCOME_SETTINGS_STORAGE_KEY, () => JSON.stringify(incomeSettings.value)],
-    [THEME_STORAGE_KEY, () => themeMode.value],
-  ]
-  for (const [key, serialize] of records) saveDeviceValue(key, serialize)
+  if (deviceReadBlocked.value) {
+    if (loadDeviceData()) void checkCloudSession()
+    return
+  }
+  persistDeviceSnapshot()
+  saveDeviceValue(THEME_STORAGE_KEY, () => themeMode.value)
+  persistCloudConfiguration()
+}
+
+function persistDeviceSnapshot(extra: Array<[string, string | null]> = []) {
+  if (deviceReadBlocked.value || deviceLoading) return false
+  try {
+    const snapshot = JSON.parse(buildBackupJson()) as Record<string, unknown>
+    validateBackupRecords(parseBackupFile(JSON.stringify(snapshot)))
+    writeDeviceBatch(localStorage, [
+      ...Object.entries(deviceFields).map(([field, key]): [string, string] =>
+        [key, JSON.stringify(field === 'snapshotExtras' ? snapshotExtraFields : snapshot[field])]),
+      [DEVICE_SCHEMA_KEY, '1'],
+      ...extra,
+    ])
+    failedDeviceWrites.delete('finance')
+    for (const [key] of extra) failedDeviceWrites.delete(key)
+  } catch {
+    failedDeviceWrites.add('finance')
+    cloudReadyForAutoSync = false
+    if (cloudAutoSyncTimer) clearTimeout(cloudAutoSyncTimer)
+  }
+  deviceStorageError.value = deviceReadBlocked.value || failedDeviceWrites.size > 0
+  return !failedDeviceWrites.has('finance')
+}
+
+function loadDeviceData() {
+  const previous = buildBackupJson()
+  deviceLoading = true
+  try {
+    recoverDeviceWrite(localStorage)
+    deviceReadBlocked.value = false
+    restoreCloudConfiguration()
+    if (deviceReadBlocked.value) throw new Error('Cloud settings could not be read')
+    const backup = readDeviceRecord(localStorage, JSON.parse(previous))
+    validateBackupRecords(parseBackupFile(JSON.stringify(backup)))
+    try {
+      const cached: unknown = JSON.parse(localStorage.getItem('budgetyar-market-rates-v1') ?? 'null')
+      if (isRecord(cached) && ['usd', 'gold18', 'silver'].every((key) => cached[key] === undefined
+        || (typeof cached[key] === 'number' && Number.isFinite(cached[key]) && cached[key] > 0))
+        && (cached.updatedAt === undefined || typeof cached.updatedAt === 'string')) marketRates.value = cached as GoalMarketRates
+    } catch { /* A disposable rate cache must not block access to finance data. */ }
+    applyBackupRecord(backup)
+    const deleted = new Set(deletedDefaultRuleIds.value)
+    const patterns = new Set(categorizationRules.value.map((rule) => rule.pattern).filter(Boolean))
+    categorizationRules.value.push(...buildDefaultCategorizationRules().filter((rule) => !deleted.has(rule.id) && !patterns.has(rule.pattern)))
+    const savedTheme = localStorage.getItem(THEME_STORAGE_KEY)
+    if (savedTheme === 'light' || savedTheme === 'dark' || savedTheme === 'forest') themeMode.value = savedTheme
+    deviceReadBlocked.value = false
+  } catch {
+    // Never remove or overwrite an unreadable record with application defaults.
+    applyBackupRecord(JSON.parse(previous))
+    deviceReadBlocked.value = true
+    isModalOpen.value = false
+    isMobileMenuOpen.value = false
+    cloudReadyForAutoSync = false
+    if (cloudAutoSyncTimer) clearTimeout(cloudAutoSyncTimer)
+    deviceStorageError.value = true
+  } finally {
+    deviceLoading = false
+  }
+  if (!deviceReadBlocked.value) {
+    persistDeviceSnapshot()
+    persistCloudConfiguration()
+  }
+  return !deviceReadBlocked.value
+}
+
+async function exportDeviceRecovery() {
+  try {
+    await saveBlobToDevice(new Blob([rawDeviceRecovery()],
+      { type: 'application/json;charset=utf-8' }), `budgetyar-device-recovery-${getExportDateStamp()}.json`, '‏فایل نجات آمادهٔ ذخیره شد؛ برای بررسی و بازیابی نگه دار.')
+  } catch { pushToast('‏خواندن دادهٔ دستگاه ممکن نشد؛ دسترسی ذخیره‌سازی مرورگر را بررسی کن.') }
+}
+
+function rawDeviceRecovery() {
+  const keys = [...Object.values(deviceFields), DEVICE_SCHEMA_KEY, DEVICE_JOURNAL_KEY, CLOUD_SETTINGS_STORAGE_KEY]
+  const records = Object.fromEntries(keys.map((key) => [key, localStorage.getItem(key)]))
+  return JSON.stringify({ app: 'budgetyar-device-recovery', version: 1, records }, null, 2)
+}
+
+async function commitBackupRecord(backup: Record<string, unknown>, extra: Array<[string, string | null]> = []) {
+  const previous = buildBackupJson()
+  const wasBlocked = deviceReadBlocked.value
+  deviceLoading = true
+  try {
+    applyBackupRecord(backup)
+    await nextTick()
+    deviceLoading = false
+    deviceReadBlocked.value = false
+    if (!persistDeviceSnapshot(extra)) throw new Error('Device persistence failed')
+  } catch (error) {
+    deviceLoading = true
+    applyBackupRecord(JSON.parse(previous))
+    try { await nextTick() } catch { /* Durable recovery remains available. */ }
+    deviceReadBlocked.value = wasBlocked
+    deviceStorageError.value = wasBlocked || failedDeviceWrites.size > 0
+    throw error
+  } finally {
+    deviceLoading = false
+  }
 }
 
 function validateBackupRecords(backup: Record<string, unknown>) {
+  if (backup.deletedDefaultRuleIds !== undefined && (!Array.isArray(backup.deletedDefaultRuleIds)
+    || !backup.deletedDefaultRuleIds.every((id) => typeof id === 'string'))) throw new BackupImportError('‏سابقهٔ قوانین فایل معتبر نیست.')
   const restorers: Record<string, (value: unknown) => unknown[]> = {
     transactions: restoreTransactions, categories: restoreCategories, tags: restoreTags,
     budgets: restoreBudgets, installments: restoreInstallments, goals: restoreGoals,
@@ -4318,6 +4428,35 @@ function validateBackupRecords(backup: Record<string, unknown>) {
     || !(backup.budgets as BudgetGoal[]).every((item) => validAmount(item.budget))
     || (backup.creditLimit !== undefined && !validAmount(backup.creditLimit))) {
     throw new BackupImportError('‏مبلغ یا تاریخ فایل پشتیبان معتبر نیست؛ اطلاعات فعلی حفظ شد.')
+  }
+  for (const item of backup.transactions as Transaction[]) {
+    if ((item.tags !== undefined && (!Array.isArray(item.tags) || !item.tags.every((tag) => typeof tag === 'string')))
+      || (item.categories !== undefined && (!Array.isArray(item.categories) || !item.categories.every((category) => typeof category === 'string')))
+      || (item.paymentMethod !== undefined && item.paymentMethod !== 'cash' && item.paymentMethod !== 'credit')) {
+      throw new BackupImportError('‏جزئیات تراکنش فایل معتبر نیست.')
+    }
+  }
+  const moneyFields: Record<string, string[]> = {
+    goals: ['targetAmount', 'savedAmount', 'plannedContribution'],
+    recurringItems: ['amount'], debts: ['principalAmount', 'remainingAmount', 'minimumMonthlyPayment', 'extraMonthlyPayment'],
+  }
+  for (const [collection, fields] of Object.entries(moneyFields)) {
+    for (const item of (backup[collection] ?? []) as Record<string, unknown>[]) {
+      if (fields.some((field) => item[field] !== undefined && !validAmount(item[field]))) {
+        throw new BackupImportError('‏مبلغ فایل پشتیبان معتبر نیست.')
+      }
+    }
+  }
+  for (const [collection, fields] of Object.entries({ goals: ['targetQuantity', 'inflationRate', 'coolingOffPeriod'],
+    debts: ['interestRateAnnual', 'dueDay'], recurringItems: ['dueDay', 'reminderDaysBefore'],
+    incomeSettings: ['historyMonths', 'fixedMonthlyIncome', 'manualBudgetBase', 'safetyBufferPercent',
+      'badMonthReservePercent', 'essentialPercent', 'savingPercent', 'flexiblePercent'] })) {
+    const records = collection === 'incomeSettings' ? [backup[collection] ?? {}] : backup[collection] ?? []
+    for (const item of records as Record<string, unknown>[]) {
+      if (fields.some((field) => item[field] !== undefined && (typeof item[field] !== 'number' || !Number.isFinite(item[field])))) {
+        throw new BackupImportError('‏جزئیات عددی فایل پشتیبان معتبر نیست.')
+      }
+    }
   }
   if (Array.isArray(backup.installments) && !backup.installments.every((item: InstallmentPlan) =>
     validAmount(item.amount) && parseJalaliInput(item.startDate)
@@ -4349,6 +4488,31 @@ async function exportPreviousBackup() {
   }
 }
 
+async function deleteDeviceAccountData() {
+  if (deviceReadBlocked.value || backupImportBusy.value) return
+  const accountId = cloudAccountId
+  const confirmed = await confirmDialog.askConfirm({
+    title: '‏حذف اطلاعات این دستگاه',
+    message: '‏اطلاعات مالی حساب فعلی و نسخهٔ قبل از بازیابی از این دستگاه حذف شوند؟ حساب و اطلاعات ابری حذف نمی‌شوند. ابتدا فایل پشتیبان بگیر؛ این حذف قابل بازگردانی نیست.',
+    confirmText: '‏حذف از این دستگاه', cancelText: '‏انصراف', tone: 'danger',
+  })
+  if (!confirmed || cloudAccountId !== accountId) return
+  backupImportBusy.value = true
+  cloudReadyForAutoSync = false
+  if (cloudAutoSyncTimer) clearTimeout(cloudAutoSyncTimer)
+  try {
+    await commitBackupRecord(emptyAccountSnapshot(), [
+      [localAccountKey(accountId), null], [backupRecoveryKey(accountId), null],
+      [CLOUD_SETTINGS_STORAGE_KEY, JSON.stringify({ version: cloudSnapshotVersion.value, storageMode: 'local', dirty: false, accountId })],
+    ])
+    storageMode.value = 'local'
+    cloudDirty.value = false
+    cloudLastSnapshotJson = buildCloudSnapshotJson()
+    pushToast('‏اطلاعات حساب فعلی از این دستگاه حذف شد؛ نسخهٔ ابری تغییر نکرد.')
+  } catch { pushToast('‏حذف اطلاعات دستگاه ناموفق بود؛ دادهٔ قبلی حفظ شد.') }
+  finally { backupImportBusy.value = false }
+}
+
 async function importBackup(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
@@ -4368,7 +4532,7 @@ async function importBackup(event: Event) {
     const installmentCount = toPersianNumber(Array.isArray(backup.installments) ? backup.installments.length : 0)
     const confirmed = await confirmDialog.askConfirm({
       title: '‏بازیابی اطلاعات',
-      message: `‏فایل شامل ${transactionCount} تراکنش، ${budgetCount} بودجه و ${installmentCount} قسط است. همهٔ اطلاعات فعلی با فایل جایگزین می‌شوند؛ بخش‌های غایب فایل به حالت اولیه برمی‌گردند. نسخهٔ قبل از بازیابی روی همین دستگاه نگه داشته می‌شود. ادامه می‌دهید؟`,
+      message: `‏فایل شامل ${transactionCount} تراکنش، ${budgetCount} بودجه و ${installmentCount} قسط است. همهٔ اطلاعات فعلی با فایل جایگزین می‌شوند؛ بخش‌های غایب فایل به حالت اولیه برمی‌گردند. نسخهٔ قبلی روی دستگاه می‌ماند. انتقال به ابر پس از بازیابی به انتخاب دوبارهٔ شما نیاز دارد. ادامه می‌دهید؟`,
       confirmText: '‏بازیابی و جایگزینی',
       cancelText: '‏انصراف',
       tone: 'warning',
@@ -4378,18 +4542,20 @@ async function importBackup(event: Event) {
       throw new BackupImportError('‏حساب یا اطلاعات تغییر کرده است؛ فایل را دوباره انتخاب کنید.')
     }
     try {
-      localStorage.setItem(backupRecoveryKey(accountId), buildBackupJson())
+      localStorage.setItem(backupRecoveryKey(accountId), deviceReadBlocked.value ? rawDeviceRecovery() : buildBackupJson())
+      if (deviceReadBlocked.value) localStorage.removeItem(DEVICE_JOURNAL_KEY)
     } catch {
       throw new BackupImportError('‏ذخیرهٔ نسخهٔ قبلی ممکن نیست؛ بازیابی انجام نشد. فضای دستگاه و دسترسی ذخیره‌سازی را بررسی کنید.')
     }
     try {
-      applyBackupRecord(backup)
-      // Wait for the existing persistence watchers before reporting success.
-      await nextTick()
-      if (deviceStorageError.value) throw new Error('Device persistence failed')
+      await commitBackupRecord(backup, [[CLOUD_SETTINGS_STORAGE_KEY, JSON.stringify({
+        version: cloudSnapshotVersion.value, storageMode: 'local', dirty: false, accountId,
+      })]])
+      storageMode.value = 'local'
+      cloudReadyForAutoSync = false
+      cloudDirty.value = false
+      cloudLastSnapshotJson = buildCloudSnapshotJson()
     } catch {
-      applyBackupRecord(JSON.parse(originalSnapshot) as Record<string, unknown>)
-      try { await nextTick() } catch { /* The recovery file remains available. */ }
       throw new BackupImportError('‏اعمال یا ذخیرهٔ اطلاعات ناموفق بود؛ نسخهٔ قبلی از بخش پشتیبان‌گیری قابل دریافت است.')
     }
     pushToast('‏اطلاعات فایل پشتیبان وارد شد ✅')
@@ -5012,7 +5178,7 @@ export function useBudgetyar() {
     cloudAuthStatus, cloudAuthMessage, cloudSnapshotVersion, cloudSyncStatus, cloudSyncMessage, storageMode, cloudDirty, canLoadDevelopmentData, loadDevelopmentData,
     query, selectedMonth, selectedYear, selectedCategory, selectedType, dateRange, pickerDateRange,
     isModalOpen, formType, form, formAmountInWords, formDatePickerValue, editingId, toasts,
-    deviceStorageError, retryDeviceStorage,
+    deviceStorageError, deviceReadBlocked, retryDeviceStorage, loadDeviceData, exportDeviceRecovery, deleteDeviceAccountData,
     categoryForm, installmentForm, editingInstallmentId, installmentAmountInWords, installmentStartDatePickerValue,
     goalForm, editingGoalId, goalTargetAmountInWords, goalSavedAmountInWords, goalTargetDatePickerValue,
     recurringForm, editingRecurringItemId, recurringAmountInWords, recurringStartDatePickerValue, recurringEndDatePickerValue,
@@ -5136,16 +5302,6 @@ function pruneLegacyTagCategories() {
   return true
 }
 
-function seedDevelopmentDataIfEmpty() {
-  if (!canLoadDevelopmentData.value) return
-  if ([STORAGE_KEY, CATEGORIES_STORAGE_KEY, TAGS_STORAGE_KEY, BUDGETS_STORAGE_KEY, CREDIT_STORAGE_KEY,
-    CREDIT_ADJUSTMENTS_STORAGE_KEY, INSTALLMENTS_STORAGE_KEY, SUBSCRIPTIONS_STORAGE_KEY, GOALS_STORAGE_KEY,
-    GOAL_TRANSACTIONS_STORAGE_KEY, RECURRING_ITEMS_STORAGE_KEY, DEBTS_STORAGE_KEY]
-    .some((key) => localStorage.getItem(key) !== null)) return
-
-  loadDevelopmentData()
-}
-
 const canLoadDevelopmentData = computed(() => import.meta.env.DEV && storageMode.value === 'local'
   && !transactions.value.length && !installments.value.length && !recurringItems.value.length
   && !subscriptions.value.length && !goals.value.length && !debts.value.length)
@@ -5211,8 +5367,8 @@ export function startBudgetyar() {
     scheduleCalendarRefresh()
     document.addEventListener('visibilitychange', refreshCalendarOnVisibilityChange)
     bindMobileViewport()
-    restoreCloudConfiguration()
     window.addEventListener('budgetyar-account-changed', handleAccountChanged)
+    window.addEventListener('storage', handleDeviceStorageChanged)
     isStandalone.value = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as Navigator & { standalone?: boolean }).standalone === true
     isAndroidNative.value = Capacitor.getPlatform() === 'android'
   
@@ -5227,160 +5383,8 @@ export function startBudgetyar() {
       pushToast('جیب‌طلا نصب شد ✅')
     })
   
-    const savedTransactions = localStorage.getItem(STORAGE_KEY)
-    const savedCategories = localStorage.getItem(CATEGORIES_STORAGE_KEY)
-    const savedTags = localStorage.getItem(TAGS_STORAGE_KEY)
-    const savedBudgets = localStorage.getItem(BUDGETS_STORAGE_KEY)
-    const savedCreditLimit = localStorage.getItem(CREDIT_STORAGE_KEY)
-    const savedCreditAdjustments = localStorage.getItem(CREDIT_ADJUSTMENTS_STORAGE_KEY)
-    const savedInstallments = localStorage.getItem(INSTALLMENTS_STORAGE_KEY)
-    const savedThemeMode = localStorage.getItem(THEME_STORAGE_KEY)
-    const savedGoals = localStorage.getItem(GOALS_STORAGE_KEY)
-    const savedSubscriptions = localStorage.getItem(SUBSCRIPTIONS_STORAGE_KEY)
-    if (savedSubscriptions) {
-      try { subscriptions.value = restoreSubscriptions(JSON.parse(savedSubscriptions)) }
-      catch { localStorage.removeItem(SUBSCRIPTIONS_STORAGE_KEY) }
-    }
-    const savedRecurringItems = localStorage.getItem(RECURRING_ITEMS_STORAGE_KEY)
-    const savedDebts = localStorage.getItem(DEBTS_STORAGE_KEY)
-    const savedCategorizationRules = localStorage.getItem(CATEGORIZATION_RULES_STORAGE_KEY)
-    const savedIncomeSettings = localStorage.getItem(INCOME_SETTINGS_STORAGE_KEY)
-    const savedMarketRates = localStorage.getItem('budgetyar-market-rates-v1')
-    if (savedMarketRates) {
-      try { marketRates.value = JSON.parse(savedMarketRates) } catch { localStorage.removeItem('budgetyar-market-rates-v1') }
-    }
-  
-    if (savedTransactions) {
-      try {
-        transactions.value = JSON.parse(savedTransactions) as Transaction[]
-      } catch {
-        localStorage.removeItem(STORAGE_KEY)
-      }
-    }
-  
-    if (savedCategories) {
-      try {
-        const parsedCategories = JSON.parse(savedCategories) as Category[]
-        if (parsedCategories.length && parsedCategories.some((category) => category.key === 'other')) {
-          categories.value = parsedCategories
-        }
-      } catch {
-        localStorage.removeItem(CATEGORIES_STORAGE_KEY)
-      }
-    }
-
-    if (savedTags) {
-      try { tags.value = restoreTags(JSON.parse(savedTags)) } catch { localStorage.removeItem(TAGS_STORAGE_KEY) }
-    }
-    if (migrateLegacyTags()) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions.value))
-      localStorage.setItem(TAGS_STORAGE_KEY, JSON.stringify(tags.value))
-    }
-  
-    if (savedBudgets) {
-      try {
-        budgets.value = JSON.parse(savedBudgets) as BudgetGoal[]
-      } catch {
-        localStorage.removeItem(BUDGETS_STORAGE_KEY)
-      }
-    }
-  
-    if (savedCreditLimit) {
-      creditLimit.value = Math.max(0, parseMoneyInput(savedCreditLimit))
-    }
-
-    if (savedCreditAdjustments) {
-      try {
-        creditAdjustments.value = restoreCreditAdjustments(JSON.parse(savedCreditAdjustments))
-      } catch {
-        localStorage.removeItem(CREDIT_ADJUSTMENTS_STORAGE_KEY)
-      }
-    }
-  
-    if (savedInstallments) {
-      try {
-        installments.value = JSON.parse(savedInstallments) as InstallmentPlan[]
-      } catch {
-        localStorage.removeItem(INSTALLMENTS_STORAGE_KEY)
-      }
-    }
-
-    if (savedGoals) {
-      try {
-        goals.value = restoreGoals(JSON.parse(savedGoals))
-      } catch {
-        localStorage.removeItem(GOALS_STORAGE_KEY)
-      }
-    }
-
-    const savedGoalTransactions = localStorage.getItem(GOAL_TRANSACTIONS_STORAGE_KEY)
-    if (savedGoalTransactions) {
-      try {
-        goalTransactions.value = restoreGoalTransactions(JSON.parse(savedGoalTransactions))
-      } catch {
-        localStorage.removeItem(GOAL_TRANSACTIONS_STORAGE_KEY)
-      }
-    }
-    if (!goalTransactions.value.length && goals.value.length) {
-      goalTransactions.value = seedGoalTransactionsFromLegacyGoals(goals.value)
-    }
-    goals.value.forEach((goal) => refreshGoalState(goal.id))
-
-    if (savedRecurringItems) {
-      try {
-        recurringItems.value = restoreRecurringItems(JSON.parse(savedRecurringItems))
-      } catch {
-        localStorage.removeItem(RECURRING_ITEMS_STORAGE_KEY)
-      }
-    }
-
-    if (savedDebts) {
-      try {
-        debts.value = restoreDebts(JSON.parse(savedDebts))
-      } catch {
-        localStorage.removeItem(DEBTS_STORAGE_KEY)
-      }
-    }
-
-    if (savedCategorizationRules) {
-      try {
-        categorizationRules.value = restoreCategorizationRules(JSON.parse(savedCategorizationRules))
-      } catch {
-        localStorage.removeItem(CATEGORIZATION_RULES_STORAGE_KEY)
-      }
-    }
-
-    const deletedDefaultRuleIds = new Set<string>()
-    try {
-      const savedDeletedIds = JSON.parse(localStorage.getItem(DELETED_DEFAULT_CATEGORIZATION_RULES_STORAGE_KEY) ?? '[]')
-      if (Array.isArray(savedDeletedIds)) savedDeletedIds.filter((item): item is string => typeof item === 'string').forEach((item) => deletedDefaultRuleIds.add(item))
-    } catch {
-      localStorage.removeItem(DELETED_DEFAULT_CATEGORIZATION_RULES_STORAGE_KEY)
-    }
-    const existingPatterns = new Set(categorizationRules.value.map((rule) => rule.pattern).filter(Boolean))
-    const missingDefaults = buildDefaultCategorizationRules().filter((rule) => !deletedDefaultRuleIds.has(rule.id) && !existingPatterns.has(rule.pattern))
-    if (missingDefaults.length) {
-      categorizationRules.value = [...categorizationRules.value, ...missingDefaults]
-      localStorage.setItem(CATEGORIZATION_RULES_STORAGE_KEY, JSON.stringify(categorizationRules.value))
-    }
-
-    if (savedIncomeSettings) {
-      try {
-        incomeSettings.value = restoreIncomeSettings(JSON.parse(savedIncomeSettings))
-      } catch {
-        localStorage.removeItem(INCOME_SETTINGS_STORAGE_KEY)
-      }
-    }
-
-    if (savedThemeMode === 'light' || savedThemeMode === 'dark' || savedThemeMode === 'forest') {
-      themeMode.value = savedThemeMode
-    }
-    if (pruneLegacyTagCategories()) {
-      localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(categories.value))
-      localStorage.setItem(BUDGETS_STORAGE_KEY, JSON.stringify(budgets.value))
-    }
+    loadDeviceData()
     applyTheme()
-    seedDevelopmentDataIfEmpty()
   
     if ('serviceWorker' in navigator) {
       if (!import.meta.env.PROD) {
@@ -5418,6 +5422,7 @@ export function startBudgetyar() {
   onBeforeUnmount(() => {
     document.removeEventListener('visibilitychange', refreshCalendarOnVisibilityChange)
     window.removeEventListener('budgetyar-account-changed', handleAccountChanged)
+    window.removeEventListener('storage', handleDeviceStorageChanged)
     if (calendarRefreshTimer) clearTimeout(calendarRefreshTimer)
     calendarRefreshTimer = null
     unbindMobileViewport()
@@ -5427,46 +5432,18 @@ export function startBudgetyar() {
   })
   
   watch(
-    transactions,
-    (value) => {
-      saveDeviceValue(STORAGE_KEY, () => JSON.stringify(value))
-    },
+    [transactions, categories, tags, budgets, creditLimit, creditAdjustments, installments,
+      subscriptions, goals, goalTransactions, recurringItems, debts, categorizationRules, incomeSettings, deletedDefaultRuleIds],
+    () => { if (persistDeviceSnapshot()) scheduleCloudAutoSync() },
     { deep: true },
   )
-  
-  watch(
-    categories,
-    (value) => {
-      saveDeviceValue(CATEGORIES_STORAGE_KEY, () => JSON.stringify(value))
-    },
-    { deep: true },
-  )
-
-  watch(tags, (value) => {
-    saveDeviceValue(TAGS_STORAGE_KEY, () => JSON.stringify(value))
-  }, { deep: true })
-  
-  watch(
-    budgets,
-    (value) => {
-      saveDeviceValue(BUDGETS_STORAGE_KEY, () => JSON.stringify(value))
-    },
-    { deep: true },
-  )
-  
-  watch(creditLimit, (value) => {
-    saveDeviceValue(CREDIT_STORAGE_KEY, () => String(value))
-  })
-
-  watch(creditAdjustments, (value) => {
-    saveDeviceValue(CREDIT_ADJUSTMENTS_STORAGE_KEY, () => JSON.stringify(value))
-  })
 
   watch(rawCreditMonths, (months) => {
+    if (deviceReadBlocked.value || deviceLoading) return
     const open = new Set(months.filter((month) => month.remaining > 0).map((month) => month.month))
     const next = Object.fromEntries(Object.entries(creditAdjustments.value).filter(([month]) => open.has(month)))
     if (Object.keys(next).length !== Object.keys(creditAdjustments.value).length) creditAdjustments.value = next
-  }, { immediate: true })
+  })
 
   watch(themeMode, (value) => {
     saveDeviceValue(THEME_STORAGE_KEY, () => value)
@@ -5474,82 +5451,13 @@ export function startBudgetyar() {
     destroyCharts()
     nextTick(scheduleChartSync)
   })
-  
-  watch(
-    installments,
-    (value) => {
-      saveDeviceValue(INSTALLMENTS_STORAGE_KEY, () => JSON.stringify(value))
-    },
-    { deep: true },
-  )
 
-  watch(subscriptions, (value) => {
-    saveDeviceValue(SUBSCRIPTIONS_STORAGE_KEY, () => JSON.stringify(value))
+  watch(marketRates, () => {
+    if (deviceReadBlocked.value || deviceLoading) return
+    activeGoals.value.forEach((goal) => {
+      if (goal.trackingMode !== 'FIXED_MONEY') refreshGoalState(goal.id)
+    })
   }, { deep: true })
-
-  watch(
-    goals,
-    (value) => {
-      saveDeviceValue(GOALS_STORAGE_KEY, () => JSON.stringify(value))
-    },
-    { deep: true },
-  )
-
-  watch(
-    goalTransactions,
-    (value) => {
-      saveDeviceValue(GOAL_TRANSACTIONS_STORAGE_KEY, () => JSON.stringify(value))
-    },
-    { deep: true },
-  )
-
-  watch(
-    marketRates,
-    () => {
-      activeGoals.value.forEach((goal) => {
-        if (goal.trackingMode !== 'FIXED_MONEY') refreshGoalState(goal.id)
-      })
-    },
-    { deep: true },
-  )
-
-  watch(
-    recurringItems,
-    (value) => {
-      saveDeviceValue(RECURRING_ITEMS_STORAGE_KEY, () => JSON.stringify(value))
-    },
-    { deep: true },
-  )
-
-  watch(
-    debts,
-    (value) => {
-      saveDeviceValue(DEBTS_STORAGE_KEY, () => JSON.stringify(value))
-    },
-    { deep: true },
-  )
-
-  watch(
-    categorizationRules,
-    (value) => {
-      saveDeviceValue(CATEGORIZATION_RULES_STORAGE_KEY, () => JSON.stringify(value))
-    },
-    { deep: true },
-  )
-
-  watch(
-    incomeSettings,
-    (value) => {
-      saveDeviceValue(INCOME_SETTINGS_STORAGE_KEY, () => JSON.stringify(value))
-    },
-    { deep: true },
-  )
-
-  watch(
-    [transactions, categories, tags, budgets, creditLimit, creditAdjustments, installments, subscriptions, goals, goalTransactions, recurringItems, debts, categorizationRules, incomeSettings],
-    scheduleCloudAutoSync,
-    { deep: true },
-  )
   
   watch(
     [

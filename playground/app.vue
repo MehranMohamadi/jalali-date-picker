@@ -41,6 +41,9 @@ const {
   isMobileViewport,
   toasts,
   deviceStorageError,
+  deviceReadBlocked,
+  exportDeviceRecovery,
+  importBackup,
   retryDeviceStorage,
   exportReport,
   openModal,
@@ -142,13 +145,17 @@ function quickAdd() {
     <section class="content" :inert="isMobilePanelOpen">
       <div class="desktop-privacy-tools"><PrivacyToggle /></div>
       <div v-if="deviceStorageError" class="device-storage-warning" role="alert">
-        <p>‏بخشی از تغییرات روی دستگاه ذخیره نشده است. پیش از بستن برنامه، فایل پشتیبان بگیر یا ذخیره را دوباره امتحان کن.</p>
+        <p v-if="deviceReadBlocked">‏اطلاعات دستگاه خوانده نشد. برای حفظ نسخهٔ موجود، تغییر اطلاعات متوقف است. دوباره تلاش کن، فایل نجات بگیر یا پشتیبان سالم وارد کن.</p>
+        <p v-else>‏بخشی از تغییرات روی دستگاه ذخیره نشده است. پیش از بستن برنامه، فایل پشتیبان بگیر یا ذخیره را دوباره امتحان کن.</p>
         <div class="settings-actions">
           <button class="soft-button" type="button" @click="retryDeviceStorage">‏تلاش دوباره برای ذخیره</button>
-          <button class="primary-button" type="button" @click="exportReport('JSON')">‏ذخیرهٔ فایل پشتیبان</button>
+          <button v-if="deviceReadBlocked" class="primary-button" type="button" @click="exportDeviceRecovery">‏ذخیرهٔ فایل نجات</button>
+          <button v-else class="primary-button" type="button" @click="exportReport('JSON')">‏ذخیرهٔ فایل پشتیبان</button>
+          <label v-if="deviceReadBlocked" class="soft-button">‏ورود پشتیبان سالم <input type="file" accept="application/json,.json" aria-label="‏ورود پشتیبان سالم" @change="importBackup" /></label>
         </div>
+        <p v-if="deviceReadBlocked">‏فایل نجات دادهٔ خام را نگه می‌دارد و برای بررسی است؛ فایل پشتیبان معمولی نیست. پاک‌کردن حافظهٔ مرورگر، راه بازیابی نیست.</p>
       </div>
-      <NuxtPage />
+      <NuxtPage v-if="!deviceReadBlocked" />
     </section>
 
     <button class="fab" type="button" aria-label="‏ثبت سریع" @click="quickAdd">
@@ -163,7 +170,7 @@ function quickAdd() {
       @close="closeMobilePanels"
       @quick-add="quickAdd"
     />
-    <TransactionModal />
+    <div :inert="deviceReadBlocked"><TransactionModal /></div>
     <ConfirmBottomSheet />
     <ToastStack :toasts="toasts" />
     <AppUpdateNotice />

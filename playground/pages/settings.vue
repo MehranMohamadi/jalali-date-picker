@@ -37,6 +37,7 @@ const {
   importBackup,
   backupImportBusy,
   exportPreviousBackup,
+  deleteDeviceAccountData,
   loadDevelopmentData,
   installApp,
   setStorageMode,
@@ -132,6 +133,8 @@ async function downloadLatestApk(event: MouseEvent) {
           <input ref="backupInput" class="settings-file-input" type="file" accept="application/json,.json" aria-label="‏انتخاب فایل پشتیبان" @change="importBackup" />
         </div>
         <p class="settings-hint">‏نسخهٔ قبل از آخرین بازیابی برای همین حساب روی دستگاه می‌ماند؛ پاک‌کردن دادهٔ مرورگر آن را هم حذف می‌کند. فایل پشتیبان را جداگانه در جای امن نگه دار.</p>
+        <p class="settings-hint">‏فایل پشتیبان و نسخه‌های روی دستگاه رمزگذاری نشده‌اند. فایل را در فضای امن نگه دار و روی دستگاه مشترک از حساب جداگانهٔ سیستم‌عامل استفاده کن؛ خروج از حساب، دادهٔ ذخیره‌شدهٔ دستگاه را پاک نمی‌کند.</p>
+        <button class="soft-button settings-action" type="button" :disabled="backupImportBusy" @click="deleteDeviceAccountData">‏حذف اطلاعات حساب فعلی از این دستگاه</button>
       </section>
 
       <section class="settings-panel settings-panel-wide glass-panel">
